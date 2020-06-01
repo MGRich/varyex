@@ -121,6 +121,8 @@ redirect = False
 async def redirloop():
     global redirect, usrout
     if not redirect: return
+    s = usrout.getvalue()
+    if not s: return
     await bot.owner.send(f"```\n{usrout.getvalue()}```")
     usrout.close()
     sys.stdout = sys.stderr = usrout = StringIO()
