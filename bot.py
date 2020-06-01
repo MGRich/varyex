@@ -8,14 +8,15 @@ from cogs.utils.mpkmanager import MPKManager
 import subprocess, sys
 #from cogs.utils import suggestions
 
-sys.stderr = regout = sys.stdout #lol
-usrout = StringIO()
-
 stable = False
 if stable or (len(sys.argv) > 1 and sys.argv[1] == "stable"): data = json.load(open("stable.json"))
 else: data = json.load(open("info.json"))
 
 stable = data['stable']
+usrout = StringIO()
+if stable:
+    sys.stderr = usrout 
+regout = sys.stdout
 
 def prefix(bot, message):
     prf = data['prefix'].copy()
@@ -58,7 +59,6 @@ async def on_ready():
         bot.__dict__['owner'] = bot.get_user(bot.owner_id)
         commands.Bot.owner = property(lambda x: x.__dict__['owner'])
         user = bot.owner
-        redirloop.start()
         first = True
         if (os.path.exists("updateout.log")):
             #info = await bot.application_info()
@@ -88,6 +88,8 @@ async def on_ready():
                     traceback.print_exc()
                     print("-----END   {}".format(cog))
             await user.send(msg + "```")
+    try: redirloop.start()
+    except: pass
 
 @bot.event
 async def on_command_error(ctx, error):
@@ -105,8 +107,7 @@ async def on_command_error(ctx, error):
         except: return
 
     if bot.owner == ctx.author:
-        traceback.print_exception(type(error), error, error.__traceback__, file=sys.stdout)
-        return
+        return traceback.print_exception(type(error), error, error.__traceback__, file=(sys.stdout if (not stable) else sys.stderr))
     try: await ctx.send(f"Something went wrong! We've DM'd the error to {bot.owner.mention}.")
     except: pass
     embed = discord.Embed(title=f"Error in {ctx.command}")
@@ -119,24 +120,26 @@ async def on_command_error(ctx, error):
 redirect = False
 @tasks.loop(seconds=1, reconnect=True)
 async def redirloop():
-    global redirect, usrout
-    if not redirect: return
+    global redirect, usrout, stable
     s = usrout.getvalue()
     if not s: return
     await bot.owner.send(f"```\n{usrout.getvalue()}```")
     usrout.close()
-    sys.stdout = sys.stderr = usrout = StringIO()
+    usrout = StringIO()
+    if stable:
+        sys.stderr = usrout
+    if redirect:
+        sys.stdout = usrout
 
 @bot.command(hidden=True)
 @commands.is_owner()
 async def redir(ctx):
-    global redirect, regout, usrout
+    global redirect, regout, usrout, stable
     if redirect:
         sys.stdout = regout
-        sys.stderr = regout
         redirect = False
     else:
-        sys.stdout = sys.stderr = usrout
+        sys.stdout = usrout
         redirect = True
 
 @bot.command(hidden=True, aliases=['r', 'rl'])
@@ -248,7 +251,7 @@ async def load(ctx, *cogs):
             print("-----END   {}".format(cog))
     await ctx.send(msg + "```")
 
-@bot.command(name="eval", aliases=['funy'])
+@bot.command(name="eval", hidden=True)
 @commands.is_owner()
 async def _eval(ctx, *, evl):
     t = None
@@ -270,7 +273,7 @@ async def _eval(ctx, *, evl):
     e.add_field(name="Output", value="`" + t + "`")
     await ctx.send(embed=e)
 
-@bot.command(name="exec")
+@bot.command(name="exec", hidden=True)
 @commands.is_owner()
 async def _exec(ctx, *, evl):
     t = None
