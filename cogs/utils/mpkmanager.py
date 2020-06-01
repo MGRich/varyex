@@ -3,6 +3,8 @@ import msgpack, os
 class MPKManager:
     def __init__(self, direct, *gid):
         self.path = f"config/{gid[0]}/{direct}.mpk" if gid else f"config/{direct}.mpk"
+        if gid and not os.path.exists(f"config/{gid[0]}/"):
+            os.mkdir(f"config/{gid[0]}/")
         if (not os.path.exists(self.path)):
             with open(self.path, "wb") as f: msgpack.dump({}, f)
         self.data = self.load()

@@ -20,7 +20,7 @@ class embeds:
         embed = discord.Embed(color=(discord.Color(dcolor) if msg.author.color == discord.Color.default() else msg.author.color))
         embed.set_author(name=msg.author.display_name, icon_url=msg.author.avatar_url)
         embed.timestamp = msg.created_at
-        desc = [msg.content]
+        desc = msg.content
 
         done = False
         for attachment in msg.attachments:
@@ -28,18 +28,17 @@ class embeds:
                 if (not list(os.path.splitext(attachment.filename))[1].lower() in [".png", ".wempm", ".gif", ".jpg", ".jpeg", ".webp"]) or done: raise Exception()
                 if (not attachmode): raise Exception()
                 else:
-                    if (attachmode & 1):
-                        embed.set_image(url=attachment.proxy_url)
-                    else:
-                        embed.set_image(url=attachment.url)
+                    if (attachmode & 1): embed.set_image(url=attachment.proxy_url)
+                    else: embed.set_image(url=attachment.url)
                 done = True
-            except: desc.append(f"\n[{attachment.filename}]")
-        if (desc[0].startswith("\n")): desc[0] = desc[0][1:]
+            except: desc += f"\n[{attachment.filename}]"
 
-        if re.fullmatch("<@.+>", ''.join(desc)): desc.append("\n(jump to message)")
-        desc = ''.join(desc)
-        if (desc == "" and link): desc = "(jump to message)"
-        if (link): embed.description = f"[{desc}]({msg.jump_url})"
+        if re.fullmatch("<@.+>", desc)): desc += "\n(jump to message)"
+        desc = desc.strip()
+
+        if (link): 
+            if not desc: desc = "(jump to message)"
+            embed.description = f"[{desc}]({msg.jump_url})"
         else: embed.description = f"{msg.channel.mention}\n{desc}"
         #now that we're done, existing embed time
         #setup footer
@@ -48,29 +47,19 @@ class embeds:
             if spstate & 0b10:
                 embed.description = f"<#{msg.channel.id}>\n[{desc}]({msg.jump_url})"
                 ftxt = [f"{count} {jsn['emojiname']}{'s' if count != 1 else ''}"]
-            else:
-                ftxt = [f"\U0001F4CC Pinned in #{msg.channel.name}"]
-            if spstate == 0b11:
-                ftxt.append("/\U0001F4CC Pinned")
+            else: ftxt = [f"\U0001F4CC Pinned in #{msg.channel.name}"]
+            if spstate == 0b11: ftxt.append("/\U0001F4CC Pinned")
 
         if (focus):
             for substr in focus:
                 desc = re.sub(fr'({substr})', r"**\1**", desc, flags=re.IGNORECASE)
             embed.description = f"<#{msg.channel.id}>\n[{desc}]({msg.jump_url})"
-        
-        mcpair = False
-        content = ""
 
-        if (len(msg.embeds) != 0):
+        if msg.embeds:
             e = msg.embeds[0]
-            #print(msg.embeds[0].thumbnail.url)
-            #print(embed.video)
             embed.title = e.title
             typ = ""
             if (e.color != discord.Color.default() and e.color != e.Empty): embed.colour = e.color
-            #SPECIAL SPECIFIERS
-            #print(e.provider.name)
-            #print(e.thumbnail.url)
             try:
                 if (stardata):
                     if "https://twitter.com/" in e.url: typ = "twitter"
@@ -107,15 +96,14 @@ class embeds:
                         embed.set_thumbnail(url=e.thumbnail.url)
                     else:
                         embed.set_image(url=e.thumbnail.url)
-
-            if typ == "yt":
+            elif typ == "yt":
                 try:
                     if (e.author.name == e.Empty): raise ValueError()
                     ftxt.append(f" | Uploaded by {e.author.name}")
                     embed.add_field(name="Description", value=e.description)
                     embed.set_image(url=e.thumbnail.url)
                 except: ftxt.append(" | [bad YT embed]")
-            if typ == "twitch":
+            elif typ == "twitch":
                 embed.colour = discord.Color(0x9147FF)
                 titlesplit = e.title.split(' - ')
                 try: typ = ("clip" if titlesplit[2] == "Twitch Clips" else "vod")
@@ -132,7 +120,7 @@ class embeds:
                 if typ == "channel":
                     embed.add_field(name="Stream Info", value=f"**__{titlesplit[0]}__**\n{e.description}")
                     embed.set_thumbnail(url=e.thumbnail.url)
-            if typ == "gb":
+            elif typ == "gb":
                 ##############PARSE EMBED DATA###############
                 data = {} #yes its that fucking complex
                 data['tease'] = e.description.split("...")[0]
@@ -153,8 +141,7 @@ class embeds:
                 embed.title = f"{data['name']} | {data['full']}"
                 if (data['tease']): ftxt.append(f" | \"{data['tease']}\"") 
                 ftxt.append(f" | {data['short']} {data['category']} {data['type']} by {data['author']}")
-
-            if typ == "":
+            else:
                 try:
                     if (e.image.url == e.Empty): raise NameError() 
                     #print(e.image.url) 
@@ -172,7 +159,4 @@ class embeds:
                 embed.set_footer(text=''.join(ftxt), icon_url=f"https://cdn.discordapp.com/emojis/{jsn['emoji']}.png")
             else:
                 embed.set_footer(text = ''.join(ftxt))
-
-        if mcpair:
-            return [content, embed]
         return embed

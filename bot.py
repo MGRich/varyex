@@ -1,11 +1,15 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 import traceback, json, os, inspect, sys, re, aiohttp, asyncio
 from pprint import pprint #as print
+from io import StringIO
 import urllib
 from cogs.utils.mpkmanager import MPKManager
 import subprocess, sys
 #from cogs.utils import suggestions
+
+sys.stderr = regout = sys.stdout #lol
+usrout = StringIO()
 
 stable = False
 if stable or (len(sys.argv) > 1 and sys.argv[1] == "stable"): data = json.load(open("stable.json"))
@@ -27,6 +31,7 @@ def prefix(bot, message):
     try: prf.insert(0, users[str(message.author.id)]['prefix'])
     except: pass
     return prf
+
 
 
 #fetch cogs
@@ -53,6 +58,7 @@ async def on_ready():
         bot.__dict__['owner'] = bot.get_user(bot.owner_id)
         commands.Bot.owner = property(lambda x: x.__dict__['owner'])
         user = bot.owner
+        redirloop.start()
         first = True
         if (os.path.exists("updateout.log")):
             #info = await bot.application_info()
@@ -99,7 +105,7 @@ async def on_command_error(ctx, error):
         except: return
 
     if bot.owner == ctx.author:
-        traceback.print_exception(type(error), error, error.__traceback__)
+        traceback.print_exception(type(error), error, error.__traceback__, file=sys.stdout)
         return
     try: await ctx.send(f"Something went wrong! We've DM'd the error to {bot.owner.mention}.")
     except: pass
@@ -109,6 +115,27 @@ async def on_command_error(ctx, error):
     embed.description += f"\nServer ID: {ctx.guild.id}\nUser ID: {ctx.author.id}\nMessage ID: {ctx.message.id}"
     try: return await bot.owner.send(embed=embed)
     except: pass
+
+redirect = False
+@tasks.loop(seconds=1, reconnect=True)
+async def redirloop():
+    global redirect, usrout
+    if not redirect: return
+    await bot.owner.send(f"```\n{usrout.getvalue()}```")
+    usrout.close()
+    sys.stdout = sys.stderr = usrout = StringIO()
+
+@bot.command(hidden=True)
+@commands.is_owner()
+async def redir(ctx):
+    global redirect, regout, usrout
+    if redirect:
+        sys.stdout = regout
+        sys.stderr = regout
+        redirect = False
+    else:
+        sys.stdout = sys.stderr = usrout
+        redirect = True
 
 @bot.command(hidden=True, aliases=['r', 'rl'])
 @commands.is_owner()
