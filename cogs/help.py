@@ -11,7 +11,6 @@ class Help(commands.Cog):
         self.bot = bot
 
     def parse(self, cog, command, prefix="v!") -> Union[List[discord.Embed], discord.Embed]:
-        print(str(cog) + " " + str(command))
         if (not cog) and (not command): #v!help
             ret = []
             for x in list(self.bot.cogs):
@@ -40,14 +39,12 @@ class Help(commands.Cog):
             embed.description += f"`{command.name}` - {summary}{aliasstr}\n"
             embed.set_footer(text = f"Use {prefix}help [command] for more info on a command.")            
         return embed
-        #command
         
     @commands.command()
     async def help(self, ctx, c: Optional[str] = None):
         if not c:
             embed = discord.Embed(title="Help", color=self.bot.data['color']) 
             for e in self.parse(None, None):
-                print(e)
                 if e.description:
                     embed.add_field(name=e.title, value=e.description, inline=False)
             embed.set_footer(text = f"Use {ctx.prefix}help [command] for more info on a command.")

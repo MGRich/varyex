@@ -281,5 +281,5 @@ bot.run(data['token'], bot=True, reconnect=True)
 
 if (upd): 
     print("RUNNING UPDATER")
-    pid = subprocess.Popen([sys.executable, "updater.py"].append(sys.argv[1:]), creationflags=0x8).pid
+    pid = subprocess.Popen([sys.executable, "updater.py"] + sys.argv[1:], creationflags=0x8).pid
     print("it has run")
