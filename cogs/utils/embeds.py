@@ -33,7 +33,7 @@ class embeds:
                 done = True
             except: desc += f"\n[{attachment.filename}]"
 
-        if re.fullmatch("<@.+>", desc)): desc += "\n(jump to message)"
+        if re.fullmatch("<@.+>", desc): desc += "\n(jump to message)"
         desc = desc.strip()
 
         if (link): 
