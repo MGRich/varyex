@@ -72,15 +72,16 @@ class Miscellaneous(commands.Cog):
         `say <text>`"""
         await chn.send(funny)
 
-    @commands.command(aliases=['getme', 'about'])
+    @commands.command(aliases = ['about', 'invite'])
     async def info(self, ctx):
-        inf = json.load(open('info.json'))
-        tup = (("Version", inf['version']), ("Info", "This is just a general purpose bot for any type of server."), ("Owner", "RMGRich#8192"), ("Servers", len(self.bot.guilds)), ("Support Server", "[Join here.](https://discord.gg/4Wpsswq)"), ("Invite Links", "[Stable]({})\n[Developer]({})".format(discord.utils.oauth_url("464546343797391371"), discord.utils.oauth_url("465942405611257866"))))
+        """Shows information about me."""
         #("Members", len(list(self.bot.get_all_members)))
-        e = discord.Embed(title="Info", colour=discord.Colour(inf['color']))
-        e.set_footer(text="Made using discord.py.", icon_url="https://cdn.discordapp.com/icons/336642139381301249/3aa641b21acded468308a37eef43d7b3.webp")
-        for x in tup:
-            e.add_field(name=x[0], value=x[1], inline=True) #not sure if i wanna do inline or not
+        e = discord.Embed(title="Info", colour=discord.Colour(self.bot.data['color']))
+        e.description = f"""**Version:** {self.bot.data['version']}
+        **Owned by:** {self.bot.owner.mention}
+        **Stats:** {len(self.bot.guilds)} servers, unsharded
+        **Invite link:** (not yet)"""
+        e.set_footer(text=f"Made using discord.py version {discord.__version__}", icon_url="https://cdn.discordapp.com/icons/336642139381301249/3aa641b21acded468308a37eef43d7b3.webp")
         await ctx.send(embed=e)
     
     def calcstripfromdate(self, date: datetime, sromg): 
