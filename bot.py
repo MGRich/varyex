@@ -6,6 +6,7 @@ from io import StringIO
 import urllib
 from cogs.utils.mpkmanager import MPKManager
 import subprocess, sys
+import textwrap, contextlib
 #from cogs.utils import suggestions
 
 stable = False
@@ -251,49 +252,49 @@ async def load(ctx, *cogs):
             print("-----END   {}".format(cog))
     await ctx.send(msg + "```")
 
+lastresult = None
+
 @bot.command(name="eval", hidden=True)
 @commands.is_owner()
 async def _eval(ctx, *, evl):
-    t = None
+    global lastresult
     env = {
         'bot': bot,
-        'ctx': ctx
+        'ctx': ctx,
+        '_': lastresult
     }
     env.update(globals())
-    e = discord.Embed(title="EVAL", colour=discord.Color(0x71CD40))
-    e.add_field(name="Input", value="`" + evl + "`")
-    try:
-        t = str(eval(evl, env))
-        if inspect.isawaitable(t):
-            t = await t
-    except Exception as err:
-        e.description = "It failed to run."
-        e.colour = discord.Colour(0xFF0000)
-        t = str(err)
-    e.add_field(name="Output", value="`" + t + "`")
-    await ctx.send(embed=e)
+    if evl.startswith("```"):
+        evl = evl[3:-3]
+        if evl.startswith("py"):
+            evl = evl[2:]
+    evl = evl.strip()
+    out = StringIO()
 
-@bot.command(name="exec", hidden=True)
-@commands.is_owner()
-async def _exec(ctx, *, evl):
-    t = None
-    env = {
-        'bot': bot,
-        'ctx': ctx
-    }
-    env.update(globals())
-    e = discord.Embed(title="EVAL", colour=discord.Color(0x71CD40))
-    e.add_field(name="Input", value="`" + evl + "`")
-    try:
-        t = str(exec(evl, env))
-        if inspect.isawaitable(t):
-            t = await t
+    funcwrap = f"async def evalfunc():\n{textwrap.indent(evl, '  ')}"
+
+    try: exec(funcwrap, env)
     except Exception as err:
-        e.description = "It failed to run."
-        e.colour = discord.Colour(0xFF0000)
-        t = str(err)
-    e.add_field(name="Output", value="`" + t + "`")
-    await ctx.send(embed=e)
+        return await ctx.send(f'```py\n{err.__class__.__name__}: {err}\n```')
+
+    evalfunc = env['evalfunc']
+    try:
+        with contextlib.redirect_stdout(out):
+            ret = await evalfunc()
+    except Exception as e:
+        e
+        value = out.getvalue()
+        return await ctx.send(f'```py\n{value}{traceback.format_exc()}\n```')
+    val = out.getvalue()
+    if not ret:
+        if val:
+            return await ctx.send(f"```py\n{val}```")
+        else:
+            try: return await ctx.message.add_reaction('\u2705')
+            except: pass
+    else:
+        lastresult = ret
+        await ctx.send(f"```py\n{val}\n{ret}```")
 
 @bot.command(name="c")
 @commands.is_owner()
