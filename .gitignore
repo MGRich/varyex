@@ -1,0 +1,6 @@
+temp/
+__pycache__
+config
+.vscode
+*.log
+funny.py
