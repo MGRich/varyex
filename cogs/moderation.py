@@ -390,8 +390,7 @@ class Moderation(commands.Cog):
         **manage messages and kick.** 
         
         `warns/warnings [user]`"""
-        if (len(user) == 0): user = ctx.author
-        else: user = user[0]
+        if not user: user = ctx.author
         if (user != ctx.author):
             if (not (ctx.author.guild_permissions.manage_messages and ctx.author.guild_permissions.kick_members)):
                 return
