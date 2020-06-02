@@ -1,7 +1,6 @@
 import discord, json, copy, os, math
 from discord.ext import commands, tasks, menus
 from datetime import datetime, timedelta
-from cogs.utils.SimplePaginator import SimplePaginator as pag
 from cogs.utils.embeds import embeds
 import re
 from typing import Union, List
@@ -347,11 +346,6 @@ class Logging(commands.Cog):
             first = (await messages[0].channel.history(limit=1, before=first).flatten())[0]
             if (first): embed.description += f"\n[(message before these)]({first.jump_url})"
         except: pass
-        try:
-            last = (await messages[0].channel.history(limit=1, after=last).flatten())[0]
-            last = (await messages[0].channel.history(limit=1, after=last.created_at).flatten())[0] #recalculate, get the 2nd latest
-            if (last): embed.description += f"\n[(message 2nd after these (to avoid bot messages))]({last.jump_url})"
-        except: pass
         await chn.send(embed=embed)
 
     
@@ -401,17 +395,11 @@ class Logging(commands.Cog):
         for m in totallist:
             ttlist.append(discord.utils.snowflake_time(m))
         first = min(ttlist)
-        last = max(ttlist)
         embed.timestamp = first
 
         try:
             first = (await ch.history(limit=1, before=first).flatten())[0]
             if (first): embed.description += f"\n[(message before these)]({first.jump_url})"
-        except: pass
-        try:
-            last = (await ch.history(limit=1, after=last).flatten())[0]
-            #last = (await ch.history(limit=1, after=last.created_at).flatten())[0] #recalculate, get the 2nd latest
-            if (last): embed.description += f"\n[(message after these)]({last.jump_url})"
         except: pass
         await chn.send(embed=embed)
 

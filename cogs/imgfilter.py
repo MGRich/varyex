@@ -1,7 +1,6 @@
 import discord, json, copy, os, math
 from discord.ext import commands
 from datetime import datetime
-from cogs.utils.mpkmanager import MPKManager
 from typing import Optional
 import timeago
 
