@@ -409,7 +409,7 @@ class Moderation(commands.Cog):
         desc = ""
         if (len(mpk['users'][uid]) == 0): desc = "__No warnings!__"
         for warn in reversed(mpk['users'][uid]):
-            who = await ctx.guild.fetch_member(warn['who'])
+            who = self.bot.get_user(warn['who'])
             reason = f"*{warn['reason']}*"
             if (warn['major']): reason = f"*{reason}*"
             desc += f"> {reason} - {who.mention}\n> *{timeago.format(self.fromInt(warn['timestamp']), datetime.utcnow())}*\n> `-------------`\n"
