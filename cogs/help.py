@@ -17,16 +17,9 @@ class Help(commands.Cog):
                 ret.append(self.parse(x, None))
             return ret
         if command:
-            found = False
-            for x in list(self.bot.cogs):
-                if found: break
-                for cmd in self.bot.cogs[x].walk_commands():
-                    if (command == cmd.name or command in cmd.aliases) and not (cmd.hidden or (not cmd.enabled) or (not cmd.help) or cmd.parent): 
-                        found = True
-                        command = cmd
-                        cog = x
-                        break
-            if not found: return None
+            command = self.bot.get_command(command)
+            if not command: return None
+            cog = command.cog.qualified_name
             return discord.Embed(title=f"{cog} - {command.name}", color=self.bot.data['color'], description=command.help)
         #cog
         embed = discord.Embed(title=cog, color=self.bot.data['color'], description="")
@@ -49,8 +42,9 @@ class Help(commands.Cog):
                     embed.add_field(name=e.title, value=e.description, inline=False)
             embed.set_footer(text = f"Use {ctx.prefix}help [command] for more info on a command.")
             return await ctx.send(embed=embed)
-        if c in [x.lower() for x in list(self.bot.cogs)]:
-            return await ctx.send(embed=self.parse(c.title(), None, prefix=ctx.prefix))
+        for x in list(self.bot.cogs):
+            if x.lower() == c.lower():
+                return await ctx.send(embed=self.parse(x, None, prefix=ctx.prefix))
         else:
             embed = self.parse(None, c.lower())
             if not embed:

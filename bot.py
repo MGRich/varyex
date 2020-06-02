@@ -93,11 +93,11 @@ async def on_ready():
     except: pass
 
 @bot.event
-async def on_command_error(ctx, error):
+async def on_command_error(ctx: commands.Context, error):
     if hasattr(ctx.command, 'on_error'):
         return
 
-    ignored = (commands.CommandNotFound, commands.UserInputError, commands.CommandOnCooldown)
+    ignored = (commands.CommandNotFound, commands.CommandOnCooldown)
     error = getattr(error, 'original', error)
     
     if isinstance(error, ignored): return
@@ -106,6 +106,9 @@ async def on_command_error(ctx, error):
     elif isinstance(error, commands.NoPrivateMessage):
         try: return await ctx.message.author.send(f'This command cannot be used in Private Messages.')
         except: return
+    elif isinstance(error, commands.UserInputError):
+        if not ctx.command.parent:
+            return await ctx.invoke(bot.get_command("help"), ctx.command.name)
 
     if bot.owner == ctx.author:
         return traceback.print_exception(type(error), error, error.__traceback__, file=(sys.stdout if (not stable) else sys.stderr))
