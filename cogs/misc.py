@@ -4,7 +4,9 @@ from cogs.utils.SimplePaginator import SimplePaginator as pag
 from cogs.utils.mpkmanager import MPKManager
 from typing import Optional
 from datetime import datetime, timedelta
+from asyncio import sleep
 import dateparser, timeago, requests, os
+from numpy import clip
 
 class Miscellaneous(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -84,6 +86,23 @@ class Miscellaneous(commands.Cog):
         e.set_footer(text=f"Made using discord.py version {discord.__version__}", icon_url="https://cdn.discordapp.com/icons/336642139381301249/3aa641b21acded468308a37eef43d7b3.webp")
         await ctx.send(embed=e)
     
+    @commands.Cog.listener()
+    async def on_guild_join(self, guild):
+            try:
+                await sleep(20)
+                brighten = int(self.bot.data['color'])
+                ls = [(brighten >> 16) & 0xFF, (brighten >> 8) & 0xFF, brighten & 0xFF]
+                i = 0
+                for x in list(ls):
+                    ls[i] = int(clip(x * 1.3, 0, 255))
+                    i += 1
+                brighten = (ls[0] << 16) | (ls[1] << 8) | ls[2]
+                joined = guild.get_member(self.bot.user.id).joined_at
+                for x in guild.roles:
+                    if (joined - x.created_at < timedelta(seconds=1)) and x.managed:
+                        return await x.edit(color=discord.Color(brighten))
+            except discord.Forbidden: return
+
     def calcstripfromdate(self, date: datetime, sromg): 
         if not sromg: 
             while True:
