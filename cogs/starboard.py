@@ -343,7 +343,7 @@ class Starboard(commands.Cog):
         > `sb leaderboard`
         """
         if (ctx.invoked_subcommand == None):
-            await ctx.send("Please pass a subcommand.")
+            await ctx.invoke(self.bot.get_command("help"), "sb")
     
     @starboard.group(aliases = ["cfg"])
     @commands.has_permissions(manage_messages=True, manage_guild=True)
