@@ -24,18 +24,18 @@ class Starboard(commands.Cog):
     def testforguild(self, guild) -> MPKManager:
         mpm = self.getmpm(guild)
         file = mpm.data
-        try:
-            file['amount']
-            file['emoji']
-            file['emojiname']
-            file['messages']
-            file['leaderboard'] #pass all base checks
-        except:
-            file['amount'] = 6
-            file['emoji'] = 11088
-            file['emojiname'] = "\u2b50"
-            file['messages'] = {}
-            file['leaderboard'] = {}
+        try: file['amount']
+        except: file['amount'] = 6
+        try: file['emoji']
+        except: file['emoji'] = "\u2b50"
+        try: file['emojiname']
+        except: file['emojiname'] = "\u2b50"
+        try: file['messages']
+        except: file['messages'] = {}
+        try: file['leaderboard']
+        except: file['leaderboard'] = {}
+        try: mpk['blacklist']
+        except: mpk['blacklist'] = []
         return mpm
 
     def getord(self, num):
@@ -52,52 +52,13 @@ class Starboard(commands.Cog):
         msg = await self.fetchmsg(payl)
         mpm = self.testforguild(msg.guild)
         mpk = mpm.data       
-        #print(mpk)
-
         try: 
             if (payl.channel_id in mpk['blacklist']): return
-        except: 
-            pass
-
-        iden = payl.emoji.name if payl.emoji.is_unicode_emoji() else payl.emoji.id
-
-        if (list(filter(lambda i: i[0] == payl.message_id, self.buffer))):
-            try:
-                ind = self.buffer.index(list(filter(lambda i: i[0] == payl.message_id, self.buffer))[0])
-                self.buffer[ind][1] += (1 if typ else -1)
-            except: pass
-            print(self.buffer)
-            return
-        self.buffer.append([payl.message_id, (1 if typ else -1)])
-        print(self.buffer)
-        ind = self.buffer.index(list(filter(lambda i: i[0] == payl.message_id, self.buffer))[0])
-
-
-        try: mpk['channel']
-        except: return
-
-        pin = False
-        try: pin = ord(iden) == mpk['pin']
         except: pass
-
-
-        #print(ord(iden))
-        if pin: #run a COMPLETELY DIFFERENT PROTOCOL
-            count = 0
-            for reaction in msg.reactions:
-                if (iden == (reaction.emoji.id if reaction.custom_emoji else reaction.emoji)):
-                    count = reaction.count
-            
-            if (count >= mpk['amount'] * mpk['pinthr']):
-                if (len(await msg.channel.pins()) == 50):
-                    await (await msg.channel.pins())[49].unpin()
-                await msg.pin()
-
-            return
-            
-
-        if (iden != mpk['emoji']): 
-            return
+        try: mpk['channel']
+        except: return            
+        iden = payl.emoji.name if payl.emoji.is_unicode_emoji() else payl.emoji.id
+        if (iden != mpk['emoji']): return
 
 
         chl = await self.bot.fetch_channel(mpk['channel'])        
@@ -171,11 +132,8 @@ class Starboard(commands.Cog):
             try: mpk['messages'][mid]['spstate']
             except: mpk['messages'][mid]['spstate'] = 0b00
                  
-            if not mpk['messages'][mid]['spstate'] & 0b10:
-                mpk['leaderboard'][aid] += count 
-            else:  
-                mpk['leaderboard'][aid] += self.buffer[ind][1]
-                print(self.buffer[ind][1])
+            if not mpk['messages'][mid]['spstate'] & 0b10: mpk['leaderboard'][aid] += count 
+            else:  mpk['leaderboard'][aid] += typ
         except:
             mpk['messages'][mid] = {}
             
@@ -194,23 +152,14 @@ class Starboard(commands.Cog):
             mpk['messages'][mid]['spstate'] |= 0b10
             e = await embeds.buildembed(embeds, msg, stardata=[count, mpk['messages'][mid]['spstate'], mpk])
             if (mpk['messages'][mid]['sbid'] == 0):
-                if type(e) == list:
-                    made = await chl.send(content=e[0], embed=e[1])
-                else:
-                    made = await chl.send("", embed=e)
+                made = await chl.send(embed=e)
                 mpk['messages'][mid]['sbid'] = made.id         
             else:
                 try:
                     tedit = await chl.fetch_message(mpk['messages'][mid]['sbid'])
-                    if type(e) == list:
-                        await tedit.edit(content=e[0], embed=e[1])
-                    else:
-                        await tedit.edit(content="", embed=e)
+                    await tedit.edit(embed=e)
                 except:
-                    if type(e) == list:
-                        made = await chl.send(content=e[0], embed=e[1])
-                    else:
-                        made = await chl.send("", embed=e)
+                    made = await chl.send(embed=e)
                     mpk['messages'][mid]['sbid']   = made.id         
         else:
             await self.removefromboard(msg)
@@ -238,10 +187,7 @@ class Starboard(commands.Cog):
             return
         print("w" + bin(spstate))
         e = await embeds.buildembed(embeds, msg, stardata=[info['count'], 0b01, embeds])
-        if type(e) == list:
-            await smpmsg.edit(content=e[0], embed=e[1])
-        else:
-            await smpmsg.edit(content="", embed=e)
+        await smpmsg.edit(content="", embed=e)
         mpk['messages'][str(msg.id)]['sbid'] = smpmsg.id
         mpm.save()
             
@@ -255,8 +201,7 @@ class Starboard(commands.Cog):
         
         try: 
             if (chn.id in mpk['blacklist']): return
-        except: 
-            pass
+        except: pass
 
         try: mpk['channel']
         except: return
@@ -266,10 +211,8 @@ class Starboard(commands.Cog):
         mstr = str(msg.id)
         try:
             mpk['messages'][mstr]
-            try:
-                mpk['messages'][mstr]['spstate'] |= 0b01 
-            except:
-                mpk['messages'][mstr]['spstate'] = 0b01 
+            try: mpk['messages'][mstr]['spstate'] |= 0b01 
+            except: mpk['messages'][mstr]['spstate'] = 0b01 
         except:
             mpk['messages'][mstr] = {}
             
@@ -283,23 +226,14 @@ class Starboard(commands.Cog):
         
         e = await embeds.buildembed(embeds, msg, stardata=[mpk['messages'][mstr]['count'], mpk['messages'][mstr]['spstate'], mpk])
         if not mpk['messages'][mstr]['sbid']:
-            if type(e) == list:
-                made = await chl.send(content=e[0], embed=e[1])
-            else:
-                made = await chl.send("", embed=e)
+            made = await chl.send(embed=e)
             mpk['messages'][mstr]['sbid']   = made.id         
         else:
             try:
                 tedit = await chl.fetch_message(mpk['messages'][mstr]['sbid'])
-                if type(e) == list:
-                    await tedit.edit(content=e[0], embed=e[1])
-                else:
-                    await tedit.edit(content="", embed=e)
+                await tedit.edit(content="", embed=e)
             except:
-                if type(e) == list:
-                    made = await chl.send(content=e[0], embed=e[1])
-                else:
-                    made = await chl.send("", embed=e)
+                made = await chl.send(embed=e)
                 mpk['messages'][mstr]['sbid']   = made.id         
 
     
@@ -310,17 +244,13 @@ class Starboard(commands.Cog):
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payl):
         start = default_timer()
-        await self.handlereact(payl, False)
-        self.buffer = list(filter(lambda a: a[0] != payl.message_id, self.buffer))
-        print(self.buffer)
+        await self.handlereact(payl, -1)
         print(default_timer() - start)
     
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payl):
         start = default_timer()
-        await self.handlereact(payl, True)
-        self.buffer = list(filter(lambda a: a[0] != payl.message_id, self.buffer))
-        print(self.buffer)
+        await self.handlereact(payl, 1)
         print(default_timer() - start)
 
     def savejson(self, dict, gid):
@@ -350,7 +280,13 @@ class Starboard(commands.Cog):
     async def config(self, ctx):
         if (ctx.invoked_subcommand == None):
             base = self.testforguild(ctx.guild).data
-            await ctx.send(f"Minimum: {base['amount']}\nChannel: <#{base['channel']}>\nStar: {base['emoji']}\nMessage count: {len(base['messages'])}")
+            embed = discord.Embed(title="Starboard Config", color=discord.Color(self.bot.data['color']))
+            embed.description = f"**Minimum:** {base['amount']}\n**Channel:** <#{base['channel']}>\n**Star:** {base['emoji']}\n"
+            if base['blacklist']:
+                embed.description += "**Blacklist:**\n"
+                for x in base['blacklist']:
+                    embed.description += f"> <#{x}>\n"
+            await ctx.send(embed=embed)
 
     @starboard.command(aliases = ["lb"])
     async def leaderboard(self, ctx):

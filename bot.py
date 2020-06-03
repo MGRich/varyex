@@ -54,7 +54,7 @@ print(bot.data)
 @bot.event
 async def on_ready():
     print(f'\n\nin as: {bot.user.name} - {bot.user.id}\non version: {discord.__version__}\n')
-    await bot.change_presence(activity=discord.Activity(name=f"{data['status']} | {len(bot.guilds)} servers..", type=0))
+    await bot.change_presence(activity=discord.Activity(name=f"{data['status']} | v!help", type=0))
     global first
     if (not first):
         bot.__dict__['owner'] = bot.get_user(bot.owner_id)

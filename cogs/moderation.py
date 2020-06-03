@@ -317,9 +317,9 @@ class Moderation(commands.Cog):
     @commands.guild_only()
     @commands.has_permissions(manage_messages=True, kick_members=True)
     async def warn(self, ctx, user: discord.Member, users: Greedy[discord.Member], *, reason):
-        """Warns users and sets up warnings
+        """Warns users and sets up warnings.
         The bot must be able to do the action given, and you must be able to **manage messages and kick.**
-        Additionally, to configure it, you must be able to **manage the guild and ban.**
+        Additionally, to configure it, you must be able to **manage the server and ban.**
         
         `warn/w <users> <reason>`
 
@@ -418,7 +418,7 @@ class Moderation(commands.Cog):
             embed.description += f"**Server MSG:** `{a['msg']}`\n**DM MSG:** `{a['dmmsg']}`"
             return await ctx.send(embed=embed)
         embed.description += "__**Actions:**__\n"
-        if not mpk['actions']: embed.description += f"*No actions.* Use `{ctx.prefix}{ctx.invoked_with} add [name]`\n"
+        if not mpk['actions']: embed.description += f"*No actions.* Use `{ctx.prefix}w {ctx.invoked_with} add [name]`\n"
         else: 
             for action in mpk['actions']:
                 embed.description += f"> `{action}`\n"
@@ -438,7 +438,7 @@ class Moderation(commands.Cog):
                 l.append(f"""`{offence['action']}`{tst}""")
             embed.description += ' \u2192 '.join(l)
             embed.description += " (keeps repeating last offence)"
-        else: embed.description += f"*No track set!* Use `{ctx.prefix}{ctx.invoked_with} settrack`"
+        else: embed.description += f"*No track set!* Use `{ctx.prefix}w {ctx.invoked_with} settrack`"
         await ctx.send(embed=embed)
 
     @config.command(name="add", aliases = ['addaction', 'a'])
@@ -561,6 +561,7 @@ class Moderation(commands.Cog):
         if not action in mpk['actions']:
             return await ctx.send("This action doesn't exist!")
         del mpk['actions'][action]
+        mpk['offences'] = [x for x in mpk['offences'] if x['action'] != action]
         mpm.save()
         await ctx.send(f"Deleted action `{action}`.")
     
@@ -575,7 +576,7 @@ class Moderation(commands.Cog):
         embed.description = "__**Valid track actions:**__\n"
         for action in valid:
             embed.description += f"> `{action}`\n"
-        embed.description += "__**Track:**__\nPost the names of valid actions and it will add tk the track.\nPost `stop` once you're done.\n"
+        embed.description += "__**Track:**__\nPost the names of valid actions and it will add to the track.\nPost `stop` once you're done.\n"
         embed.set_footer(text="You can type cancel at any time to stop without saving.")
         pre = embed.description
         def check(m):

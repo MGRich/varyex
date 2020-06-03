@@ -259,7 +259,7 @@ class Logging(commands.Cog):
         
         `log/logs`
         `log cfg`
-        `log cfg [setchannel] [channel]`"""
+        `log cfg channel/setchannel [channel]`"""
         self.setupjson(ctx.guild)
         if (ctx.invoked_subcommand == None):
             mpk = self.getmpm(ctx.guild)
@@ -274,10 +274,11 @@ class Logging(commands.Cog):
         if not ctx.invoked_subcommand:
             await LogMenu(ctx.guild.id, self.bot.data, ctx.prefix).prompt(ctx)
 
-    @config.command()
+    @config.command(aliases = ['setchannel'])
     @commands.has_permissions(manage_guild=True)
-    async def setchannel(self, ctx, channel: discord.TextChannel):
+    async def channel(self, ctx, channel: Optional[discord.TextChannel]):
         mpm = self.getmpm(ctx.guild)
+        if not channel: return await ctx.send(f"My current channel is <#{mpm.data['log']['channel']}>." if mpm.data['log']['channel'] else "I'm not set to any channel.")
         mpm.data['log']['channel'] = channel.id
         mpm.save()
         await ctx.send(f"Log channel set to {channel.mention}!")
