@@ -1,15 +1,8 @@
-import discord, json, copy, os, math
+import discord, os, requests, timeago
 from discord.ext import commands
 from datetime import datetime
-from typing import Optional
-import timeago
-
 from PIL import Image, UnidentifiedImageError
 from io import BytesIO
-import requests
-from array import array
-#from cogs.utils.SimplePaginator import SimplePaginator as pag
-#from asyncio import sleep
 
 class IMGFilter(commands.Cog):
     def __init__(self, bot):
@@ -31,7 +24,7 @@ class IMGFilter(commands.Cog):
         for attachment in ctx.message.attachments:
             response = requests.get(attachment.url)
             try: images.append(Image.open(BytesIO(response.content)))
-            except UnidentifiedImageError: invalid.append(link)
+            except UnidentifiedImageError: invalid.append(attachment.url)
         msg = await ctx.send(f"Converting, please wait... -1/{len(images)} done")
         done = 0
         files = []

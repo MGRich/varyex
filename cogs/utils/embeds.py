@@ -1,6 +1,4 @@
-import json, discord, datetime, random, os, time
-from discord.ext import commands
-import re
+import discord, os, re
 
 class embeds:
 

@@ -1,7 +1,6 @@
-import discord, json, traceback, os
+import discord, re
 from discord.ext import commands
 from cogs.utils.embeds import embeds
-import re
 from datetime import datetime, timedelta
 from cogs.utils.mpkmanager import MPKManager
 from typing import Optional

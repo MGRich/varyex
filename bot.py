@@ -1,13 +1,7 @@
-import discord
+import discord, traceback, json, os, sys, subprocess, textwrap, contextlib
 from discord.ext import commands, tasks
-import traceback, json, os, inspect, sys, re, aiohttp, asyncio
-from pprint import pprint #as print
 from io import StringIO
-import urllib
 from cogs.utils.mpkmanager import MPKManager
-import subprocess, sys
-import textwrap, contextlib
-#from cogs.utils import suggestions
 
 stable = False
 if stable or (len(sys.argv) > 1 and sys.argv[1] == "stable"): data = json.load(open("stable.json"))
@@ -19,7 +13,7 @@ if stable:
     sys.stderr = usrout 
 regout = sys.stdout
 
-def prefix(bot, message):
+def prefix(_unusedbot, message):
     prf = data['prefix'].copy()
     if message.guild:
         con = MPKManager("misc", message.guild.id).data
@@ -99,16 +93,19 @@ async def on_command_error(ctx: commands.Context, error):
 
     ignored = (commands.CommandNotFound, commands.CommandOnCooldown)
     error = getattr(error, 'original', error)
+    name = ctx.command.root_parent.name if ctx.command.root_parent else ctx.command.name
     
     if isinstance(error, ignored): return
     elif isinstance(error, commands.DisabledCommand):
         return await ctx.send(f'{ctx.command} has been disabled.')
     elif isinstance(error, commands.NoPrivateMessage):
-        try: return await ctx.message.author.send(f'This command cannot be used in Private Messages.')
+        try: return await ctx.message.author.send('This command cannot be used in Private Messages.')
         except: return
     elif isinstance(error, commands.UserInputError):
-        if not ctx.command.parent:
-            return await ctx.invoke(bot.get_command("help"), ctx.command.name)
+        return await ctx.invoke(bot.get_command("help"), name)
+    elif isinstance(error, commands.MissingPermissions):
+        await ctx.invoke(bot.get_command("help"), name)
+        return await ctx.send("You don't have sufficient permissions to run this.")
 
     if bot.owner == ctx.author:
         return traceback.print_exception(type(error), error, error.__traceback__, file=(sys.stdout if (not stable) else sys.stderr))
@@ -137,7 +134,7 @@ async def redirloop():
 
 @bot.command(hidden=True)
 @commands.is_owner()
-async def redir(ctx):
+async def redir(_unusedctx):
     global redirect, regout, usrout, stable
     if redirect:
         sys.stdout = regout
@@ -301,13 +298,13 @@ async def _eval(ctx, *, evl):
 
 @bot.command(name="c")
 @commands.is_owner()
-async def nomore(ctx, *args):
+async def nomore(_unusedctx):
     await bot.close()
 
 upd = False
 @bot.command()
 @commands.is_owner()
-async def update(ctx):
+async def update(_unusedctx):
     global upd
     upd = True
     await bot.logout()

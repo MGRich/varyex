@@ -7,7 +7,7 @@ class MPKManager:
             os.mkdir(f"config/{gid[0]}/")
         if (not os.path.exists(self.path)):
             with open(self.path, "wb") as f: msgpack.dump({}, f)
-        self.data = self.load()
+        self.data: dict = self.load()
         #print(f"JSON MANAGER OPEN {self.path} ----{self.data}----")
 
     def load(self):

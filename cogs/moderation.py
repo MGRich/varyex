@@ -1,16 +1,11 @@
-import discord
+import discord, os, timeago, pytimeparse
 from discord.ext import commands, tasks
-from asyncio import sleep
-import traceback, json, time, os
 from copy import copy
 from datetime import datetime, timedelta
-import timeago
 from cogs.utils.mpkmanager import MPKManager
-#import ..util.suggestions
 from discord.ext.commands import Greedy
 from typing import Optional
 from string import punctuation
-import pytimeparse
 
 loaded = None
 
@@ -57,20 +52,6 @@ class Moderation(commands.Cog):
         except: file['inwarn'] = {}
 
         return mpm
-
-    
-    @commands.command()
-    @commands.is_owner()    
-    async def ro(self, ctx):
-        # pylint: disable=no-member
-        self.timeaction.cancel()
-        self.timeaction.start()
-    
-    @commands.command()
-    @commands.is_owner()
-    async def stp(self, ctx):
-        # pylint: disable=no-member
-        self.timeaction.cancel()
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -401,7 +382,7 @@ class Moderation(commands.Cog):
         if action:
             try: a = mpk['actions'][action]
             except: return await ctx.send("That action doesn't exist!")
-            embed.title += f" `{action}`"
+            embed.title += f" - `{action}`"
             try: a['type']
             except: pass
             else: embed.description = f"**Type:** `{a['type']}`\n"
@@ -504,7 +485,7 @@ class Moderation(commands.Cog):
                 break
         elif name == "mute":
             actdict.update({'timed': True})
-            embed.description = pre + f"**Timed:** yes\n"
+            embed.description = pre + "**Timed:** yes\n"
             timed = True
 
         pre = embed.description
@@ -572,7 +553,7 @@ class Moderation(commands.Cog):
         mpk = mpm.data
         valid = [x for x in mpk['actions'] if x != 'verbal']
         if not valid: return await ctx.send("There are no actions to use! Add some first!")
-        embed = discord.Embed(title="Warn Config - Track", color=discord.Color(self.bot.data['color']))
+        embed = discord.Embed(title="Warn Config - Track Setup", color=discord.Color(self.bot.data['color']))
         embed.description = "__**Valid track actions:**__\n"
         for action in valid:
             embed.description += f"> `{action}`\n"
@@ -678,7 +659,10 @@ class Moderation(commands.Cog):
             act['msg'] = act['msg'].replace('[r]', reason)
 
             if (mute):
-                await user.add_roles(ctx.guild.get_role(act['role']), reason=reason)
+                try: await user.add_roles(ctx.guild.get_role(act['role']), reason=reason)
+                except discord.Forbidden:
+                    await ctx.send("I'm not able to mute, so this will be counted as a verbal. Please make sure the mute role is below my role.")
+                    return await ctx.invoke(self.verbalwarn, users, reason=reason, mute=0)
                 mute = float(mute) / 60
                 act['dmmsg'] = act['dmmsg'].replace('[t]', str(int(mute)))
                 act['msg'] = act['msg'].replace('[t]', str(int(mute)))
@@ -714,7 +698,7 @@ class Moderation(commands.Cog):
         embed = discord.Embed(color=(discord.Color(self.bot.data['color']) if user.color == discord.Color.default() else user.color))
         embed.set_author(name=user.display_name, icon_url=user.avatar_url)
         embed.timestamp = datetime.utcnow()
-        embed.title = f"Warnings"
+        embed.title = "Warnings"
 
         try: mpk['users'][uid]
         except: mpk['users'][uid] = []

@@ -1,14 +1,10 @@
-import discord, json, copy, os, math
+import discord, os, math, re, difflib
 from discord.ext import commands, tasks, menus
 from datetime import datetime, timedelta
 from cogs.utils.embeds import embeds
-import re
 from typing import Union, List, Optional
-import difflib
-import asyncio
 from cogs.utils.mpkmanager import MPKManager
 from discord import AuditLogAction
-from numpy import clip
 
 bitlist = ["Message Delete", "Message Edit", "Channel Edits", "Member Joining/Leaving", "Member Updates", "Server Updates", "Role Updates", "Emoji Updates", "Voice Updates", "Bans", "Warnings", "Bots can trigger some logs"]
 class LogMenu(menus.Menu):
@@ -25,7 +21,7 @@ class LogMenu(menus.Menu):
     async def editmessage(self):
         trimmedlist = bitlist[(self.page * 5):(self.page * 5 + 5)]
         self.shown = len(trimmedlist)
-        embed = discord.Embed(title = f"Log Config", color=self.color, description = "")
+        embed = discord.Embed(title = "Log Config", color=self.color, description = "")
         for i in range(len(bitlist)):
             unic = '\u2705' if (self.mpk.data['log']['flags'] >> i) & 1 else '\u26D4'
             num = ""
@@ -39,7 +35,7 @@ class LogMenu(menus.Menu):
             if not num: num = "\U0001F7E6 "
             else: num += "\uFE0F\u20e3 "
             embed.description += f"{num}{bitlist[i]}: {unic}\n"
-        embed.set_footer(text=f"Use the reactions to toggle the flags.")
+        embed.set_footer(text="Use the reactions to toggle the flags.")
         return await self.message.edit(content = "", embed=embed)
 
     async def prompt(self, ctx):
@@ -49,7 +45,7 @@ class LogMenu(menus.Menu):
         await self.editmessage()
         return ret
     async def finalize(self):
-        embed = discord.Embed(title = f"Log Config - Saved", color=self.color, description = "")
+        embed = discord.Embed(title = "Log Config - Saved", color=self.color, description = "")
         for i in range(len(bitlist)):
             unic = '\u2705' if (self.mpk.data['log']['flags'] >> i) & 1 else '\u26D4'
             embed.description += f"{bitlist[i]}: {unic}\n"
@@ -69,7 +65,7 @@ class LogMenu(menus.Menu):
         await self.editmessage()
         await self.message.remove_reaction("\U0001F53D", payload.member)
     @menus.button("\u23F9") #stop
-    async def stopemote(self, payload):
+    async def stopemote(self, _unusedpayload):
         self.stop()
 
     @menus.button("\u0031\uFE0F\u20e3") #1
@@ -209,8 +205,9 @@ class Logging(commands.Cog):
             result[change[0]].append(change[1])
         return result
 
-    def changedicttostr(self, dict, create=False, masklst=[]):
-        result = ""            
+    def changedicttostr(self, dict, create=False, masklst=None):
+        result = ""           
+        if not masklst: masklst = [] 
         for val in dict:
             if val in masklst: continue
             if (create != 2) and (dict[val][0] == dict[val][1]): continue
@@ -263,7 +260,7 @@ class Logging(commands.Cog):
         self.setupjson(ctx.guild)
         if (ctx.invoked_subcommand == None):
             mpk = self.getmpm(ctx.guild)
-            embed = discord.Embed(title = f"Log Config", color=discord.Color(self.bot.data['color']), description = "")
+            embed = discord.Embed(title = "Log Config", color=discord.Color(self.bot.data['color']), description = "")
             for i in range(len(bitlist)):
                 unic = '\u2705' if (mpk.data['log']['flags'] >> i) & 1 else '\u26D4'
                 embed.description += f"{bitlist[i]}: {unic}\n"
@@ -681,7 +678,7 @@ class Logging(commands.Cog):
             
 
     @commands.Cog.listener()
-    async def on_guild_update(self, before, after):
+    async def on_guild_update(self, _unusedbefore, after):
         chn = await self.checkbit(6, after)
         if not chn: return
         log = await self.getaudit(AuditLogAction.guild_update, after)

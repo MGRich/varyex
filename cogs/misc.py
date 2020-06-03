@@ -1,11 +1,9 @@
-import discord, json, traceback
+import discord, json, dateparser, timeago, requests, os
 from discord.ext import commands, tasks
-from cogs.utils.SimplePaginator import SimplePaginator as pag
 from cogs.utils.mpkmanager import MPKManager
 from typing import Optional
 from datetime import datetime, timedelta
 from asyncio import sleep
-import dateparser, timeago, requests, os
 from numpy import clip
 
 class Miscellaneous(commands.Cog):
@@ -46,7 +44,7 @@ class Miscellaneous(commands.Cog):
                 except: pass
             users.save()
             if not rem:
-            	return await ctx.send(f"Your personal prefix is now `{prefix}`!")
+                return await ctx.send(f"Your personal prefix is now `{prefix}`!")
             else:
                 return await ctx.send("Your personal prefix has been reset.")
         if not ctx.author.guild_permissions.manage_guild: return
@@ -67,7 +65,7 @@ class Miscellaneous(commands.Cog):
 
     @commands.command()
     @commands.has_permissions(administrator=True)
-    async def say(self, ctx, chn: discord.TextChannel, *, funny):
+    async def say(self, _unusedctx, chn: discord.TextChannel, *, funny):
         """Says something in a channel.
         **Must have administrator permission.**
 
@@ -88,20 +86,20 @@ class Miscellaneous(commands.Cog):
     
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
-            try:
-                await sleep(20)
-                brighten = int(self.bot.data['color'])
-                ls = [(brighten >> 16) & 0xFF, (brighten >> 8) & 0xFF, brighten & 0xFF]
-                i = 0
-                for x in list(ls):
-                    ls[i] = int(clip(x * 1.3, 0, 255))
-                    i += 1
-                brighten = (ls[0] << 16) | (ls[1] << 8) | ls[2]
-                joined = guild.get_member(self.bot.user.id).joined_at
-                for x in guild.roles:
-                    if (joined - x.created_at < timedelta(seconds=1)) and x.managed:
-                        return await x.edit(color=discord.Color(brighten))
-            except discord.Forbidden: return
+        try:
+            await sleep(20)
+            brighten = int(self.bot.data['color'])
+            ls = [(brighten >> 16) & 0xFF, (brighten >> 8) & 0xFF, brighten & 0xFF]
+            i = 0
+            for x in list(ls):
+                ls[i] = int(clip(x * 1.3, 0, 255))
+                i += 1
+            brighten = (ls[0] << 16) | (ls[1] << 8) | ls[2]
+            joined = guild.get_member(self.bot.user.id).joined_at
+            for x in guild.roles:
+                if (joined - x.created_at < timedelta(seconds=1)) and x.managed:
+                    return await x.edit(color=discord.Color(brighten))
+        except discord.Forbidden: return
 
     def calcstripfromdate(self, date: datetime, sromg): 
         if not sromg: 

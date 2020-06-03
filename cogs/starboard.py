@@ -1,6 +1,5 @@
-import discord, json, copy, os, math
+import discord, json, copy, math
 from discord.ext import commands
-from datetime import datetime
 from cogs.utils.SimplePaginator import SimplePaginator as pag
 from cogs.utils.embeds import embeds
 from asyncio import sleep
@@ -166,11 +165,10 @@ class Starboard(commands.Cog):
         mpm.save()
     
     async def removefromboard(self, msg):
-        try:
-            mpm = self.testforguild(msg.guild)
-            mpk = mpm.data       
-            chl = await self.bot.fetch_channel(mpk['channel'])
-            mpk['messages'][str(msg.id)]
+        mpm = self.testforguild(msg.guild)
+        mpk = mpm.data       
+        chl = await self.bot.fetch_channel(mpk['channel'])
+        try: mpk['messages'][str(msg.id)]
         except: return
 
         info = mpk['messages'][str(msg.id)]
@@ -193,7 +191,7 @@ class Starboard(commands.Cog):
             
             
     @commands.Cog.listener()
-    async def on_guild_channel_pins_update(self, chn: discord.TextChannel, pin):
+    async def on_guild_channel_pins_update(self, chn: discord.TextChannel, _unusedpin):
         #TODO: rewrite the damn thing lmfao
         mpm = self.testforguild(chn.guild)
         mpk = mpm.data
@@ -317,7 +315,7 @@ class Starboard(commands.Cog):
                 ebase.set_author(name="Leaderboard", icon_url=first.avatar_url)
                 ebase.description = f"{first.display_name} is in {self.getord(x + 1)}!\n*You're in {self.getord(senderpos + 1)}!*"
                 break
-            except Exception as e: continue
+            except: continue
         if (ebase.colour == discord.Color.default()): ebase.colour = discord.Color(0xFFAC33)
         count = 1
         page = 1
@@ -367,7 +365,7 @@ class Starboard(commands.Cog):
     @config.command()
     @commands.has_permissions(manage_guild=True)
     async def setemoji(self, ctx):
-        def check(r, u):
+        def check(_unusedr, u):
             return u.id == ctx.message.author.id
         
         await ctx.send("Please react to this with the emoji you want.")
@@ -375,8 +373,7 @@ class Starboard(commands.Cog):
         mpm = self.testforguild(ctx.guild)
         mpk = mpm.data       
         em = em[0]
-        if (not em.custom_emoji): 
-            mpk['emoji'] = mpk['emojiname'] = str(em.emoji)
+        if (not em.custom_emoji): mpk['emoji'] = mpk['emojiname'] = str(em.emoji)
         else: 
             mpk['emoji'] = em.emoji.id
             mpk['emojiname'] = em.emoji.name

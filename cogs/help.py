@@ -1,10 +1,6 @@
-import discord, json, traceback
-from discord.ext import commands, tasks
-from cogs.utils.SimplePaginator import SimplePaginator as pag
-from cogs.utils.mpkmanager import MPKManager
+import discord
+from discord.ext import commands
 from typing import Optional, Union, List
-from datetime import datetime, timedelta
-import dateparser, timeago, requests, os
 
 class Help(commands.Cog):
     def __init__(self, bot):
@@ -45,12 +41,11 @@ class Help(commands.Cog):
         for x in list(self.bot.cogs):
             if x.lower() == c.lower():
                 return await ctx.send(embed=self.parse(x, None, prefix=ctx.prefix))
-        else:
-            embed = self.parse(None, c.lower())
-            if not embed:
-                await ctx.send("That command doesn't exist!")
-                return await ctx.invoke(self.help)
-            return await ctx.send(embed=embed)
+        embed = self.parse(None, c.lower())
+        if not embed:
+            await ctx.send("That command doesn't exist!")
+            return await ctx.invoke(self.help)
+        return await ctx.send(embed=embed)
 
 def setup(bot):
     bot.add_cog(Help(bot))
