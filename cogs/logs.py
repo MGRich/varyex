@@ -3,7 +3,7 @@ from discord.ext import commands, tasks, menus
 from datetime import datetime, timedelta
 from cogs.utils.embeds import embeds
 import re
-from typing import Union, List
+from typing import Union, List, Optional
 import difflib
 import asyncio
 from cogs.utils.mpkmanager import MPKManager

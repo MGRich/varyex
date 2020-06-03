@@ -34,8 +34,8 @@ class Starboard(commands.Cog):
         except: file['messages'] = {}
         try: file['leaderboard']
         except: file['leaderboard'] = {}
-        try: mpk['blacklist']
-        except: mpk['blacklist'] = []
+        try: file['blacklist']
+        except: file['blacklist'] = []
         return mpm
 
     def getord(self, num):
