@@ -1,7 +1,8 @@
 import discord
 from discord.ext import commands, tasks
 from asyncio import sleep
-import traceback, json, time, copy, os
+import traceback, json, time, os
+from copy import copy
 from datetime import datetime, timedelta
 import timeago
 from cogs.utils.mpkmanager import MPKManager
@@ -9,21 +10,25 @@ from cogs.utils.mpkmanager import MPKManager
 from discord.ext.commands import Greedy
 from typing import Optional
 from string import punctuation
+import pytimeparse
 
-data = json.load(open("info.json"))
 loaded = None
 
+def convert_to_bool(argument): #commands._convert_to_bool
+    lowered = argument.lower()
+    if lowered in ('yes', 'y', 'true', 't', '1', 'enable', 'on'):
+        return True
+    elif lowered in ('no', 'n', 'false', 'f', '0', 'disable', 'off'):
+        return False
+    else:
+        raise commands.BadArgument(lowered + ' is not a recognised boolean option')
+
+
 class Moderation(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot):
         # pylint: disable=no-member
         self.bot = bot
-        self.current = current + 1
-        #self.json['inwarn'] = {}
-        #sleep()
         self.timeaction.start()
-        #lp = False
-        #try:
-        #    for ()
 
     def cog_unload(self):
         # pylint: disable=no-member
@@ -35,16 +40,22 @@ class Moderation(commands.Cog):
     def testforguild(self, guild) -> MPKManager:
         mpm = self.getmpm(guild)
         file = mpm.data
-        try:
-            file['offences']
-            file['actions']
-            file['users']
-            file['inwarn']
-        except:
-            file['offences'] = {}
-            file['actions'] = {}
-            file['users'] = {}
-            file['inwarn'] = {}
+        try:    file['offences']
+        except: file['offences'] = []
+        else:
+            if type((file['offences'])) == dict:
+                x = copy(file['offences'])
+                file['offences'] = []
+                for y in x:
+                    file['offences'].append(x[y])
+                mpm.save()
+        try:    file['actions']
+        except: file['actions'] = {}
+        try:    file['users']
+        except: file['users'] = {}
+        try:    file['inwarn']
+        except: file['inwarn'] = {}
+
         return mpm
 
     
@@ -170,7 +181,7 @@ class Moderation(commands.Cog):
         return datetime.fromtimestamp(dt  / 1000000)
 
     def majorWarns(self, warns):
-        return list(filter(lambda x: (x['major']), warns))
+        return [x for x in warns if (x['major'])]
     
 
     @commands.Cog.listener()
@@ -184,7 +195,7 @@ class Moderation(commands.Cog):
             mpk['inwarn'][uid]['time'] += self.now() - mpk['inwarn'][uid]['left']
             mpk['inwarn'][uid]['left'] = 0
         ofc = mpk['offences'][str(len(mpk['users'][uid]))]
-        act = copy.deepcopy(mpk['actions'][ofc['action']])
+        act = copy(mpk['actions'][ofc['action']])
         if (act['type'] == "gr"):
             await member.add_roles(member.guild.get_role(act['role']), reason="User rejoined while in punishment.")    
         mpm.save()
@@ -219,15 +230,15 @@ class Moderation(commands.Cog):
                 except: continue
                 #print(uid)
 
-                try: user = await guild.fetch_member(uid)
+                try: user = await guild.fetch_member(int(uid))
                 except discord.NotFound: user = None 
                 print(uid + " " + str(user))
-                if user == None:
+                if not user:
                     if mpk['inwarn'][uid]['left'] == 0:
                         mpk['inwarn'][uid]['left'] = self.now()
                         changed = True
-                    continue
-                if mpk['inwarn'][uid]['left'] != 0:
+                    #continue
+                elif mpk['inwarn'][uid]['left'] != 0:
                     mpk['inwarn'][uid]['time'] += self.now() - mpk['inwarn'][uid]['left']
                     mpk['inwarn'][uid]['left'] = 0
                     changed = True
@@ -245,49 +256,92 @@ class Moderation(commands.Cog):
                     try: print(mpk['users'][uid])
                     except KeyError: print("fuck")
                     if cnt != 0:
-                        ofc = mpk['offences'][str(cnt)]
-                        #print(ofc)
-                        act = copy.deepcopy(mpk['actions'][ofc['action']])
-                        #print(act)
-                        if (act['type'] == "gr"):
-                            await user.remove_roles(guild.get_role(act['role']), reason="Time for warning ran out.")    
+                        ofc = mpk['offences'][cnt - 1]
+                        act = mpk['actions'][ofc['action']]
+                        try:
+                            if (act['type'] == "gr"):
+                                if not user: continue 
+                                await user.remove_roles(guild.get_role(act['role']), reason="Time for warning ran out.")
+                            elif (act['type'] == "b"):
+                                await guild.unban(discord.Object(int(uid)), reason="Time for warning ran out.")
+                        except discord.Forbidden:
+                            pass #dm someone who can?
                         
                     del(mpk['inwarn'][uid])
                     changed = True
+                    if not user:
+                        try: user = self.bot.get_user(int(uid))
+                        except discord.NotFound: pass  
                     try: await user.send("The above message's time is now over.")
                     except: pass
             if changed: mpm.save()
         print('we exist')
 
-    @commands.command()
+    @commands.command(aliases = ["clearwarns", "rmwarn", "cwarns", "rmw"])
     @commands.guild_only()
     @commands.has_permissions(manage_messages=True, kick_members=True)
-    async def clearwarns(self, ctx, user: discord.Member):
+    async def removewarn(self, ctx, user: discord.User, *, case: Optional[str]):
+        """Removes a warn or all warns from a user.
+        You must be able to **manage messages and kick.**
+
+        `removewarn/rmwarn/rmw <user> <case/all>`
+        `clearwarns/cwarns <user>` (same as doing `rmw` all cases)"""
+        if ctx.invoked_with in ['clearwarns', 'cwarns']:
+            case = "all"
+        else: 
+            if not case: return
+        all = case == "all"
+        if not all:
+            try: case = int(case)
+            except TypeError: pass #we try again later and see if it matches a warn
+            else: 
+                if case < 1: return await ctx.send("Please enter a valid case number.")
         mpm = self.testforguild(ctx.guild)
         mpk = mpm.data
         uid = str(user.id)
-        mpk['users'][uid] = []
+        try: mpk['users'][uid]
+        except: return await ctx.send("That user has no warnings!")
+        if (not all) and type(case) == str:
+            casel = [x['reason'].lower() for x in mpk['users'][uid]]
+            if case.lower() not in casel: return await ctx.send("Please enter a valid case.")
+            case = casel.index(case) + 1
+        if all: mpk['users'][uid] = []
+        else:
+            try: del(mpk['users'][uid][case - 1])
+            except IndexError: return await ctx.send("That user doesn't have that many warns!")
         mpm.save()
-        await ctx.send(f"Cleared warnings for {user.mention}!")
+        if all: await ctx.send(f"Cleared warnings for {user.mention}!")
+        else: await ctx.send(f"Removed case {case} from {user.mention}!")
 
-    @commands.command(aliases=["w"])
+    @commands.group(aliases=["w"], invoke_without_command=True)
     @commands.guild_only()
     @commands.has_permissions(manage_messages=True, kick_members=True)
-    async def warn(self, ctx, users: Greedy[discord.Member], *, reason):
-        """Warns users.
-        The bot must be able to do the action given, and
-        the user calling it must be able to **manage messages and kick.**
+    async def warn(self, ctx, user: discord.Member, users: Greedy[discord.Member], *, reason):
+        """Warns users and sets up warnings
+        The bot must be able to do the action given, and you must be able to **manage messages and kick.**
+        Additionally, to configure it, you must be able to **manage the guild and ban.**
         
-        `warn/w <users> <reason>`"""
+        `warn/w <users> <reason>`
+
+        *config/cfg*
+        `w cfg [action]`
+        `w cfg addaction/add/a <name> [type]`
+        > **TYPE MUST BE:**
+        > `gr` (`giverole`), `b` (`ban`), or `k` (`kick`)
+        > **ISN'T NEEDED IF:**
+        > `name` is `verbal` or `mute`, as they are considered special
+        `w cfg removeaction/rmaction/remove <name>`
+        `w cfg settrack/track`"""
+        if (ctx.invoked_subcommand): return
+        users.insert(0, user)
         mpm = self.testforguild(ctx.guild)
         mpk = mpm.data
-        if (len(reason) == 0): return
+        if (not users) or (not reason): return
+        if not mpk['offences']: return await ctx.send("Warns aren't configured!")
         for user in users:
             uid = str(user.id)
-            try:
-                mpk['users'][uid]
-            except:
-                mpk['users'][uid] = []
+            try: mpk['users'][uid]
+            except: mpk['users'][uid] = []
 
             cnt = len(mpk['users'][uid])
 
@@ -297,15 +351,15 @@ class Moderation(commands.Cog):
             mpk['users'][uid][cnt]['who'] = ctx.author.id
             mpk['users'][uid][cnt]['major'] = True
 
-            ofc = mpk['offences'][str(len(self.majorWarns(mpk['users'][uid])))]
-            act = copy.deepcopy(mpk['actions'][ofc['action']])
+            ofc = mpk['offences'][min(len(self.majorWarns(mpk['users'][uid])), len(mpk['offences'])) - 1]
+            act = copy(mpk['actions'][ofc['action']])
 
             worked = True
             try:
                 if   (act['type'] == "gr"): await user.add_roles(ctx.guild.get_role(act['role']), reason=reason)
                 elif (act['type'] == "k"): await user.kick(reason=reason)
                 elif (act['type'] == "b" ): await user.ban(reason=reason)
-            except: 
+            except discord.Forbidden: 
                 worked = False
                 #print(e.with_traceback())
 
@@ -315,32 +369,283 @@ class Moderation(commands.Cog):
             
             act['dmmsg'] = act['dmmsg'].replace('[r]', reason)
             act['msg'] = act['msg'].replace('[u]', user.mention)
+            act['msg'] = act['msg'].replace('[r]', reason)
 
             if (worked):
                 try:
                     if (act['timed']):
                         act['dmmsg'] = act['dmmsg'].replace('[t]', str(ofc['time']))
                         act['msg'] = act['msg'].replace('[t]', str(ofc['time']))
-
-                        mpk['inwarn'][uid] = {}
-                        mpk['inwarn'][uid]['left'] = 0
-                        mpk['inwarn'][uid]['time'] = self.toInt(datetime.utcnow() + timedelta(minutes=ofc['time']))
+                        if (ofc['time']):
+                            mpk['inwarn'][uid] = {}
+                            mpk['inwarn'][uid]['left'] = 0
+                            mpk['inwarn'][uid]['time'] = self.toInt(datetime.utcnow() + timedelta(minutes=ofc['time']))
                 except KeyError:
                     pass
 
-            if (act['dmmsg'] != ""):
+            if act['dmmsg']:
                 try: await user.send(act['dmmsg'])
                 except discord.Forbidden: pass
             if (worked): await ctx.send(act['msg'])
+            await self.bot.cogs['Logging'].on_warn(user, mpk['users'][uid][cnt], f"`{ofc['action']}`")
 
         mpm.save()
-        await self.bot.cogs['Logging'].on_warn(user, mpk['users'][uid][cnt], ofc['action'].title())
+
+    @warn.group(aliases = ['cfg'], invoke_without_command=True)
+    @commands.has_permissions(manage_guild=True, ban_members=True) 
+    async def config(self, ctx, action: Optional[str]):
+        if ctx.invoked_subcommand: return
+        mpm = self.testforguild(ctx.guild)
+        mpk = mpm.data
+        embed = discord.Embed(title="Warning Config", color=discord.Color(self.bot.data['color']), description="")
+        if action:
+            try: a = mpk['actions'][action]
+            except: return await ctx.send("That action doesn't exist!")
+            embed.title += f" `{action}`"
+            try: a['type']
+            except: pass
+            else: embed.description = f"**Type:** `{a['type']}`\n"
+            try: a['role']
+            except: pass
+            else: 
+                r = ctx.guild.get_role(a['role'])
+                if not r: s = "**(Needs to be fixed)**"
+                else: s = r.mention
+                embed.description += f"**Role:** {s}\n"
+            try: a['timed']
+            except: pass
+            else: embed.description += f"**Timed:** {'yes' if a['timed'] else 'no'}\n"
+            embed.description += f"**Server MSG:** `{a['msg']}`\n**DM MSG:** `{a['dmmsg']}`"
+            return await ctx.send(embed=embed)
+        embed.description += "__**Actions:**__\n"
+        if not mpk['actions']: embed.description += f"*No actions.* Use `{ctx.prefix}{ctx.invoked_with} add [name]`\n"
+        else: 
+            for action in mpk['actions']:
+                embed.description += f"> `{action}`\n"
+        if 'mute' not in mpk['actions']:
+            embed.description += "*Recommended: `mute`*\n"
+        embed.description += "__**Track:**__\n"
+        l = []
+        if mpk['offences']:
+            for offence in mpk['offences']:
+                timed = False
+                try: timed = mpk['actions'][offence['action']]['timed']
+                except KeyError: pass
+                tst = ""
+                if timed: 
+                    if not offence['time']: tst = " (manual revoke)"
+                    else: tst = f" ({int(offence['time'])}m)"
+                l.append(f"""`{offence['action']}`{tst}""")
+            embed.description += ' \u2192 '.join(l)
+            embed.description += " (keeps repeating last offence)"
+        else: embed.description += f"*No track set!* Use `{ctx.prefix}{ctx.invoked_with} settrack`"
+        await ctx.send(embed=embed)
+
+    @config.command(name="add", aliases = ['addaction', 'a'])
+    async def aaction(self, ctx, name, typ: Optional[str]):
+        if name == "mute": typ = 'gr'
+        elif name == "verbal": typ = None
+        if (name != "verbal") and typ not in ['gr', 'giverole', 'ban', 'b', 'kick', 'k']:
+            return await ctx.invoke(self.bot.get_command("help"), "wcfg")
+        if   typ == 'giverole': typ = 'gr'
+        elif typ == 'ban': typ = 'b'
+        elif typ == 'kick': typ = 'k'
+        name = name.lower()
+        if ' ' in name:
+            return await ctx.send("Action names can't have spaces.")
+        mpm = self.testforguild(ctx.guild)
+        mpk = mpm.data
+        if name in mpk['actions']:
+            return await ctx.send("This action already exists! If you want to edit it, remove it and re-add it.")
+        def check(m):
+            return m.author == ctx.author
+        ret: discord.Message = None
+        timed = False
+        embed = discord.Embed(title=f"Action Setup - `{name}`", color=discord.Color(self.bot.data['color']))
+        embed.description = f"**Name:** `{name}`\n{f'**Type:** `{typ}`' if typ else ''}\n".strip() + "\n"
+        embed.set_footer(text="You can type cancel at any time to stop.")
+        msg = await ctx.send(embed=embed)
+        async def waitfor():
+            nonlocal ret
+            ret = await self.bot.wait_for('message', check=check)
+            if ret.content == "cancel":
+                await ctx.send("Cancelled the addition.")
+                raise commands.CommandNotFound() #LOL
+            try: await ret.delete()
+            except discord.Forbidden: pass
+            return ret.content
+        if typ: actdict = {'type': typ}
+        else: actdict = {}
+
+        if typ == "gr":
+            pre = embed.description
+            embed.description += "Please send the role this should add (you can use role ID if you don't want to ping.)"
+            await msg.edit(embed=embed)
+            while True:
+                try: role = await commands.RoleConverter().convert(ctx, await waitfor())
+                except commands.BadArgument:
+                    await (await ctx.send("Please enter a valid role.")).delete(delay=5)
+                    continue
+                actdict.update({'role': role.id})
+                embed.description = pre + f"**Role:** {role.mention}\n"
+                break
+
+        if (not name == "mute") and (typ and typ != 'k'):
+            pre = embed.description
+            embed.description += "Should the action be timed (should it run out)? (reply yes/no)"
+            await msg.edit(embed=embed)
+            while True:
+                try: timed = convert_to_bool(await waitfor())
+                except commands.BadArgument:
+                    await (await ctx.send("Please enter a valid value.")).delete(delay=5)
+                    continue
+                actdict.update({'timed': timed})
+                embed.description = pre + f"**Timed:** {'yes' if timed else 'no'}\n"
+                break
+        elif name == "mute":
+            actdict.update({'timed': True})
+            embed.description = pre + f"**Timed:** yes\n"
+            timed = True
+
+        pre = embed.description
+        embed.description += f"""Please type the message that would get sent in the channel the user was warned in.
+        `[u]` pings the warned user.
+        `[r]` posts the reason.
+        {'`[t]` posts the time in minutes.' if timed else ''}"""
+        await msg.edit(embed=embed)
+        good = False
+        touse = None
+        while not good:
+            touse = await waitfor()
+            tstring = touse
+            tstring = tstring.replace("[u]", ctx.author.mention)
+            tstring = tstring.replace("[r]", "pinging mods for no reason")
+            if timed: tstring = tstring.replace("[t]", "30")
+            td = await ctx.send(f"Is this ok? Your message will appear like this:\n{tstring}")
+            good = False
+            try: good = convert_to_bool(await waitfor())
+            except commands.BadArgument:
+                good = False
+            await td.delete()
+        actdict.update({'msg': touse})
+        embed.description = pre + f"**Server MSG:** `{touse}`\n"
+
+        pre = embed.description
+        embed.description += f"""Please type the message that would get sent to the user in DMs.
+        `[r]` posts the reason.
+        {'`[t]` posts the time in minutes.' if timed else ''}"""
+        await msg.edit(embed=embed)
+        good = False
+        while not good:
+            touse = await waitfor()
+            tstring = touse
+            tstring = tstring.replace("[r]", "pinging mods for no reason")
+            if timed: tstring = tstring.replace("[t]", "30")
+            td = await ctx.send(f"Is this ok? Your message will appear like this:\n{tstring}")
+            good = False
+            try: good = convert_to_bool(await waitfor())
+            except commands.BadArgument:
+                good = False
+            await td.delete()
+        actdict.update({'dmmsg': touse})
+        embed.description = pre + f"**DM MSG:** `{touse}`\n"
+        await msg.edit(embed=embed)
+        mpk['actions'][name] = actdict
+        mpm.save()
+        await ctx.send("Done!")
+
+    @config.command(aliases=['removeaction', 'remove', 'r'])
+    async def rmaction(self, ctx, action):
+        mpm = self.testforguild(ctx.guild)
+        mpk = mpm.data
+        if not action in mpk['actions']:
+            return await ctx.send("This action doesn't exist!")
+        del mpk['actions'][action]
+        mpm.save()
+        await ctx.send(f"Deleted action `{action}`.")
+    
+    @config.command(aliases=['track'])
+    async def settrack(self, ctx):
+        if ctx.invoked_with == "track": return await ctx.invoke(self.config, None)
+        mpm = self.testforguild(ctx.guild)
+        mpk = mpm.data
+        valid = [x for x in mpk['actions'] if x != 'verbal']
+        if not valid: return await ctx.send("There are no actions to use! Add some first!")
+        embed = discord.Embed(title="Warn Config - Track", color=discord.Color(self.bot.data['color']))
+        embed.description = "__**Valid track actions:**__\n"
+        for action in valid:
+            embed.description += f"> `{action}`\n"
+        embed.description += "__**Track:**__\nPost the names of valid actions and it will add tk the track.\nPost `stop` once you're done.\n"
+        embed.set_footer(text="You can type cancel at any time to stop without saving.")
+        pre = embed.description
+        def check(m):
+            return m.author == ctx.author
+        ret: discord.Message = None
+        msg = await ctx.send(embed=embed)
+        track = []
+        async def waitfor():
+            nonlocal ret
+            ret = await self.bot.wait_for('message', check=check)
+            if ret.content == "cancel":
+                await ctx.send("Cancelled the track setting.")
+                raise commands.CommandNotFound() #LOL
+            try: await ret.delete()
+            except discord.Forbidden: pass
+            return ret.content
+        while True:
+            l = []
+            tracks = ""
+            for offence in track:
+                timed = False
+                try: timed = mpk['actions'][offence['action']]['timed']
+                except KeyError: pass
+                tst = ""
+                if timed: 
+                    if not offence['time']: tst = " (manual revoke)"
+                    else: tst = f" ({int(offence['time'])}m)"
+                l.append(f"""`{offence['action']}`{tst}""")
+            tracks += ' \u2192 '.join(l)
+            embed.description = pre + tracks + (" (keeps repeating last offence)" if track else "")
+            await msg.edit(embed=embed)
+            r = await waitfor()
+            if r == "stop": break
+            if not r in valid: await (await ctx.send("Please send a valid action.")).delete(delay=5)
+            else:
+                track.append({'action': r})
+                try:
+                    if mpk['actions'][r]['timed']:
+                        td = await ctx.send("Please enter the duration in minutes (or 0 if manual).")
+                        while True:
+                            try: 
+                                dur = int(await waitfor())
+                                if dur < 0: raise ValueError()
+                            except ValueError: await (await ctx.send("Please send a valid value.")).delete(delay=5)
+                            else:
+                                track[-1].update({'time': dur})
+                                await td.delete()
+                                break
+                except KeyError: pass
+        mpk['offences'] = track
+        mpm.save()
+        await ctx.send("Done!")  
+
+                
+    @commands.command(aliases=['m'])
+    @commands.guild_only()
+    @commands.has_permissions(manage_messages=True, manage_channels=True)
+    async def mute(self, ctx, users: Greedy[discord.Member], duration, *, reason):
+        """Mutes users for a durarion. **Must be setup.**
+        
+        `mute/m <users> <duration> <reason>`"""
+        duration = pytimeparse.parse(duration)
+        if not duration: return await ctx.send("Please set a valid duration.")
+        await ctx.invoke(self.verbalwarn, users, reason=reason, mute=duration)
 
     @commands.command(aliases=['vwarn', 'vw'])
     @commands.guild_only()
     @commands.has_permissions(manage_messages=True, kick_members=True)
-    async def verbalwarn(self, ctx, users: Greedy[discord.Member], *, reason):
-        """Warns users but does not apply punishment.
+    async def verbalwarn(self, ctx, users: Greedy[discord.User], *, reason, mute=0):
+        """Verbally warns users. **Must be setup.**
         The user calling it must be able to **manage messages and kick.**
         These are intended to be used as a sort of push saying "don't do that",
         and will never automatically culminate into a warn.
@@ -348,42 +653,49 @@ class Moderation(commands.Cog):
         `verbalwarn/vwarn/vw <users> <reason>`"""
         mpm = self.testforguild(ctx.guild)
         mpk = mpm.data
-        try: mpk['actions']['verbal']
-        except: return
-        if (len(reason) == 0): return
+        strused = 'mute' if mute else 'verbal'
+        try: mpk['actions'][strused]
+        except: return await ctx.send(f"{strused.title()}s aren't setup! Set it up with `{ctx.prefix}warncfg add {strused}`")
+        if (not users) or (not reason): return
         for user in users:
             uid = str(user.id)
-            try:
-                mpk['users'][uid]
-            except:
-                mpk['users'][uid] = []
+            try: mpk['users'][uid]
+            except: mpk['users'][uid] = []
 
             cnt = len(mpk['users'][uid])
 
             mpk['users'][uid].append({})
-            mpk['users'][uid][cnt]['reason'] = reason
+            mpk['users'][uid][cnt]['reason'] = reason + (' (Mute)' if mute else '')
             mpk['users'][uid][cnt]['timestamp'] = self.now()
             mpk['users'][uid][cnt]['who'] = ctx.author.id
             mpk['users'][uid][cnt]['major'] = False
 
-            act = copy.deepcopy(mpk['actions']['verbal'])
+            act = copy(mpk['actions'][strused])
 
             act['dmmsg'] = act['dmmsg'].replace('[r]', reason)
             act['msg'] = act['msg'].replace('[u]', user.mention)
+            act['msg'] = act['msg'].replace('[r]', reason)
 
-            if (act['dmmsg'] != ""):
+            if (mute):
+                await user.add_roles(ctx.guild.get_role(act['role']), reason=reason)
+                mute = float(mute) / 60
+                act['dmmsg'] = act['dmmsg'].replace('[t]', str(int(mute)))
+                act['msg'] = act['msg'].replace('[t]', str(int(mute)))
+                mpk['inwarn'][uid] = {}
+                mpk['inwarn'][uid]['left'] = 0
+                mpk['inwarn'][uid]['time'] = self.toInt(datetime.utcnow() + timedelta(minutes=mute))
+            if act['dmmsg']:
                 try: await user.send(act['dmmsg'])
                 except: pass
             await ctx.send(act['msg'])
-
-        await self.bot.cogs['Logging'].on_warn(user, mpk['users'][uid][cnt], None)
-        
+            await self.bot.cogs['Logging'].on_warn(user, mpk['users'][uid][cnt], None)
         mpm.save()
+        
 
 
     @commands.command(aliases=['warnings'])
     @commands.guild_only()
-    async def warns(self, ctx, user: Optional[discord.Member]):
+    async def warns(self, ctx, user: Optional[discord.User]):
         """Check warns.
         If no user is given, it will display your own.
         If you give a user, you **must be able to**
@@ -398,7 +710,7 @@ class Moderation(commands.Cog):
         mpk = mpm.data
         #gid = str(ctx.guild.id)
         uid = str(user.id)
-        embed = discord.Embed(color=(discord.Color(0x6CAD9C) if user.color == discord.Color.default() else user.color))
+        embed = discord.Embed(color=(discord.Color(self.bot.data['color']) if user.color == discord.Color.default() else user.color))
         embed.set_author(name=user.display_name, icon_url=user.avatar_url)
         embed.timestamp = datetime.utcnow()
         embed.title = f"Warnings"
@@ -407,17 +719,16 @@ class Moderation(commands.Cog):
         except: mpk['users'][uid] = []
         
         desc = ""
-        if (len(mpk['users'][uid]) == 0): desc = "__No warnings!__"
         for warn in reversed(mpk['users'][uid]):
             who = self.bot.get_user(warn['who'])
+            mstring = f" - {who.mention}" if who else ""
             reason = f"*{warn['reason']}*"
             if (warn['major']): reason = f"*{reason}*"
-            desc += f"> {reason} - {who.mention}\n> *{timeago.format(self.fromInt(warn['timestamp']), datetime.utcnow())}*\n> `-------------`\n"
-        if (len(mpk['users'][uid]) != 0): desc = desc[:-18]
-        embed.description = desc
+            desc += f"> {reason}{mstring}\n> *{timeago.format(self.fromInt(warn['timestamp']), datetime.utcnow())}* (Case {mpk['users'][uid].index(warn) + 1})\n> `-------------`\n"
+        if not mpk['users'][uid]: desc = "__No warnings!__"
+        else: desc = desc[:-18]
+        embed.description = desc.strip()
         await ctx.send(embed=embed)
-
-current = 0
 
 def setup(bot):
     bot.add_cog(Moderation(bot))
