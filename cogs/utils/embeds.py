@@ -2,7 +2,7 @@ import discord, os, re
 
 class embeds:
 
-    async def buildembed(self, msg, stardata = None, focus = None, dcolor = 0xAC6AD7, link=True, attachmode=0b10):
+    async def buildembed(self, msg: discord.Message, stardata = None, focus = None, dcolor = 0xAC6AD7, link=True, attachmode=0b10, compare: discord.Embed = None):
         """
         stardata = [count, acount, spstate]
         focus is focused word for filterping
@@ -38,9 +38,13 @@ class embeds:
             if not desc: desc = "(jump to message)"
             embed.description = f"[{desc}]({msg.jump_url})"
         else: embed.description = f"{msg.channel.mention}\n{desc}"
+        if (focus):
+            for substr in focus:
+                desc = re.sub(fr'({substr})', r"**\1**", desc, flags=re.IGNORECASE)
+            embed.description = f"<#{msg.channel.id}>\n[{desc}]({msg.jump_url})"
         #now that we're done, existing embed time
         #setup footer
-        
+        ftxt = []
         if (stardata):
             if spstate & 0b10:
                 embed.description = f"<#{msg.channel.id}>\n[{desc}]({msg.jump_url})"
@@ -48,10 +52,12 @@ class embeds:
             else: ftxt = [f"\U0001F4CC Pinned in #{msg.channel.name}"]
             if spstate == 0b11: ftxt.append("/\U0001F4CC Pinned")
 
-        if (focus):
-            for substr in focus:
-                desc = re.sub(fr'({substr})', r"**\1**", desc, flags=re.IGNORECASE)
-            embed.description = f"<#{msg.channel.id}>\n[{desc}]({msg.jump_url})"
+        #we should stop to check
+        if compare:
+            if (compare.description == embed.description) and (compare.author == embed.author):
+                if (spstate & 0b10) and type(jsn['emoji']) == int: compare.set_footer(text=''.join(ftxt), icon_url=f"https://cdn.discordapp.com/emojis/{jsn['emoji']}.png")
+                else: compare.set_footer(text = ''.join(ftxt))
+                return compare #we literally do not have to do anything
 
         if msg.embeds:
             e = msg.embeds[0]
