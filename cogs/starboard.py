@@ -1,10 +1,11 @@
 import discord, json, copy, math
 from discord.ext import commands
-from cogs.utils.SimplePaginator import SimplePaginator as pag
 from cogs.utils.embeds import embeds
 from asyncio import sleep
 from timeit import default_timer
 from cogs.utils.mpkmanager import MPKManager
+from cogs.utils.menus import Paginator
+from typing import Optional
 
 
 class Starboard(commands.Cog):
@@ -341,7 +342,7 @@ class Starboard(commands.Cog):
             count += 1
             #print(count)
         await tbd.delete()
-        return await pag(entries=groups).paginate(ctx)
+        return await Paginator(groups).start(ctx)
         
     @config.command()
     @commands.has_permissions(manage_guild=True)

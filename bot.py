@@ -281,17 +281,15 @@ async def _eval(ctx, *, evl):
     try:
         with contextlib.redirect_stdout(out):
             ret = await evalfunc()
-    except Exception as e:
-        e
+    except:
         value = out.getvalue()
         return await ctx.send(f'```py\n{value}{traceback.format_exc()}\n```')
     val = out.getvalue()
     if not ret:
         if val:
             return await ctx.send(f"```py\n{val}```")
-        else:
-            try: return await ctx.message.add_reaction('\u2705')
-            except: pass
+        try: return await ctx.message.add_reaction('\u2705')
+        except: pass
     else:
         lastresult = ret
         await ctx.send(f"```py\n{val}\n{ret}```")

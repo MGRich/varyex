@@ -30,9 +30,8 @@ class Miscellaneous(commands.Cog):
         if not prefix:
             if not user:
                 return await ctx.send(f"My main prefix here is `{self.bot.command_prefix(self.bot, ctx.message)[0]}`.")
-            else:
-                prefixes = self.bot.command_prefix(self.bot, ctx.message)
-                return await ctx.send(f"Your personal prefix is `{prefixes[0]}` and my main prefix here is `{prefixes[1]}`.")
+            prefixes = self.bot.command_prefix(self.bot, ctx.message)
+            return await ctx.send(f"Your personal prefix is `{prefixes[0]}` and my main prefix here is `{prefixes[1]}`.")
         user = ctx.invoked_with in ['usrprefix', 'userprefix']
         rem = prefix in ["reset", "off"]
         if user:
@@ -45,8 +44,7 @@ class Miscellaneous(commands.Cog):
             users.save()
             if not rem:
                 return await ctx.send(f"Your personal prefix is now `{prefix}`!")
-            else:
-                return await ctx.send("Your personal prefix has been reset.")
+            return await ctx.send("Your personal prefix has been reset.")
         if not ctx.author.guild_permissions.manage_guild: return
         if not rem: mpk['prefix'] = prefix
         else:
