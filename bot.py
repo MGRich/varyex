@@ -93,11 +93,11 @@ async def on_command_error(ctx: commands.Context, error):
 
     ignored = (commands.CommandNotFound, commands.CommandOnCooldown)
     error = getattr(error, 'original', error)
-    if ctx.command: name = ctx.command.root_parent.name if ctx.command.root_parent else ctx.command.name
-    else: name = "" #??????????
     
     if isinstance(error, ignored): return
-    elif isinstance(error, commands.DisabledCommand):
+    if ctx.command: name = ctx.command.root_parent.name if ctx.command.root_parent else ctx.command.name
+    else: name = "" #??????????
+    if isinstance(error, commands.DisabledCommand):
         return await ctx.send(f'{ctx.command} has been disabled.')
     elif isinstance(error, commands.NoPrivateMessage):
         try: return await ctx.message.author.send('This command cannot be used in Private Messages.')
