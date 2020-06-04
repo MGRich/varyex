@@ -262,7 +262,7 @@ class Starboard(commands.Cog):
         srtd = sorted(mpk['leaderboard'].items(), key = lambda x : x[1])
         if not srtd: return await tbd.edit("Not enough data so cancelled leaderboard calculation.")
         srtd.reverse()
-        sleep(0.5)
+        await sleep(0.5)
         groups = []
         ebase = discord.Embed()
         ebase.set_author(name="Leaderboard")
