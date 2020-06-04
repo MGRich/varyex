@@ -6,6 +6,7 @@ from cogs.utils.mpkmanager import MPKManager
 from discord.ext.commands import Greedy
 from typing import Optional
 from string import punctuation
+from cogs.utils.menus import Confirm
 
 loaded = None
 
@@ -473,19 +474,12 @@ class Moderation(commands.Cog):
 
         if (not name == "mute") and (typ and typ != 'k'):
             pre = embed.description
-            embed.description += "Should the action be timed (should it run out)? (reply yes/no)"
-            await msg.edit(embed=embed)
-            while True:
-                try: timed = convert_to_bool(await waitfor())
-                except commands.BadArgument:
-                    await (await ctx.send("Please enter a valid value.")).delete(delay=5)
-                    continue
-                actdict.update({'timed': timed})
-                embed.description = pre + f"**Timed:** {'yes' if timed else 'no'}\n"
-                break
+            timed = await Confirm(f"Is this ok? Your message will appear like this:\n{tstring}").prompt(ctx)
+            actdict.update({'timed': timed})
+            embed.description = pre + f"**Timed:** {'yes' if timed else 'no'}\n"
         elif name == "mute":
             actdict.update({'timed': True})
-            embed.description = pre + "**Timed:** yes\n"
+            embed.description += "**Timed:** yes\n"
             timed = True
 
         pre = embed.description
@@ -502,12 +496,7 @@ class Moderation(commands.Cog):
             tstring = tstring.replace("[u]", ctx.author.mention)
             tstring = tstring.replace("[r]", "pinging mods for no reason")
             if timed: tstring = tstring.replace("[t]", "30")
-            td = await ctx.send(f"Is this ok? Your message will appear like this:\n{tstring}")
-            good = False
-            try: good = convert_to_bool(await waitfor())
-            except commands.BadArgument:
-                good = False
-            await td.delete()
+            good = await Confirm(f"Is this ok? Your message will appear like this:\n{tstring}").prompt(ctx)
         actdict.update({'msg': touse})
         embed.description = pre + f"**Server MSG:** `{touse}`\n"
 
@@ -522,12 +511,7 @@ class Moderation(commands.Cog):
             tstring = touse
             tstring = tstring.replace("[r]", "pinging mods for no reason")
             if timed: tstring = tstring.replace("[t]", "30")
-            td = await ctx.send(f"Is this ok? Your message will appear like this:\n{tstring}")
-            good = False
-            try: good = convert_to_bool(await waitfor())
-            except commands.BadArgument:
-                good = False
-            await td.delete()
+            good = await Confirm(f"Is this ok? Your message will appear like this:\n{tstring}").prompt(ctx)
         actdict.update({'dmmsg': touse})
         embed.description = pre + f"**DM MSG:** `{touse}`\n"
         await msg.edit(embed=embed)
