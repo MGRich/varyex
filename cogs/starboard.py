@@ -54,14 +54,15 @@ class Starboard(commands.Cog):
         return st
 
         
-    async def handlereact(self, payl, typ):
+    async def handlereact(self, payl: discord.RawReactionActionEvent, typ):
         msg = await self.fetchmsg(payl)
         mpm = self.testforguild(msg.guild)
         mpk = mpm.data       
         try: 
             if (payl.channel_id in mpk['blacklist']): return
         except: pass
-        try: mpk['channel']
+        try: 
+            if not mpk['channel']: raise Exception()
         except: return            
         iden = payl.emoji.name if payl.emoji.is_unicode_emoji() else payl.emoji.id
         if (iden != mpk['emoji']): return
@@ -71,7 +72,7 @@ class Starboard(commands.Cog):
         fromsb = False
         smpmsg  = None
             
-        if chl.id == payl.channel_id:
+        if payl.user_id == self.bot.user.id and chl.id == payl.channel_id:
             found = None
             for ids in reversed(list(mpk['messages'])):
                 if mpk['messages'][ids]['sbid'] == msg.id:
@@ -83,18 +84,16 @@ class Starboard(commands.Cog):
                 msg   = await schn.fetch_message(int(found))
                 sbstar = True
                 fromsb = True
-        else:
-            try:
-                smpmsg = await chl.fetch_message(mpk['messages'][str(msg.id)]['sbid'])
-                sbstar = True
-            except: pass
+        try:
+            smpmsg = await chl.fetch_message(mpk['messages'][str(msg.id)]['sbid'])
+            sbstar = bool(smpmsg)
+        except: pass
 
         mid = str(msg.id)
         aid = str(msg.author.id)
         cid = msg.channel.id
         reactor = msg.guild.get_member(payl.user_id)    
         targetm = (smpmsg if fromsb else msg)
-        #TODO: what in the living hell is this
 
         for reaction in targetm.reactions:
             if (iden == (reaction.emoji.id if reaction.custom_emoji else reaction.emoji)):
