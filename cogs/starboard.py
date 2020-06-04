@@ -23,6 +23,7 @@ class Starboard(commands.Cog):
     def testforguild(self, guild) -> MPKManager:
         mpm = self.getmpm(guild)
         file = mpm.data
+        #maybe find a faster way to do this?
         try: file['amount']
         except: file['amount'] = 6
         try: file['emoji']
@@ -55,62 +56,55 @@ class Starboard(commands.Cog):
 
         
     async def handlereact(self, payl: discord.RawReactionActionEvent, typ):
-        msg = await self.fetchmsg(payl)
+        try: msg = await self.fetchmsg(payl)
+        except discord.NotFound: return
         mpm = self.testforguild(msg.guild)
         mpk = mpm.data       
-        try: 
-            if (payl.channel_id in mpk['blacklist']): return
-        except: pass
-        try: 
-            if not mpk['channel']: raise Exception()
-        except: return            
+        if (payl.channel_id in mpk['blacklist']): return
+        if not mpk['channel']: return
         iden = payl.emoji.name if payl.emoji.is_unicode_emoji() else payl.emoji.id
         if (iden != mpk['emoji']): return
 
         chl = await self.bot.fetch_channel(mpk['channel'])        
-        sbstar = False
         fromsb = False
-        smpmsg  = None
+        sbmsg = None
             
         if payl.user_id == self.bot.user.id and chl.id == payl.channel_id:
             found = None
+            default_timer()
             for ids in reversed(list(mpk['messages'])):
                 if mpk['messages'][ids]['sbid'] == msg.id:
                     found = ids
                     break
             if found:
                 schn = self.bot.get_channel(mpk['messages'][found]['chn'])
-                smpmsg = msg
-                msg   = await schn.fetch_message(int(found))
-                sbstar = True
+                sbmsg = msg
+                msg = await schn.fetch_message(int(found))
                 fromsb = True
-        try:
-            smpmsg = await chl.fetch_message(mpk['messages'][str(msg.id)]['sbid'])
-            sbstar = bool(smpmsg)
-        except: pass
+        else: sbmsg = await chl.fetch_message(mpk['messages'][str(msg.id)]['sbid'])
 
         mid = str(msg.id)
         aid = str(msg.author.id)
         cid = msg.channel.id
         reactor = msg.guild.get_member(payl.user_id)    
-        targetm = (smpmsg if fromsb else msg)
+        targetm = (sbmsg if fromsb else msg)
 
         for reaction in targetm.reactions:
             if (iden == (reaction.emoji.id if reaction.custom_emoji else reaction.emoji)):
                 if reactor == msg.author: return await reaction.remove(reactor)
-                if sbstar and (reactor in await reaction.users().flatten()):
-                    oppm = (smpmsg if not fromsb else msg)
+                if sbmsg and (reactor in await reaction.users().flatten()):
+                    oppm = (msg if fromsb else sbmsg)
                     for oreact in oppm.reactions:
                         if (iden == (oreact.emoji.id if oreact.custom_emoji else oreact.emoji)):
                             if reactor in await oreact.users().flatten(): return await reaction.remove(reactor)
-                            break
                 break
 
         count = 0
-        reactl = msg.reactions + (smpmsg.reactions if sbstar else [])
+        reactl = msg.reactions + (sbmsg.reactions if sbmsg else [])
         for reaction in reactl:
             if (iden == (reaction.emoji.id if reaction.custom_emoji else reaction.emoji)):
                 count += reaction.count
+                break
 
         try: mpk['leaderboard'][aid]
         except: mpk['leaderboard'][aid] = 0
@@ -131,7 +125,7 @@ class Starboard(commands.Cog):
             mpk['messages'][mid]['spstate'] = 0b00
             mpk['leaderboard'][aid] += count     
     
-        mpk['messages'][mid]['count']  = count
+        mpk['messages'][mid]['count'] = count
 
         if not msg.pinned: mpk['messages'][mid]['spstate'] &= 0b10
         else: mpk['messages'][mid]['spstate'] |= 0b01
