@@ -93,7 +93,8 @@ async def on_command_error(ctx: commands.Context, error):
 
     ignored = (commands.CommandNotFound, commands.CommandOnCooldown)
     error = getattr(error, 'original', error)
-    name = ctx.command.root_parent.name if ctx.command.root_parent else ctx.command.name
+    if ctx.command: name = ctx.command.root_parent.name if ctx.command.root_parent else ctx.command.name
+    else: name = "" #??????????
     
     if isinstance(error, ignored): return
     elif isinstance(error, commands.DisabledCommand):
