@@ -474,7 +474,7 @@ class Moderation(commands.Cog):
 
         if (not name == "mute") and (typ and typ != 'k'):
             pre = embed.description
-            timed = await Confirm(f"Is this ok? Your message will appear like this:\n{tstring}").prompt(ctx)
+            timed = await Confirm("Should the action be timed (should it run out automatically)?").prompt(ctx)
             actdict.update({'timed': timed})
             embed.description = pre + f"**Timed:** {'yes' if timed else 'no'}\n"
         elif name == "mute":
