@@ -262,7 +262,7 @@ class Starboard(commands.Cog):
         cpy = copy.copy(mpk['leaderboard'])
         del cpy['enabled']
         srtd = sorted(cpy.items(), key = lambda x : x[1])
-        if not srtd: return await tbd.edit("Not enough data so cancelled leaderboard calculation.")
+        if not srtd: return await tbd.edit(content="Not enough data so cancelled leaderboard calculation.")
         srtd.reverse()
         await sleep(0.5)
         groups = []
