@@ -44,7 +44,7 @@ class Paginator(menus.Menu):
     async def edit(self):
         await self.message.edit(embed=self.embeds[self.page])
 
-    @menus.button('\u23ea', skipif=isloop)
+    @menus.button('\u23ea', skip_if=isloop)
     async def tofirst(self, _unusedpayload):
         self.page = 0
         await self.edit()
@@ -69,7 +69,7 @@ class Paginator(menus.Menu):
             else: self.page = self.max
         await self.edit()
     
-    @menus.button('\u23e9', skipif=isloop)
+    @menus.button('\u23e9', skip_if=isloop)
     async def tolast(self, _unusedpayload):
         self.page = self.max
         await self.edit()
