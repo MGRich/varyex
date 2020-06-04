@@ -177,7 +177,8 @@ class Starboard(commands.Cog):
             await smpmsg.delete()
             return
         e = await embeds.buildembed(embeds, msg, stardata=[info['count'], 0b01, embeds], compare=smpmsg.embeds[0])
-        await smpmsg.edit(embed=e)
+        try: await smpmsg.edit(embed=e)
+        except discord.Forbidden: chl.send(embed=e)
         mpm.save()
             
             
