@@ -65,6 +65,66 @@ class Starboard(commands.Cog):
         iden = payl.emoji.name if payl.emoji.is_unicode_emoji() else payl.emoji.id
         if (iden != mpk['emoji']): return
 
+        chl = await self.bot.fetch_channel(mpk['channel'])                    
+        try: sbmsg = await chl.fetch_message(mpk['messages'][str(msg.id)]['sbid'])
+        except: sbmsg = None
+
+        mid = str(msg.id)
+        aid = str(msg.author.id)
+        cid = msg.channel.id
+        reactor = msg.guild.get_member(payl.user_id)    
+
+        for reaction in msg.reactions:
+            if (iden == (reaction.emoji.id if reaction.custom_emoji else reaction.emoji)):
+                if reactor == msg.author: return await reaction.remove(reactor)
+                break
+
+        count = 0
+        for reaction in msg.reactions:
+            if (iden == (reaction.emoji.id if reaction.custom_emoji else reaction.emoji)):
+                count += reaction.count
+                break
+
+        try: mpk['leaderboard'][aid]
+        except: mpk['leaderboard'][aid] = 0
+
+        try:
+            mpk['messages'][mid]
+            try: mpk['messages'][mid]['spstate']
+            except: mpk['messages'][mid]['spstate'] = 0b00
+                 
+            if not mpk['messages'][mid]['spstate'] & 0b10: mpk['leaderboard'][aid] += count 
+            else:  mpk['leaderboard'][aid] += typ
+        except:
+            mpk['messages'][mid] = {}
+            
+            mpk['messages'][mid]['author'] = msg.author.id
+            mpk['messages'][mid]['chn']    = cid
+            mpk['messages'][mid]['sbid']   = 0
+            mpk['messages'][mid]['spstate'] = 0b00
+            mpk['leaderboard'][aid] += count     
+    
+        mpk['messages'][mid]['count'] = count
+
+        if not msg.pinned: mpk['messages'][mid]['spstate'] &= 0b10
+        else: mpk['messages'][mid]['spstate'] |= 0b01
+        
+        if (count >= mpk['amount']):
+            mpk['messages'][mid]['spstate'] |= 0b10
+            mpm.save()
+            e = await embeds.buildembed(embeds, msg, stardata=[count, mpk['messages'][mid]['spstate'], mpk], compare=sbmsg.embeds[0] if sbmsg else None)
+            if sbmsg:
+                try: return await sbmsg.edit(embed=e)
+                except: pass
+            made = await chl.send(embed=e)
+            mpk['messages'][mid]['sbid'] = made.id
+            return mpm.save()
+        return await self.removefromboard(msg)
+    
+    async def oldthing(self):
+        #pylint: disable=undefined-variable, used-before-assignment, unused-variable
+        #if i ever decided to reimplement this: OPTIMIZE IT.
+
         chl = await self.bot.fetch_channel(mpk['channel'])        
         fromsb = False
         sbmsg = None
@@ -99,51 +159,8 @@ class Starboard(commands.Cog):
                             if reactor in await oreact.users().flatten(): return await reaction.remove(reactor)
                 break
 
-        count = 0
-        reactl = msg.reactions + (sbmsg.reactions if sbmsg else [])
-        for reaction in reactl:
-            if (iden == (reaction.emoji.id if reaction.custom_emoji else reaction.emoji)):
-                count += reaction.count
-                break
 
-        try: mpk['leaderboard'][aid]
-        except: mpk['leaderboard'][aid] = 0
 
-        try:
-            mpk['messages'][mid]
-            try: mpk['messages'][mid]['spstate']
-            except: mpk['messages'][mid]['spstate'] = 0b00
-                 
-            if not mpk['messages'][mid]['spstate'] & 0b10: mpk['leaderboard'][aid] += count 
-            else:  mpk['leaderboard'][aid] += typ
-        except:
-            mpk['messages'][mid] = {}
-            
-            mpk['messages'][mid]['author'] = msg.author.id
-            mpk['messages'][mid]['chn']    = cid
-            mpk['messages'][mid]['sbid']   = 0
-            mpk['messages'][mid]['spstate'] = 0b00
-            mpk['leaderboard'][aid] += count     
-    
-        mpk['messages'][mid]['count'] = count
-
-        if not msg.pinned: mpk['messages'][mid]['spstate'] &= 0b10
-        else: mpk['messages'][mid]['spstate'] |= 0b01
-        
-        if (count >= mpk['amount']):
-            mpk['messages'][mid]['spstate'] |= 0b10
-            mpm.save()
-            try: tedit = await chl.fetch_message(mpk['messages'][mid]['sbid'])
-            except discord.NotFound: tedit = None
-            e = await embeds.buildembed(embeds, msg, stardata=[count, mpk['messages'][mid]['spstate'], mpk], compare=tedit.embeds[0] if tedit else None)
-            if tedit:
-                try: return await tedit.edit(embed=e)
-                except: pass
-            made = await chl.send(embed=e)
-            mpk['messages'][mid]['sbid'] = made.id
-            return mpm.save()
-        return await self.removefromboard(msg)
-    
     async def removefromboard(self, msg):
         mpm = self.testforguild(msg.guild)
         mpk = mpm.data       
