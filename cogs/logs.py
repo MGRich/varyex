@@ -259,11 +259,12 @@ class Logging(commands.Cog):
         `log cfg channel/setchannel [channel]`"""
         self.setupjson(ctx.guild)
         if (ctx.invoked_subcommand == None):
-            mpk = self.getmpm(ctx.guild)
+            mpk = self.getmpm(ctx.guild).data
             embed = discord.Embed(title = "Log Config", color=discord.Color(self.bot.data['color']), description = "")
             for i in range(len(bitlist)):
-                unic = '\u2705' if (mpk.data['log']['flags'] >> i) & 1 else '\u26D4'
+                unic = '\u2705' if (mpk['log']['flags'] >> i) & 1 else '\u26D4'
                 embed.description += f"{bitlist[i]}: {unic}\n"
+            embed.description += f"Channel: <#{mpk['log']['channel']}>" if mpk['log']['channel'] else "Channel: *not set*"
             await ctx.send(embed=embed)
     
     @log.group(aliases = ['cfg'])
@@ -274,8 +275,8 @@ class Logging(commands.Cog):
     @config.command(aliases = ['setchannel'])
     @commands.has_permissions(manage_guild=True)
     async def channel(self, ctx, channel: Optional[discord.TextChannel]):
+        if not channel: return await ctx.invoke(self.log)
         mpm = self.getmpm(ctx.guild)
-        if not channel: return await ctx.send(f"My current channel is <#{mpm.data['log']['channel']}>." if mpm.data['log']['channel'] else "I'm not set to any channel.")
         mpm.data['log']['channel'] = channel.id
         mpm.save()
         await ctx.send(f"Log channel set to {channel.mention}!")
