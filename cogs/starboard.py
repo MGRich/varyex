@@ -260,7 +260,7 @@ class Starboard(commands.Cog):
         tbd = await ctx.send("Generating.. this may take a while..")
         await ctx.trigger_typing()
         cpy = copy.copy(mpk['leaderboard'])
-        cpy.remove('enabled')
+        del cpy['enabled']
         srtd = sorted(cpy.items(), key = lambda x : x[1])
         if not srtd: return await tbd.edit("Not enough data so cancelled leaderboard calculation.")
         srtd.reverse()
