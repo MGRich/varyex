@@ -95,8 +95,7 @@ async def on_command_error(ctx: commands.Context, error):
     error = getattr(error, 'original', error)
     
     if isinstance(error, ignored): return
-    if ctx.command: name = ctx.command.root_parent.name if ctx.command.root_parent else ctx.command.name
-    else: name = "" #??????????
+    name = ctx.command.root_parent.name if ctx.command.root_parent else ctx.command.name
     if isinstance(error, commands.DisabledCommand):
         return await ctx.send(f'{ctx.command} has been disabled.')
     elif isinstance(error, commands.NoPrivateMessage):
@@ -105,7 +104,6 @@ async def on_command_error(ctx: commands.Context, error):
     elif isinstance(error, commands.UserInputError):
         return await ctx.invoke(bot.get_command("help"), name)
     elif isinstance(error, commands.MissingPermissions):
-        await ctx.invoke(bot.get_command("help"), name)
         return await ctx.send("You don't have sufficient permissions to run this.")
 
     if bot.owner == ctx.author:
