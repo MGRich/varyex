@@ -552,6 +552,7 @@ class Logging(commands.Cog):
                 'slowmode_delay': [before.slowmode_delay, after.slowmode_delay], 
                 'nsfw': [before.is_nsfw(), after.is_nsfw()], 
                 'topic': [before.topic, after.topic]})
+        if before.position == after.position: del dic['position']
         embed.description += self.capitalize(self.changedicttostr(dic), 'NSFW')
         embed.set_footer(text=f"{'Channel' if not isCategory else 'Category'} ID: {after.id} | {embed.footer.text}")
         pre = []
