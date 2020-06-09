@@ -78,9 +78,9 @@ class Moderation(commands.Cog):
                 t = f"You have been banned in {ctx.guild} by {ctx.author.mention}"
                 if (reason != ""): t += f" for {reason}{'.' if not reason[-1] in punctuation else ''}"
                 else: t += '.'
+                banlist.append(member.mention)
                 try: await member.send(t)
                 except discord.Forbidden: continue
-                banlist.append(member.mention)
             except discord.Forbidden: continue
         if len(banlist) == 0:
             return await ctx.send("I was not able to ban any users.")
