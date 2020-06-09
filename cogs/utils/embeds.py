@@ -129,7 +129,7 @@ class embeds:
                 data = {} #yes its that fucking complex
                 data['tease'] = e.description.split("...")[0]
                 if (data['tease'] == e.description): data['tease'] = None
-                data['author'] = e.description.split(", sumpmitted by ")[1]
+                data['author'] = e.description.split(", submitted by ")[1]
                 data['name'] = e.title.split("[")[0][:-1]
                 data['full'] = e.title.split("[")[1].split("]")[0]  
                 data['type'] = e.title.split("[")[2].split("]")[0].split(" Mods")[0]
