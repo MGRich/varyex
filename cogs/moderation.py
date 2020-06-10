@@ -368,10 +368,10 @@ class Moderation(commands.Cog):
             if act['dmmsg']:
                 try: await user.send(act['dmmsg'])
                 except discord.Forbidden: pass
-            if (worked): await ctx.send(act['msg'])
-            await self.bot.cogs['Logging'].on_warn(user, mpk['users'][uid][cnt], f"`{ofc['action']}`")
+            if (worked): await ctx.send(act['msg'])\
+            mpm.save()
+            await self.bot.cogs['Logging'].on_warn(user, ctx.guild, mpk['users'][uid][cnt], f"`{ofc['action']}`")
 
-        mpm.save()
 
     @warn.group(aliases = ['cfg'], invoke_without_command=True)
     @commands.has_permissions(manage_guild=True, ban_members=True) 
@@ -657,8 +657,8 @@ class Moderation(commands.Cog):
                 try: await user.send(act['dmmsg'])
                 except: pass
             await ctx.send(act['msg'])
-            await self.bot.cogs['Logging'].on_warn(user, mpk['users'][uid][cnt], None)
-        mpm.save()
+            mpm.save()
+            await self.bot.cogs['Logging'].on_warn(user, ctx.guild, mpk['users'][uid][cnt], None)
         
 
 

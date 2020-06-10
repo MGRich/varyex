@@ -803,12 +803,12 @@ class Logging(commands.Cog):
         embed.description = f"User **{user}** was unbanned!\n> **{'(No reason)' if not log.reason else log.reason}** - *{log.user.mention}*"
         await chn.send(embed=embed)
 
-    async def on_warn(self, user, warn, act):
-        chn = await self.checkbit(11, user.guild)
+    async def on_warn(self, user, guild, warn, act):
+        chn = await self.checkbit(11, guild)
         if not chn: return
         embed = self.makebase(user, colortype=int(not warn['major']) * 2)
         embed.title = f"{'Verbal ' if not warn['major'] else ''}Warning"
-        warner = user.guild.get_member(warn['who'])
+        warner = guild.get_member(warn['who'])
         embed.description = f"**{warn['reason']}** - *{warner.mention}*\n> **Punishment given**: *{act}*"
         
         await chn.send(embed=embed)
