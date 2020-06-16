@@ -155,6 +155,7 @@ class Filters(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, msg):
         if (msg.guild == None): return
+        if (msg.channel.id == 356560338390351872): return #REMS SPECIAL CASE
         mpm = self.getmpm(msg.guild)
         mpk = mpm.data
         hasfp = False
