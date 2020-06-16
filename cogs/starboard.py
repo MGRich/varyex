@@ -72,7 +72,8 @@ class Starboard(commands.Cog):
         mid = str(msg.id)
         aid = str(msg.author.id)
         cid = msg.channel.id
-        reactor = msg.guild.get_member(payl.user_id)    
+        reactor = msg.guild.get_member(payl.user_id)
+        print(reactor)
 
         for reaction in msg.reactions:
             if (iden == (reaction.emoji.id if reaction.custom_emoji else reaction.emoji)):
