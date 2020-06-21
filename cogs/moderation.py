@@ -598,7 +598,7 @@ class Moderation(commands.Cog):
                 
     @commands.command(aliases=['m'])
     @commands.guild_only()
-    @commands.has_permissions(manage_messages=True, manage_channels=True)
+    @commands.has_permissions(manage_messages=True, kick_members=True)
     async def mute(self, ctx, users: Greedy[discord.Member], duration, *, reason):
         """Mutes users for a durarion. **Must be setup.**
         
