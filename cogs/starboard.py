@@ -113,7 +113,7 @@ class Starboard(commands.Cog):
         if not msg.pinned: mpk['messages'][mid]['spstate'] &= 0b10
         else: mpk['messages'][mid]['spstate'] |= 0b01
         
-        self.bot.get_cog('Logging').on_sbreact(reactor, msg, True if typ == 1 else False)
+        await self.bot.get_cog('Logging').on_sbreact(reactor, msg, True if typ == 1 else False)
 
         if (count >= mpk['amount']):
             mpk['messages'][mid]['spstate'] |= 0b10
