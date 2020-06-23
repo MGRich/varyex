@@ -6,6 +6,8 @@ from timeit import default_timer
 from cogs.utils.mpkmanager import MPKManager
 from cogs.utils.menus import Paginator
 from typing import Optional
+from dateutil.relativedelta import relativedelta
+from datetime import datetime, timedelta
 
 class Starboard(commands.Cog):
     def __init__(self, bot):
@@ -13,7 +15,7 @@ class Starboard(commands.Cog):
         self.buffer = []
 
 
-    async def fetchmsg(self, p):
+    async def fetchmsg(self, p) -> discord.Message:
         chl = await self.bot.fetch_channel(p.channel_id)
         return await chl.fetch_message(p.message_id)
     
@@ -60,6 +62,7 @@ class Starboard(commands.Cog):
         except discord.NotFound: return
         mpm = self.testforguild(msg.guild)
         mpk = mpm.data       
+        willSend = datetime.now() - (msg.created_at - relativedelta(months=2)) < timedelta(days=60)
         if (payl.channel_id in mpk['blacklist']): return
         if not mpk['channel']: return
         iden = payl.emoji.name if payl.emoji.is_unicode_emoji() else payl.emoji.id
@@ -110,6 +113,8 @@ class Starboard(commands.Cog):
         if not msg.pinned: mpk['messages'][mid]['spstate'] &= 0b10
         else: mpk['messages'][mid]['spstate'] |= 0b01
         
+        self.bot.get_cog('Logging').on_sbreact(reactor, msg, True if typ == 1 else False)
+
         if (count >= mpk['amount']):
             mpk['messages'][mid]['spstate'] |= 0b10
             mpm.save()
@@ -117,6 +122,7 @@ class Starboard(commands.Cog):
             if sbmsg:
                 try: return await sbmsg.edit(embed=e)
                 except: pass
+            if not willSend: return mpm.save()
             made = await chl.send(embed=e)
             mpk['messages'][mid]['sbid'] = made.id
             return mpm.save()
@@ -179,7 +185,7 @@ class Starboard(commands.Cog):
             return
         e = await embeds.buildembed(embeds, msg, stardata=[info['count'], 0b01, embeds], compare=smpmsg.embeds[0])
         try: await smpmsg.edit(embed=e)
-        except discord.Forbidden: chl.send(embed=e)
+        except discord.Forbidden: await chl.send(embed=e)
         mpm.save()
             
             

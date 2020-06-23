@@ -6,7 +6,9 @@ from typing import Union, List, Optional
 from cogs.utils.mpkmanager import MPKManager
 from discord import AuditLogAction
 
-bitlist = ["Message Delete", "Message Edit", "Channel Edits", "Member Joining/Leaving", "Member Updates", "Server Updates", "Role Updates", "Emoji Updates", "Voice Updates", "Bans", "Warnings", "Bots can trigger some logs"]
+bitlist = ["Message Delete", "Message Edit", "Channel Edits", "Member Joining/Leaving", 
+    "Member Updates", "Server Updates", "Role Updates", "Emoji Updates", "Voice Updates",
+    "Bans", "Warnings", "Bots can trigger some logs", "Starboard Logging"]
 class LogMenu(menus.Menu):
     def __init__(self, gid, datadict, prefix):
         super().__init__(timeout = 30.0, delete_message_after=False, clear_reactions_after=True)
@@ -810,6 +812,15 @@ class Logging(commands.Cog):
         embed.title = f"{'Verbal ' if not warn['major'] else ''}Warning"
         warner = guild.get_member(warn['who'])
         embed.description = f"**{warn['reason']}** - *{warner.mention}*\n> **Punishment given**: *{act}*"
+        
+        await chn.send(embed=embed)
+
+    async def on_sbreact(self, user, msg, act):
+        chn = await self.checkbit(13, user.guild)
+        if not chn: return
+        embed = self.makebase(user)
+        embed.title = "Starboard React"
+        embed.description = f"**{user.mention}** {'added' if act else 'removed'} a star to [this message.]({msg.jump_url})"
         
         await chn.send(embed=embed)
 
