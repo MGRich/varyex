@@ -62,7 +62,7 @@ class Starboard(commands.Cog):
         except discord.NotFound: return
         mpm = self.testforguild(msg.guild)
         mpk = mpm.data       
-        willSend = datetime.now() - (msg.created_at - relativedelta(months=2)) < timedelta(days=60)
+        willSend = datetime.now() - (msg.created_at) < timedelta(days=60)
         if (payl.channel_id in mpk['blacklist']): return
         if not mpk['channel']: return
         iden = payl.emoji.name if payl.emoji.is_unicode_emoji() else payl.emoji.id
