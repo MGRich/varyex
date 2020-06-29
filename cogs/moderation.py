@@ -295,6 +295,24 @@ class Moderation(commands.Cog):
         if all: await ctx.send(f"Cleared warnings for {user.mention}!")
         else: await ctx.send(f"Removed case {case} from {user.mention}!")
 
+    @commands.command(aliases = ["ewarn", "ew"])
+    @commands.guild_only()
+    @commands.has_permissions(manage_messages=True, kick_members=True)
+    async def editwarn(self, ctx, user: discord.User, case: int, *, newreason: str):
+        """Edits a warn from a user.
+        You must be able to **manage messages and kick.**
+
+        `editwarn/ewarn/ew <user> <case number> <new reason>`"""
+        mpm = self.testforguild(ctx.guild)
+        mpk = mpm.data
+        uid = str(user.id)
+        try: mpk['users'][uid]
+        except: return await ctx.send("That user has no warnings!")
+        try: mpk['users'][uid][case - 1]['reason'] = newreason
+        except IndexError: return await ctx.send("That user doesn't have that many warns!")
+        mpm.save()
+        await ctx.send(f"Updated reason for case {case} of {user.mention}!")
+
     @commands.group(aliases=["w"], invoke_without_command=True)
     @commands.guild_only()
     @commands.has_permissions(manage_messages=True, kick_members=True)
