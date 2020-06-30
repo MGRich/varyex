@@ -6,7 +6,6 @@ from timeit import default_timer
 from cogs.utils.mpkmanager import MPKManager
 from cogs.utils.menus import Paginator
 from typing import Optional
-from dateutil.relativedelta import relativedelta
 from datetime import datetime, timedelta
 
 class Starboard(commands.Cog):
