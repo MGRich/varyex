@@ -22,49 +22,39 @@ class Starboard(commands.Cog):
     def getmpm(self, guild) -> MPKManager:
         return MPKManager("starboard", guild.id)
 
-    def testforguild(self, guild) -> MPKManager:
+    def testforguild(self, guild, runchecks: list = None, runtmp: list = None) -> MPKManager:
         mpm = self.getmpm(guild)
         file = mpm.data
         #maybe find a faster way to do this?
-        try: file['amount']
-        except: file['amount'] = 6
-        try: file['emoji']
-        except: file['emoji'] = "\u2b50"
-        try: file['emojiname']
-        except: file['emojiname'] = "\u2b50"
-        try: file['messages']
-        except: file['messages'] = {}
-        try: file['leaderboard']
-        except: file['leaderboard'] = {}
-        try: file['leaderboard']['enabled']
-        except: file['leaderboard']['enabled'] = True
-        try: file['blacklist']
-        except: file['blacklist'] = []
-        try: 
-            if file['pins'] != False: file['pins'] = True
-        except: file['pins'] = True
-        try: file['channel']
-        except: file['channel'] = 0
+        i = 0
+        for x in runchecks:
+            try: file[x]
+            except: file[x] = runtmp[i]
+            i += 1  
         return mpm
 
+    def testgiven(self, mpk, checks) -> bool:
+        for x in checks:
+            try: mpk[x]
+            except: return False
+        return True
+
     def getord(self, num):
-        st = f"{num}th"
-        if ((num % 100) > 10 and (num % 100) < 15): return st
-        print(st[-3])
-        if (st[-3] == "1"): st = st.replace("th", "st")
-        if (st[-3] == "2"): st = st.replace("th", "nd")
-        if (st[-3] == "3"): st = st.replace("th", "rd")
-        return st
+        st = "th"
+        if ((num % 100) > 10 and (num % 100) < 15): return str(num) + st
+        n = num % 10
+        if   (n == 1): st = st.replace("th", "st")
+        elif (n == 2): st = st.replace("th", "nd")
+        elif (n == 3): st = st.replace("th", "rd")
+        return str(num) + st
 
         
     async def handlereact(self, payl: discord.RawReactionActionEvent, typ):
         try: msg = await self.fetchmsg(payl)
         except discord.NotFound: return
-        mpm = self.testforguild(msg.guild)
+        mpm = self.testforguild(msg.guild, ['blacklist', 'count'], [[], 6])
         mpk = mpm.data       
-        willSend = datetime.now() - (msg.created_at) < timedelta(days=60)
-        if (payl.channel_id in mpk['blacklist']): return
-        if not mpk['channel']: return
+        if not self.testgiven(mpk, ['channel', 'emoji']) or not mpk['channel'] or (payl.channel_id in mpk['blacklist']): return
         iden = payl.emoji.name if payl.emoji.is_unicode_emoji() else payl.emoji.id
         if (iden != mpk['emoji']): return
 
@@ -113,7 +103,8 @@ class Starboard(commands.Cog):
         if not msg.pinned: mpk['messages'][mid]['spstate'] &= 0b10
         else: mpk['messages'][mid]['spstate'] |= 0b01
         
-        await self.bot.get_cog('Logging').on_sbreact(reactor, msg, True if typ == 1 else False)
+        try: await self.bot.get_cog('Logging').on_sbreact(reactor, msg, typ == 1)
+        except AttributeError: pass
 
         if (count >= mpk['amount']):
             mpk['messages'][mid]['spstate'] |= 0b10
@@ -122,7 +113,7 @@ class Starboard(commands.Cog):
             if sbmsg:
                 try: return await sbmsg.edit(embed=e)
                 except: pass
-            if not willSend: return mpm.save()
+            if not datetime.now() - (msg.created_at) < timedelta(days=60): return mpm.save()
             made = await chl.send(embed=e)
             mpk['messages'][mid]['sbid'] = made.id
             return mpm.save()

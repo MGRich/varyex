@@ -14,10 +14,9 @@ def convert_to_bool(argument): #commands._convert_to_bool
     lowered = argument.lower()
     if lowered in ('yes', 'y', 'true', 't', '1', 'enable', 'on'):
         return True
-    elif lowered in ('no', 'n', 'false', 'f', '0', 'disable', 'off'):
+    if lowered in ('no', 'n', 'false', 'f', '0', 'disable', 'off'):
         return False
-    else:
-        raise commands.BadArgument(lowered + ' is not a recognised boolean option')
+    raise commands.BadArgument(lowered + ' is not a recognised boolean option')
 
 
 class Moderation(commands.Cog):
@@ -69,7 +68,7 @@ class Moderation(commands.Cog):
         Both the bot and the runner **must be able to ban.**
 
         `ban <members> [reason]`"""
-        if len(members) == 0: return
+        if not members: return
         banlist = []
         for member in members:
             if member == ctx.message.author: continue
@@ -82,7 +81,7 @@ class Moderation(commands.Cog):
                 try: await member.send(t)
                 except discord.Forbidden: continue
             except discord.Forbidden: continue
-        if len(banlist) == 0:
+        if not banlist:
             return await ctx.send("I was not able to ban any users.")
         await ctx.send(f"User{'s' if len(banlist) > 1 else ''} {', '.join(banlist)} successfully banned.")
 
@@ -95,7 +94,7 @@ class Moderation(commands.Cog):
         Both the bot and the runner **must be able to unban.**
 
         `unban <members> [reason]`"""
-        if len(members) == 0: return
+        if not members: return
         ubanlist = []
         for member in members:
             if member == ctx.message.author: continue
@@ -103,6 +102,8 @@ class Moderation(commands.Cog):
                 await ctx.guild.unban(member, reason=reason + (" " if reason != "" else "") + f"(Unbanned by {ctx.author})")
                 ubanlist.append(member.mention)
             except discord.Forbidden: continue
+        if not ubanlist: 
+            return await ctx.send("I was not able to unban any of those users somehow? (This should never appear.)")
         
         await ctx.send(f"User{'s' if len(ubanlist) > 1 else ''} {', '.join(ubanlist)} successfully unbanned.")
 
@@ -115,14 +116,7 @@ class Moderation(commands.Cog):
         Both the bot and the runner **must be able to kick.**
 
         `kick <members> [reason]`"""
-        #if len(args) == 0:
-        #    await ctx.send("Please list a valid to ban.")
-        #    return
-        #try:
-        #    memb = ctx.message.raw_mentions[0]
-        #except:
-        #    memb = int(args[0])
-        if len(members) == 0: return
+        if not members: return
         banlist = []
         for member in members:
             if member == ctx.message.author: continue
@@ -259,19 +253,19 @@ class Moderation(commands.Cog):
             if changed: mpm.save()
         print('we exist')
 
-    @commands.command(aliases = ["clearwarns", "rmwarn", "cwarns", "rmw"])
+    @commands.command(aliases = ["clearwarns", "rmwarn", "cwarns", "rmw", "cw"])
     @commands.guild_only()
     @commands.has_permissions(manage_messages=True, kick_members=True)
     async def removewarn(self, ctx, user: discord.User, *, case: Optional[str]):
         """Removes a warn or all warns from a user.
         You must be able to **manage messages and kick.**
 
-        `removewarn/rmwarn/rmw <user> <case/all>`
+        `removewarn/rmwarn/rmw <user> <case number/all>`
         `clearwarns/cwarns <user>` (same as doing `rmw` all cases)"""
-        if ctx.invoked_with in ['clearwarns', 'cwarns']:
+        if ctx.invoked_with in ['clearwarns', 'cwarns', 'cw']:
             case = "all"
         else: 
-            if not case: return
+            if not case: raise commands.UserInputError()
         all = case == "all"
         if not all:
             try: case = int(case)
@@ -283,12 +277,12 @@ class Moderation(commands.Cog):
         uid = str(user.id)
         try: mpk['users'][uid]
         except: return await ctx.send("That user has no warnings!")
-        if (not all) and type(case) == str:
+        if all: mpk['users'][uid] = []
+        elif type(case) == str:
             casel = [x['reason'].lower() for x in mpk['users'][uid]]
             if case.lower() not in casel: return await ctx.send("Please enter a valid case.")
             case = casel.index(case) + 1
-        if all: mpk['users'][uid] = []
-        else:
+        if (not all):
             try: del(mpk['users'][uid][case - 1])
             except IndexError: return await ctx.send("That user doesn't have that many warns!")
         mpm.save()
@@ -388,7 +382,8 @@ class Moderation(commands.Cog):
                 except discord.Forbidden: pass
             if (worked): await ctx.send(act['msg'])
             mpm.save()
-            await self.bot.cogs['Logging'].on_warn(user, ctx.guild, mpk['users'][uid][cnt], f"`{ofc['action']}`")
+            try: await self.bot.get_cog('Logging').on_warn(user, ctx.guild, mpk['users'][uid][cnt], f"`{ofc['action']}`")
+            except AttributeError: pass
 
 
     @warn.group(aliases = ['cfg'], invoke_without_command=True)
@@ -676,9 +671,8 @@ class Moderation(commands.Cog):
                 except: pass
             await ctx.send(act['msg'])
             mpm.save()
-            await self.bot.cogs['Logging'].on_warn(user, ctx.guild, mpk['users'][uid][cnt], None)
-        
-
+            try: await self.bot.get_cog('Logging').on_warn(user, ctx.guild, mpk['users'][uid][cnt], None)
+            except AttributeError: pass
 
     @commands.command(aliases=['warnings'])
     @commands.guild_only()
