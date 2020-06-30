@@ -23,8 +23,8 @@ class Starboard(commands.Cog):
 
     def testforguild(self, guild, runchecks: list = None, runtmp: list = None) -> MPKManager:
         mpm = self.getmpm(guild)
-        file = mpm.data
         if runchecks:
+            file = mpm.data
             i = 0
             for x in runchecks:
                 try: file[x]
@@ -251,10 +251,12 @@ class Starboard(commands.Cog):
     async def config(self, ctx):
         if (ctx.invoked_subcommand == None):
             base = self.testforguild(ctx.guild).data
+            def fetch(st):
+                try: return base[st]
+                except: return "*Not set*"
             embed = discord.Embed(title="Starboard Config", color=discord.Color(self.bot.data['color']))
-            embed.description = f"**Minimum:** {base['amount']}\n**Star:** {base['emoji']}\n**Leaderboard:** {'enabled' if base['leaderboard']['enabled'] else 'disabled'}\n"
-            embed.description += f"**Channel:** <#{base['channel']}>\n" if base['channel'] else "**Channel:** *not set*\n"
-            if base['blacklist']:
+            embed.description = f"**Minimum:** `{fetch('amount')}`\n**Star:** {fetch('emoji')}\n**Leaderboard:** `{'enabled' if base['leaderboard']['enabled'] else 'disabled'}`\n**Channel:** <#{fetch('channel')}>\n"
+            if self.testgiven(base, 'blacklist') and base['blacklist']:
                 embed.description += "**Blacklist:**\n"
                 for x in base['blacklist']:
                     embed.description += f"> <#{x}>\n"
