@@ -24,12 +24,12 @@ class Starboard(commands.Cog):
     def testforguild(self, guild, runchecks: list = None, runtmp: list = None) -> MPKManager:
         mpm = self.getmpm(guild)
         file = mpm.data
-        #maybe find a faster way to do this?
-        i = 0
-        for x in runchecks:
-            try: file[x]
-            except: file[x] = runtmp[i]
-            i += 1  
+        if runchecks:
+            i = 0
+            for x in runchecks:
+                try: file[x]
+                except: file[x] = runtmp[i]
+                i += 1  
         return mpm
 
     def testgiven(self, mpk, checks) -> bool:
