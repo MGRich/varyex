@@ -54,7 +54,7 @@ class embeds:
         #we should stop to check
         if compare:
             if (compare.description == embed.description) and (compare.author == embed.author):
-                ftxt.append(f"| ID: {msg.id}")
+                ftxt.append(f" | ID: {msg.id}")
                 if (spstate & 0b10) and type(jsn['emoji']) == int: compare.set_footer(text=''.join(ftxt), icon_url=f"https://cdn.discordapp.com/emojis/{jsn['emoji']}.png")
                 else: compare.set_footer(text = ''.join(ftxt))
                 return compare #we literally do not have to do anything
@@ -157,7 +157,7 @@ class embeds:
                     except: pass
                 if (e.description != e.Empty): embed.add_field(name="Description", value=e.description)
         #finalize
-        ftxt.append(f"| ID: {msg.id}")
+        ftxt.append(f" | ID: {msg.id}")
         if (stardata):
             if (spstate & 0b10) and type(jsn['emoji']) == int: # and (jsn['emoji'] >= 0xFFFFFFFF)): # \UFFFFFFFF isn valid but covering bases anyway
                 embed.set_footer(text=''.join(ftxt), icon_url=f"https://cdn.discordapp.com/emojis/{jsn['emoji']}.png")
