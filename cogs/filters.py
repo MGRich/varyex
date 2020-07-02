@@ -110,7 +110,7 @@ class Filters(commands.Cog):
         except: return await ctx.send("There's nothing to delete!")
 
         if isfp:
-            memb = [await commands.MemberConverter().convert(ctx, x) for x in users]
+            memb = [int(x) for x in users]
             count = len(memb)
             deleted = False
 
@@ -119,8 +119,8 @@ class Filters(commands.Cog):
                 return await ctx.send("That phrase doesn't exist, so nothing was changed.")
 
             for m in list(memb):
-                if m.id in mpk['filterping'][phrase]: 
-                    mpk['filterping'][phrase].remove(m.id)
+                if m in mpk['filterping'][phrase]: 
+                    mpk['filterping'][phrase].remove(m)
                 else: memb.remove(m)
             if (not count) or (len(mpk['filterping'][phrase]) == 0):
                 del(mpk['filterping'][phrase])
