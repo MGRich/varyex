@@ -133,7 +133,7 @@ class Filters(commands.Cog):
             else:
                 pings = []
                 for m in memb:
-                    pings.append(m.mention)
+                    pings.append(f"<@{m}>")
                 await ctx.send(f"Removed {', '.join(pings)} from {phrase}!")  
         else:
             if (users): strs = list(users)
