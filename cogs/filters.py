@@ -110,7 +110,13 @@ class Filters(commands.Cog):
         except: return await ctx.send("There's nothing to delete!")
 
         if isfp:
-            memb = [int(x) for x in users]
+            memb = []
+            for x in users:
+                try: memb.append(int(x))
+                except ValueError: 
+                    try: memb.append((await commands.UserConverter().convert(ctx, x)).id)
+                    except commands.BadArgument:
+                        await ctx.send(f"Could not parse user {x}") #gwbruhtrolled
             count = len(memb)
             deleted = False
 
