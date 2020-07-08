@@ -58,10 +58,11 @@ class Starboard(commands.Cog):
         if (iden != mpk['emoji']): return
 
         chl = await self.bot.fetch_channel(mpk['channel'])  
-        rlist = []                  
 
         try: sbmsg = await chl.fetch_message(mpk['messages'][str(msg.id)]['sbid'])
         except: sbmsg = None
+
+        rlist = []
 
         if (msg.channel == chl) and msg.author.id == self.bot.user.id and msg.embeds and (msg.embeds[0].footer != discord.Embed.Empty):
             aid = msg.embeds[0].footer.text.split()[-1]
@@ -74,6 +75,7 @@ class Starboard(commands.Cog):
             sbmsg = copy.copy(msg)
             try: msg = await c.fetch_message(int(aid))
             except discord.NotFound: return 
+        elif sbmsg: rlist += sbmsg.reactions
 
         mid = str(msg.id)
         aid = str(msg.author.id)

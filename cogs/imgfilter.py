@@ -29,15 +29,12 @@ class IMGFilter(commands.Cog):
         done = 0
         files = []
         for img in images:
-            #if (img.is_animated):
-
             await msg.edit(content=msg.content.replace(str(done - 1), str(done)))
             img.convert('RGB')
             map = img.load()
             if ("gen" in filter):
                 gencolour = [00, 0x34, 0x57, 0x74, 0x90, 0xAC, 0xCE, 0xFF]
                 clrchecks = [0x20, 0x40, 0x60, 0x80, 0xA0, 0xC0, 0xE0, 0xFE]
-                map = img.load()
                 for y in range(img.height):
                     for x in range(img.width):
                         tup = list(map[x, y])

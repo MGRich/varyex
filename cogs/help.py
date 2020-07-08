@@ -19,13 +19,13 @@ class Help(commands.Cog):
             return discord.Embed(title=f"{cog} - {command.name}", color=self.bot.data['color'], description=command.help)
         #cog
         embed = discord.Embed(title=cog, color=self.bot.data['color'], description="")
-        for command in self.bot.cogs[cog].walk_commands():
-            if command.hidden or (not command.enabled) or (not command.help) or command.parent: continue
-            summary = command.help.split('\n')[0]
+        for cmd in self.bot.get_cog(cog).walk_commands():
+            if cmd.hidden or (not cmd.enabled) or (not cmd.help) or cmd.parent: continue
+            summary = cmd.help.split('\n')[0]
             aliasstr = ""
-            if (command.aliases):
-                aliasstr = f" - `{'`, `'.join(command.aliases)}`"
-            embed.description += f"`{command.name}` - {summary}{aliasstr}\n"
+            if (cmd.aliases):
+                aliasstr = f" - `{'`, `'.join(cmd.aliases)}`"
+            embed.description += f"`{cmd.name}` - {summary}{aliasstr}\n"
             embed.set_footer(text = f"Use {prefix}help [command] for more info on a command.")            
         return embed
         

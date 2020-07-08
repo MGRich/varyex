@@ -701,8 +701,7 @@ class Moderation(commands.Cog):
         
         desc = ""
         for warn in reversed(mpk['users'][uid]):
-            who = self.bot.get_user(warn['who'])
-            mstring = f" - {who.mention}" if who else ""
+            mstring = f"- <@{warn['who']}>"
             reason = f"*{warn['reason']}*"
             if (warn['major']): reason = f"*{reason}*"
             desc += f"> {reason}{mstring}\n> *{timeago.format(self.fromInt(warn['timestamp']), datetime.utcnow())}* (Case {mpk['users'][uid].index(warn) + 1})\n> `-------------`\n"
