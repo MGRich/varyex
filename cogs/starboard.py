@@ -9,7 +9,7 @@ from typing import Optional
 from datetime import datetime, timedelta
 
 class Starboard(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.buffer = []
 
@@ -57,24 +57,37 @@ class Starboard(commands.Cog):
         iden = payl.emoji.name if payl.emoji.is_unicode_emoji() else payl.emoji.id
         if (iden != mpk['emoji']): return
 
-        chl = await self.bot.fetch_channel(mpk['channel'])                    
+        chl = await self.bot.fetch_channel(mpk['channel'])  
+        rlist = []                  
+
         try: sbmsg = await chl.fetch_message(mpk['messages'][str(msg.id)]['sbid'])
         except: sbmsg = None
+
+        if (msg.channel == chl) and msg.author.id == self.bot.user.id and msg.embeds and (msg.embeds[0].footer != discord.Embed.Empty):
+            aid = msg.embeds[0].footer.text.split()[-1]
+            cid = 0
+            try: cid = mpk['messages'][aid]['chn']
+            except KeyError: return
+            c = self.bot.get_channel(cid)
+            if not c: return
+            rlist = msg.reactions
+            sbmsg = msg
+            try: msg = await c.fetch_message(int(aid))
+            except discord.NotFound: return 
 
         mid = str(msg.id)
         aid = str(msg.author.id)
         cid = msg.channel.id
         reactor = msg.guild.get_member(payl.user_id)
-        print(reactor)
-
-        for reaction in msg.reactions:
-            if (iden == (reaction.emoji.id if reaction.custom_emoji else reaction.emoji)):
-                if reactor == msg.author: return await reaction.remove(reactor)
-                break
+        rlist += msg.reactions
 
         count = 0
-        for reaction in msg.reactions:
+        for reaction in rlist:
             if (iden == (reaction.emoji.id if reaction.custom_emoji else reaction.emoji)):
+                try: await reaction.remove(msg.author) #to be safe
+                except discord.NotFound: pass
+                else: count -= 1
+                if reactor == msg.author: return 
                 count += reaction.count
                 break
 
