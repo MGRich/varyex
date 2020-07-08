@@ -70,8 +70,8 @@ class Starboard(commands.Cog):
             except KeyError: return
             c = self.bot.get_channel(cid)
             if not c: return
-            rlist = msg.reactions
-            sbmsg = msg
+            rlist += msg.reactions
+            sbmsg = copy.copy(msg)
             try: msg = await c.fetch_message(int(aid))
             except discord.NotFound: return 
 
