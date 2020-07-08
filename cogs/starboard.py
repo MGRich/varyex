@@ -79,7 +79,10 @@ class Starboard(commands.Cog):
         aid = str(msg.author.id)
         cid = msg.channel.id
         reactor = msg.guild.get_member(payl.user_id)
-        rlist += msg.reactions
+        #reorder the list, original message should come first
+        temp = copy.copy(rlist)
+        rlist = msg.reactions
+        rlist += temp
 
         count = 0
         ulist = []
@@ -87,7 +90,7 @@ class Starboard(commands.Cog):
             if (iden == (reaction.emoji.id if reaction.custom_emoji else reaction.emoji)):
                 async for u in reaction.users():
                     if (u.id in ulist) or u.id == msg.author.id:
-                        reaction.remove(u)
+                        await reaction.remove(u)
                     else: 
                         count += 1
                         ulist.append(u.id)
