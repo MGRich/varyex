@@ -49,6 +49,7 @@ class Starboard(commands.Cog):
 
         
     async def handlereact(self, payl: discord.RawReactionActionEvent, typ):
+        start = default_timer()
         try: msg = await self.fetchmsg(payl)
         except discord.NotFound: return
         mpm = self.testforguild(msg.guild, ['blacklist', 'count'], [[], 6])
@@ -63,7 +64,8 @@ class Starboard(commands.Cog):
         except: sbmsg = None
 
         rlist = []
-
+        print("BEGIN " + str(default_timer() - start))
+        start = default_timer()
         if (msg.channel == chl) and msg.author.id == self.bot.user.id and msg.embeds and (msg.embeds[0].footer != discord.Embed.Empty):
             aid = msg.embeds[0].footer.text.split()[-1]
             cid = 0
@@ -76,7 +78,8 @@ class Starboard(commands.Cog):
             try: msg = await c.fetch_message(int(aid))
             except discord.NotFound: return 
         elif sbmsg: rlist += sbmsg.reactions
-
+        print("SBMSG " + str(default_timer() - start))
+        start = default_timer()
         mid = str(msg.id)
         aid = str(msg.author.id)
         cid = msg.channel.id
@@ -96,7 +99,8 @@ class Starboard(commands.Cog):
                     else: 
                         count += 1
                         ulist.append(u.id)
-                
+        print("COUNT " + str(default_timer() - start))
+        start = default_timer()
         if reactor == msg.author: return 
 
         try: mpk['leaderboard'][aid]
@@ -125,11 +129,13 @@ class Starboard(commands.Cog):
         
         try: await self.bot.get_cog('Logging').on_sbreact(reactor, msg, typ == 1)
         except AttributeError: pass
-
+        print("MISC  " + str(default_timer() - start))
+        start = default_timer()
         if (count >= mpk['amount']):
             mpk['messages'][mid]['spstate'] |= 0b10
             mpm.save()
             e = await embeds.buildembed(embeds, msg, stardata=[count, mpk['messages'][mid]['spstate'], mpk], compare=sbmsg.embeds[0] if sbmsg else None)
+            print("EMBED " + str(default_timer() - start))
             if sbmsg:
                 try: return await sbmsg.edit(embed=e)
                 except: pass
