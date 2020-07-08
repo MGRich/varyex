@@ -82,14 +82,17 @@ class Starboard(commands.Cog):
         rlist += msg.reactions
 
         count = 0
+        ulist = []
         for reaction in rlist:
             if (iden == (reaction.emoji.id if reaction.custom_emoji else reaction.emoji)):
-                try: await reaction.remove(msg.author) #to be safe
-                except discord.NotFound: pass
-                else: count -= 1
-                if reactor == msg.author: return 
-                count += reaction.count
-                break
+                async for u in reaction.users:
+                    if (u.id in ulist) or u.id == msg.author.id:
+                        reaction.remove(u)
+                    else: 
+                        count += 1
+                        ulist.append(u.id)
+                
+        if reactor == msg.author: return 
 
         try: mpk['leaderboard'][aid]
         except: mpk['leaderboard'][aid] = 0
