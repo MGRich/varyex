@@ -85,7 +85,7 @@ class Starboard(commands.Cog):
         ulist = []
         for reaction in rlist:
             if (iden == (reaction.emoji.id if reaction.custom_emoji else reaction.emoji)):
-                async for u in reaction.users:
+                async for u in reaction.users():
                     if (u.id in ulist) or u.id == msg.author.id:
                         reaction.remove(u)
                     else: 
