@@ -1,7 +1,7 @@
 import msgpack, os
 
 class MPKManager:
-    def __init__(self, direct, gid):
+    def __init__(self, direct, gid = None):
         self.path = f"config/{gid}/{direct}.mpk" if gid else f"config/{direct}.mpk"
         self.data: dict = {}
         if gid and not os.path.exists(f"config/{gid}/"):
@@ -20,8 +20,9 @@ def testgiven(mpk, checks) -> bool:
         if x not in mpk: return False
     return True 
 
-def getmpm(type, guild, runchecks: list = None, runtmp: list = None) -> MPKManager:
-    mpm = MPKManager(type, guild.id)
+def getmpm(type, gid, runchecks: list = None, runtmp: list = None) -> MPKManager:
+    if type(gid) != int: gid = gid.id
+    mpm = MPKManager(type, gid)
     if runchecks:
         file = mpm.data
         i = 0
