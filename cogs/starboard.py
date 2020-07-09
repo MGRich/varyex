@@ -114,15 +114,11 @@ class Starboard(commands.Cog):
             
     @commands.Cog.listener()
     async def on_guild_channel_pins_update(self, chn: discord.TextChannel, pin: Optional[datetime]):
-        print(pin)
-        msg: discord.Message = None 
-        for m in await chn.pins():
-            print(m.created_at)
-            if m.created_at == pin:
-                msg = m
-                break
-        if not msg: return #we definitely unpinned something or couldnt find the message (oh well)
-        fakepay = discord.RawReactionActionEvent({'message_id': msg.id, 'channel_id': chn.id, 'user_id': 0}, None, "")
+        pins = (await chn.pins())
+        if not pin or not pins or (datetime.utcnow() - pin > timedelta(seconds=1)): return
+        msg: discord.Message = pins[0]
+        print(msg)
+        fakepay = discord.RawReactionActionEvent({'message_id': msg.id, 'channel_id': chn.id, 'user_id': 0, 'guild_id': 1}, None, "")
         await self.handlereact(fakepay, 0)
 
     @commands.Cog.listener()
