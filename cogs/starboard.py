@@ -180,7 +180,8 @@ class Starboard(commands.Cog):
             await ctx.send(embed=embed)
 
     def refreshserver(self, gid):
-        mpk = mpku.getmpm('starboard', gid).data
+        mpm = mpku.getmpm('starboard', gid)
+        mpk = mpm.data
         if 'enabled' not in mpk['leaderboard']: lbe = True
         else: lbe = mpk['leaderboard']['enabled']
         mpk['leaderboard'] = {'enabled': lbe}
@@ -191,6 +192,7 @@ class Starboard(commands.Cog):
             aid = str(msg['author'])
             if aid not in mpk['leaderboard']: mpk['leaderboard'][aid] = 0
             mpk['leaderboard'][aid] += msg['count']
+        mpm.save()
         print(f"refreshed leaderboard for {gid}")
 
     @tasks.loop(hours=1, reconnect=True)
