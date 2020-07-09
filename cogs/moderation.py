@@ -18,6 +18,7 @@ def convert_to_bool(argument): #commands._convert_to_bool
         return False
     raise commands.BadArgument(lowered + ' is not a recognised boolean option')
 
+def getoffence
 
 class Moderation(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -28,6 +29,13 @@ class Moderation(commands.Cog):
     def cog_unload(self):
         # pylint: disable=no-member
         self.timeaction.cancel()
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        # pylint: disable=no-member
+        if (self.timeaction.get_task()): self.timeaction.cancel()
+        self.timeaction.start()
+
 
     def getmpm(self, guild) -> mpku.MPKManager:
         return mpku.MPKManager("moderation", guild.id)
@@ -52,12 +60,6 @@ class Moderation(commands.Cog):
         except: file['inwarn'] = {}
 
         return mpm
-
-    @commands.Cog.listener()
-    async def on_ready(self):
-        # pylint: disable=no-member
-        if (self.timeaction.get_task()): self.timeaction.cancel()
-        self.timeaction.start()
 
     @commands.command()
     @commands.guild_only()
@@ -191,16 +193,13 @@ class Moderation(commands.Cog):
     @tasks.loop(seconds=30, reconnect=True)
     async def timeaction(self):
         print('we exist')
-        gids = []
-        for x in os.listdir("config"):
-            if os.path.isfile(f"config/{x}/moderation.mpk"):
-                gids.append(x)
-        for gid in gids:
+        for guild in self.bot.guilds:
             changed = False
-            guild = self.bot.get_guild(int(gid))
-            if (guild == None): continue
+            #guild = self.bot.get_guild(int(gid))
+            #if (guild == None): continue
             mpm = self.testforguild(guild)
             mpk = mpm.data
+            if not mpku.testgiven(['inwarn', 'offences', 'action', 'users']): continue
             for uid in list(mpk['inwarn']):
                 try: mpk['inwarn'][uid]['time']
                 except: continue
@@ -334,18 +333,10 @@ class Moderation(commands.Cog):
         if not mpk['offences']: return await ctx.send("Warns aren't configured!")
         for user in users:
             uid = str(user.id)
-            try: mpk['users'][uid]
-            except: mpk['users'][uid] = []
+            if uid not in mpk['users']: mpk['users'][uid] = []
+            mpk['users'][uid].append({'reason': reason, 'timestamp': self.now(), 'who': ctx.author.id, 'major': True})
 
-            cnt = len(mpk['users'][uid])
-
-            mpk['users'][uid].append({})
-            mpk['users'][uid][cnt]['reason'] = reason
-            mpk['users'][uid][cnt]['timestamp'] = self.now()
-            mpk['users'][uid][cnt]['who'] = ctx.author.id
-            mpk['users'][uid][cnt]['major'] = True
-
-            ofc = mpk['offences'][min(len(self.majorWarns(mpk['users'][uid])), len(mpk['offences'])) - 1]
+            ofc = mpk['offences'][]
             act = copy(mpk['actions'][ofc['action']])
 
             worked = True
@@ -701,10 +692,9 @@ class Moderation(commands.Cog):
         
         desc = ""
         for warn in reversed(mpk['users'][uid]):
-            mstring = f"- <@{warn['who']}>"
             reason = f"*{warn['reason']}*"
             if (warn['major']): reason = f"*{reason}*"
-            desc += f"> {reason}{mstring}\n> *{timeago.format(self.fromInt(warn['timestamp']), datetime.utcnow())}* (Case {mpk['users'][uid].index(warn) + 1})\n> `-------------`\n"
+            desc += f"> {reason} - <@{warn['who']}>\n> *{timeago.format(self.fromInt(warn['timestamp']), datetime.utcnow())}* (Case {mpk['users'][uid].index(warn) + 1})\n> `-------------`\n"
         if not mpk['users'][uid]: desc = "__No warnings!__"
         else: desc = desc[:-18]
         embed.description = desc.strip()
