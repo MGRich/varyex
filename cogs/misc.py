@@ -1,6 +1,6 @@
 import discord, json, dateparser, timeago, requests, os
 from discord.ext import commands, tasks
-from cogs.utils.mpkmanager import MPKManager
+import cogs.utils.mpk as mpku
 from typing import Optional
 from datetime import datetime, timedelta
 from asyncio import sleep
@@ -17,10 +17,10 @@ class Miscellaneous(commands.Cog):
 
         `prefix <prefix>`
         `userprefix/usrprefix <prefix>`"""
-        mpm = MPKManager("misc", ctx.guild.id)
+        mpm = mpku.MPKManager("misc", ctx.guild.id)
         mpk = mpm.data
         user = False
-        users = MPKManager("users")
+        users = mpku.MPKManager("users", None)
         mid = str(ctx.author.id)
         try:
             users.data[mid]['prefix']

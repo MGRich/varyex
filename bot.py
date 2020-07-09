@@ -1,7 +1,7 @@
 import discord, traceback, json, os, sys, subprocess, textwrap, contextlib
 from discord.ext import commands, tasks
 from io import StringIO
-from cogs.utils.mpkmanager import MPKManager
+import cogs.utils.mpk as mpku
 
 stable = False
 if stable or (len(sys.argv) > 1 and sys.argv[1] == "stable"): data = json.load(open("stable.json"))
@@ -16,19 +16,17 @@ regout = sys.stdout
 def prefix(_unusedbot, message):
     prf = data['prefix'].copy()
     if message.guild:
-        con = MPKManager("misc", message.guild.id).data
+        con = mpku.MPKManager("misc", message.guild.id).data
         try: 
             con['prefix']
             prf.clear()
             prf.append(con['prefix'])
         except: pass
     
-    users = MPKManager('users').data
+    users = mpku.MPKManager('users', None).data
     try: prf.insert(0, users[str(message.author.id)]['prefix'])
     except: pass
     return prf
-
-
 
 #fetch cogs
 cgs = []
@@ -39,7 +37,6 @@ for x in os.listdir("cogs"):
 bot = commands.Bot(command_prefix=prefix, owner_id=data['owner'])
 bot.__dict__['data'] = data
 commands.Bot.data = property(lambda x: x.__dict__['data'])
-#blocks = json.load(open("blocks.json"))
 bot.remove_command('help')
 
 first = False

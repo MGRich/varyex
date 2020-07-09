@@ -3,60 +3,39 @@ from discord.ext import commands
 from cogs.utils.embeds import embeds
 from asyncio import sleep
 from timeit import default_timer
-from cogs.utils.mpkmanager import MPKManager
+import cogs.utils.mpk as mpku
 from cogs.utils.menus import Paginator
 from typing import Optional
 from datetime import datetime, timedelta
 
+def getord(num):
+    st = "th"
+    if ((num % 100) > 10 and (num % 100) < 15): return str(num) + st
+    n = num % 10
+    if   (n == 1): st = st.replace("th", "st")
+    elif (n == 2): st = st.replace("th", "nd")
+    elif (n == 3): st = st.replace("th", "rd")
+    return str(num) + st
+
 class Starboard(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.buffer = []
 
-
-    async def fetchmsg(self, p) -> discord.Message:
-        chl = await self.bot.fetch_channel(p.channel_id)
-        return await chl.fetch_message(p.message_id)
-    
-    def getmpm(self, guild) -> MPKManager:
-        return MPKManager("starboard", guild.id)
-
-    def testforguild(self, guild, runchecks: list = None, runtmp: list = None) -> MPKManager:
-        mpm = self.getmpm(guild)
-        if runchecks:
-            file = mpm.data
-            i = 0
-            for x in runchecks:
-                try: file[x]
-                except: file[x] = runtmp[i]
-                i += 1  
-        return mpm
-
-    def testgiven(self, mpk, checks) -> bool:
-        for x in checks:
-            try: mpk[x]
-            except: return False
-        return True
-
-    def getord(self, num):
-        st = "th"
-        if ((num % 100) > 10 and (num % 100) < 15): return str(num) + st
-        n = num % 10
-        if   (n == 1): st = st.replace("th", "st")
-        elif (n == 2): st = st.replace("th", "nd")
-        elif (n == 3): st = st.replace("th", "rd")
-        return str(num) + st
-
-        
     async def handlereact(self, payl: discord.RawReactionActionEvent, typ):
+        if not payl.guild_id: return
+        print(1)
         start = default_timer()
-        try: msg = await self.fetchmsg(payl)
+        #typ of 0 is pin, 1 or -1 is star/unstar
+        try: msg = await self.bot.get_channel(payl.channel_id).fetch_message(payl.message_id)
         except discord.NotFound: return
-        mpm = self.testforguild(msg.guild, ['blacklist', 'count'], [[], 6])
+        mpm = mpku.getmpm('starboard',  msg.guild, ['blacklist', 'count', 'messages', 'leaderboard'], [[], 6, {}, {}])
         mpk = mpm.data       
-        if not self.testgiven(mpk, ['channel', 'emoji']) or not mpk['channel'] or (payl.channel_id in mpk['blacklist']): return
-        iden = payl.emoji.name if payl.emoji.is_unicode_emoji() else payl.emoji.id
-        if (iden != mpk['emoji']): return
+        print(2)
+        if not mpku.testgiven(mpk, ['channel', 'emoji']) or not mpk['channel'] or (payl.channel_id in mpk['blacklist']): return
+        print(3)
+        if typ:
+            iden = payl.emoji.name if payl.emoji.is_unicode_emoji() else payl.emoji.id
+            if (iden != mpk['emoji']): return
 
         chl = await self.bot.fetch_channel(mpk['channel'])  
 
@@ -68,9 +47,9 @@ class Starboard(commands.Cog):
         start = default_timer()
         if (msg.channel == chl) and msg.author.id == self.bot.user.id and msg.embeds and (msg.embeds[0].footer != discord.Embed.Empty):
             aid = msg.embeds[0].footer.text.split()[-1]
-            cid = 0
-            try: cid = mpk['messages'][aid]['chn']
-            except KeyError: return
+            print(aid)
+            if aid not in mpk['messages']: return
+            cid = mpk['messages'][aid]['chn']
             c = self.bot.get_channel(cid)
             if not c: return
             rlist += msg.reactions
@@ -83,7 +62,6 @@ class Starboard(commands.Cog):
         mid = str(msg.id)
         aid = str(msg.author.id)
         cid = msg.channel.id
-        reactor = msg.guild.get_member(payl.user_id)
         #reorder the list, original message should come first
         temp = copy.copy(rlist)
         rlist = msg.reactions
@@ -99,149 +77,54 @@ class Starboard(commands.Cog):
                     else: 
                         count += 1
                         ulist.append(u.id)
+        if payl.user_id == msg.author.id: return 
         print("COUNT " + str(default_timer() - start))
         start = default_timer()
-        if reactor == msg.author: return 
-
-        try: mpk['leaderboard'][aid]
-        except: mpk['leaderboard'][aid] = 0
-
-        try:
-            mpk['messages'][mid]
-            try: mpk['messages'][mid]['spstate']
-            except: mpk['messages'][mid]['spstate'] = 0b00
-                 
-            if not mpk['messages'][mid]['spstate'] & 0b10: mpk['leaderboard'][aid] += count 
-            else:  mpk['leaderboard'][aid] += typ
-        except:
+        if aid not in mpk['leaderboard']: mpk['leaderboard'][aid] = 0
+        if mid not in mpk['messages']:
             mpk['messages'][mid] = {}
-            
-            mpk['messages'][mid]['author'] = msg.author.id
-            mpk['messages'][mid]['chn']    = cid
-            mpk['messages'][mid]['sbid']   = 0
-            mpk['messages'][mid]['spstate'] = 0b00
-            mpk['leaderboard'][aid] += count     
-    
-        mpk['messages'][mid]['count'] = count
-
-        if not msg.pinned: mpk['messages'][mid]['spstate'] &= 0b10
-        else: mpk['messages'][mid]['spstate'] |= 0b01
+            msgdata = mpk['messages'][mid]
+            msgdata['author']  = msg.author.id
+            msgdata['chn']     = cid
+            msgdata['sbid']    = 0
+            mpk['leaderboard'][aid] += count - typ
         
-        try: await self.bot.get_cog('Logging').on_sbreact(reactor, msg, typ == 1)
-        except AttributeError: pass
+        msgdata = mpk['messages'][mid]
+        spstate = ((count >= mpk['amount']) << 1) | msg.pinned
+        mpk['leaderboard'][aid] += typ
+        msgdata['count'] = count
+        if typ:
+            try: await self.bot.get_cog('Logging').on_sbreact(msg.guild.get_member(payl.user_id), msg, typ == 1)
+            except AttributeError: pass
         print("MISC  " + str(default_timer() - start))
         start = default_timer()
-        if (count >= mpk['amount']):
-            mpk['messages'][mid]['spstate'] |= 0b10
-            mpm.save()
-            e = await embeds.buildembed(embeds, msg, stardata=[count, mpk['messages'][mid]['spstate'], mpk], compare=sbmsg.embeds[0] if sbmsg else None)
-            print("EMBED " + str(default_timer() - start))
-            if sbmsg:
-                try: return await sbmsg.edit(embed=e)
-                except: pass
-            if not datetime.now() - (msg.created_at) < timedelta(days=60): return mpm.save()
-            made = await chl.send(embed=e)
-            mpk['messages'][mid]['sbid'] = made.id
-            return mpm.save()
-        return await self.removefromboard(msg)
-    
-    async def oldthing(self):
-        #pylint: disable=undefined-variable, used-before-assignment, unused-variable
-        #if i ever decided to reimplement this: OPTIMIZE IT.
-
-        chl = await self.bot.fetch_channel(mpk['channel'])        
-        fromsb = False
-        sbmsg = None
-            
-        if payl.user_id == self.bot.user.id and chl.id == payl.channel_id:
-            found = None
-            default_timer()
-            for ids in reversed(list(mpk['messages'])):
-                if mpk['messages'][ids]['sbid'] == msg.id:
-                    found = ids
-                    break
-            if found:
-                schn = self.bot.get_channel(mpk['messages'][found]['chn'])
-                sbmsg = msg
-                msg = await schn.fetch_message(int(found))
-                fromsb = True
-        else: sbmsg = await chl.fetch_message(mpk['messages'][str(msg.id)]['sbid'])
-
-        mid = str(msg.id)
-        aid = str(msg.author.id)
-        cid = msg.channel.id
-        reactor = msg.guild.get_member(payl.user_id)    
-        targetm = (sbmsg if fromsb else msg)
-
-        for reaction in targetm.reactions:
-            if (iden == (reaction.emoji.id if reaction.custom_emoji else reaction.emoji)):
-                if reactor == msg.author: return await reaction.remove(reactor)
-                if sbmsg and (reactor in await reaction.users().flatten()):
-                    oppm = (msg if fromsb else sbmsg)
-                    for oreact in oppm.reactions:
-                        if (iden == (oreact.emoji.id if oreact.custom_emoji else oreact.emoji)):
-                            if reactor in await oreact.users().flatten(): return await reaction.remove(reactor)
-                break
-
-
-
-    async def removefromboard(self, msg):
-        mpm = self.testforguild(msg.guild)
-        mpk = mpm.data       
-        chl = await self.bot.fetch_channel(mpk['channel'])
-        try: info = mpk['messages'][str(msg.id)]
-        except: return
-
-        smpmsg = None
-        try: smpmsg = await chl.fetch_message(info['sbid'])
-        except: pass
-        info['spstate'] &= 0b01
-        if smpmsg == None: return mpm.save()
-        if (not info['spstate'] & 0b01) or not msg.pinned:
-            await smpmsg.delete()
-            return
-        e = await embeds.buildembed(embeds, msg, stardata=[info['count'], 0b01, embeds], compare=smpmsg.embeds[0])
-        try: await smpmsg.edit(embed=e)
-        except discord.Forbidden: await chl.send(embed=e)
         mpm.save()
-            
+        e = await embeds.buildembed(embeds, msg, stardata=[count, spstate, mpk], compare=sbmsg.embeds[0] if sbmsg else None)
+        print("EMBED " + str(default_timer() - start))
+        if sbmsg:
+            if not spstate:
+                await sbmsg.delete()
+                return
+            try: return await sbmsg.edit(embed=e)
+            except: pass
+        if (not spstate) or (not datetime.now() - (msg.created_at) < timedelta(days=60)): return
+        made = await chl.send(embed=e)
+        msgdata['sbid'] = made.id
+        return mpm.save()            
             
     @commands.Cog.listener()
-    async def on_guild_channel_pins_update(self, chn: discord.TextChannel, _unusedpin):
-        mpm = self.testforguild(chn.guild)
-        mpk = mpm.data
-        msgl = await chn.pins()
-        if not mpk['pins']: return
-        if (chn.id in mpk['blacklist']): return
-        try: mpk['channel']
-        except: return
-        chl = await self.bot.fetch_channel(mpk['channel'])
-        
-        msg = msgl[0]
-        mstr = str(msg.id)
-        try:
-            mpk['messages'][mstr]
-            try: mpk['messages'][mstr]['spstate'] |= 0b01 
-            except: mpk['messages'][mstr]['spstate'] = 0b01 
-        except:
-            mpk['messages'][mstr] = {}
-            
-            mpk['messages'][mstr]['author'] = msg.author.id
-            mpk['messages'][mstr]['chn']    = chn.id
-            mpk['messages'][mstr]['sbid']   = 0
-            mpk['messages'][mstr]['count']  = 0
-            mpk['messages'][mstr]['spstate'] = 0b01
-        mpm.save()
-        try: tedit = await chl.fetch_message(mpk['messages'][mstr]['sbid'])
-        except discord.NotFound: tedit = None
-        e = await embeds.buildembed(embeds, msg, stardata=[mpk['messages'][mstr]['count'], mpk['messages'][mstr]['spstate'], mpk], compare=tedit.embeds[0] if tedit else None)
-        if tedit:
-            try: return await tedit.edit(embed=e)
-            except: pass
-        made = await chl.send(embed=e)
-        mpk['messages'][mstr]['sbid'] = made.id
-        mpm.save()
-        
+    async def on_guild_channel_pins_update(self, chn: discord.TextChannel, pin: Optional[datetime]):
+        print(pin)
+        msg: discord.Message = None 
+        for m in await chn.pins():
+            print(m.created_at)
+            if m.created_at == pin:
+                msg = m
+                break
+        if not msg: return #we definitely unpinned something or couldnt find the message (oh well)
+        fakepay = discord.RawReactionActionEvent({'message_id': msg.id, 'channel_id': chn.id, 'user_id': 0}, None, "")
+        await self.handlereact(fakepay, 0)
+
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payl):
         start = default_timer()
@@ -277,13 +160,13 @@ class Starboard(commands.Cog):
     @commands.has_permissions(manage_messages=True, manage_guild=True)
     async def config(self, ctx):
         if (ctx.invoked_subcommand == None):
-            base = self.testforguild(ctx.guild).data
+            base = mpku.getmpm('starboard', ctx.guild).data
             def fetch(st):
                 try: return base[st]
                 except: return "*Not set*"
             embed = discord.Embed(title="Starboard Config", color=discord.Color(self.bot.data['color']))
             embed.description = f"**Minimum:** `{fetch('amount')}`\n**Star:** {fetch('emoji')}\n**Leaderboard:** `{'enabled' if base['leaderboard']['enabled'] else 'disabled'}`\n**Channel:** <#{fetch('channel')}>\n"
-            if self.testgiven(base, 'blacklist') and base['blacklist']:
+            if mpku.testgiven(base, 'blacklist') and base['blacklist']:
                 embed.description += "**Blacklist:**\n"
                 for x in base['blacklist']:
                     embed.description += f"> <#{x}>\n"
@@ -291,7 +174,7 @@ class Starboard(commands.Cog):
 
     @starboard.command(aliases = ["lb"])
     async def leaderboard(self, ctx):
-        mpm = self.testforguild(ctx.guild)
+        mpm = mpku.getmpm('starboard', ctx.guild)
         mpk = mpm.data       
         if not (mpk['leaderboard']['enabled']): return
         tbd = await ctx.send("Generating.. this may take a while..")
@@ -314,7 +197,7 @@ class Starboard(commands.Cog):
                 first = await ctx.guild.fetch_member(int(srtd[x][0]))
                 ebase.colour = first.color
                 ebase.set_author(name="Leaderboard", icon_url=first.avatar_url)
-                ebase.description = f"{first.display_name} is in {self.getord(x + 1)}!\n*You're in {self.getord(senderpos + 1)}!*"
+                ebase.description = f"{first.display_name} is in {getord(x + 1)}!\n*You're in {getord(senderpos + 1)}!*"
                 break
             except: continue
         if (ebase.colour == discord.Color.default()): ebase.colour = discord.Color(0xFFAC33)
@@ -347,7 +230,7 @@ class Starboard(commands.Cog):
     @commands.has_permissions(manage_guild=True)
     async def setchannel(self, ctx, chn: Optional[discord.TextChannel]):
         if not chn: return await ctx.invoke(self.config)
-        mpm = self.testforguild(ctx.guild)
+        mpm = mpku.getmpm('starboard', ctx.guild)
         mpk = mpm.data       
         mpk['channel'] = chn.id
         mpm.save()
@@ -355,7 +238,7 @@ class Starboard(commands.Cog):
 
     @config.command(name = "leaderboard", aliases = ['lb'])
     async def lbcfg(self, ctx):
-        mpm = self.testforguild(ctx.guild)
+        mpm = mpku.getmpm('starboard', ctx.guild)
         mpk = mpm.data       
         mpk['leaderboard']['enabled'] ^= True
         mpm.save()
@@ -369,7 +252,7 @@ class Starboard(commands.Cog):
         
         await ctx.send("Please react to this with the emoji you want.")
         em = await self.bot.wait_for('reaction_add', timeout=20.0, check=check)
-        mpm = self.testforguild(ctx.guild)
+        mpm = mpku.getmpm('starboard', ctx.guild)
         mpk = mpm.data       
         em = em[0]
         if (not em.custom_emoji): mpk['emoji'] = mpk['emojiname'] = str(em.emoji)
@@ -383,7 +266,7 @@ class Starboard(commands.Cog):
     @commands.has_permissions(manage_guild=True)
     async def count(self, ctx, count: Optional[int]):
         if not count: return await ctx.invoke(self.config)
-        mpm = self.testforguild(ctx.guild)
+        mpm = mpku.getmpm('starboard', ctx.guild)
         mpk = mpm.data       
         mpk['amount'] = count
         mpm.save()
@@ -392,7 +275,7 @@ class Starboard(commands.Cog):
     @config.command()
     @commands.has_permissions(manage_guild=True)
     async def blacklist(self, ctx, act, *channel: discord.TextChannel):
-        mpm = self.testforguild(ctx.guild)
+        mpm = mpku.getmpm('starboard', ctx.guild)
         mpk = mpm.data       
         if (len(channel) == 0): return
         try: mpk['blacklist']

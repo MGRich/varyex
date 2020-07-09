@@ -2,15 +2,15 @@ import discord, re
 from discord.ext import commands
 from cogs.utils.embeds import embeds
 from datetime import datetime, timedelta
-from cogs.utils.mpkmanager import MPKManager
+import cogs.utils.mpk as mpku
 from typing import Optional
 
 class Filters(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    def getmpm(self, guild) -> MPKManager:
-        return MPKManager("filters", guild.id)
+    def getmpm(self, guild) -> mpku.MPKManager:
+        return mpku.MPKManager("filters", guild.id)
 
 
     @commands.group(aliases = ["filterping", "fp", 'f'])

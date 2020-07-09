@@ -3,7 +3,7 @@ from discord.ext import commands, tasks, menus
 from datetime import datetime, timedelta
 from cogs.utils.embeds import embeds
 from typing import Union, List, Optional
-from cogs.utils.mpkmanager import MPKManager
+import cogs.utils.mpk as mpku
 from discord import AuditLogAction
 
 bitlist = ["Message Delete", "Message Edit", "Channel Edits", "Member Joining/Leaving", 
@@ -12,7 +12,7 @@ bitlist = ["Message Delete", "Message Edit", "Channel Edits", "Member Joining/Le
 class LogMenu(menus.Menu):
     def __init__(self, gid, datadict, prefix):
         super().__init__(timeout = 30.0, delete_message_after=False, clear_reactions_after=True)
-        self.mpk = MPKManager("moderation", gid)
+        self.mpk = mpku.MPKManager("moderation", gid)
         self.page = 0
         self.max = math.ceil(float(len(bitlist)) / 5)
         self.color = discord.Color(datadict['color'])
@@ -126,8 +126,8 @@ class Logging(commands.Cog):
 
 
     ######FUNCTIONS######
-    def getmpm(self, guild) -> MPKManager:
-        return MPKManager("moderation", guild.id)
+    def getmpm(self, guild) -> mpku.MPKManager:
+        return mpku.MPKManager("moderation", guild.id)
     
     def setupjson(self, guild):
         mpm = self.getmpm(guild)
@@ -147,7 +147,7 @@ class Logging(commands.Cog):
     def forceset(self, val, on, pos):
         return val ^ (-on ^ val) & (1 << (pos - 1))
 
-    async def checkbit(self, pos, gid, full = False, holdoff = False) -> Union[discord.TextChannel, MPKManager]:
+    async def checkbit(self, pos, gid, full = False, holdoff = False) -> Union[discord.TextChannel, mpku.MPKManager]:
         if not gid: return None
         if (type(gid) == int):
             guild = self.bot.get_guild(gid)

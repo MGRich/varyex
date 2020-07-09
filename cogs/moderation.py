@@ -2,7 +2,7 @@ import discord, os, timeago, pytimeparse
 from discord.ext import commands, tasks
 from copy import copy
 from datetime import datetime, timedelta
-from cogs.utils.mpkmanager import MPKManager
+import cogs.utils.mpk as mpku
 from discord.ext.commands import Greedy
 from typing import Optional
 from string import punctuation
@@ -29,10 +29,10 @@ class Moderation(commands.Cog):
         # pylint: disable=no-member
         self.timeaction.cancel()
 
-    def getmpm(self, guild) -> MPKManager:
-        return MPKManager("moderation", guild.id)
+    def getmpm(self, guild) -> mpku.MPKManager:
+        return mpku.MPKManager("moderation", guild.id)
 
-    def testforguild(self, guild) -> MPKManager:
+    def testforguild(self, guild) -> mpku.MPKManager:
         mpm = self.getmpm(guild)
         file = mpm.data
         try:    file['offences']
