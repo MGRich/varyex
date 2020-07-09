@@ -1,5 +1,5 @@
 import discord, copy, math
-from discord.ext import commands
+from discord.ext import commands, tasks
 from cogs.utils.embeds import embeds
 from asyncio import sleep
 from timeit import default_timer
@@ -19,20 +19,31 @@ def getord(num):
 
 class Starboard(commands.Cog):
     def __init__(self, bot: commands.Bot):
+        # pylint: disable=no-member
         self.bot = bot
+        self.timeaction.start()
+
+    def cog_unload(self):
+        # pylint: disable=no-member
+        self.timeaction.cancel()
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        # pylint: disable=no-member
+        if (self.timeaction.get_task()): self.timeaction.cancel()
+        self.timeaction.start()
+
+
 
     async def handlereact(self, payl: discord.RawReactionActionEvent, typ):
         if not payl.guild_id: return
-        print(1)
         start = default_timer()
         #typ of 0 is pin, 1 or -1 is star/unstar
         try: msg = await self.bot.get_channel(payl.channel_id).fetch_message(payl.message_id)
         except discord.NotFound: return
         mpm = mpku.getmpm('starboard',  msg.guild, ['blacklist', 'count', 'messages', 'leaderboard'], [[], 6, {}, {}])
         mpk = mpm.data       
-        print(2)
         if not mpku.testgiven(mpk, ['channel', 'emoji']) or not mpk['channel'] or (payl.channel_id in mpk['blacklist']): return
-        print(3)
         if typ:
             iden = payl.emoji.name if payl.emoji.is_unicode_emoji() else payl.emoji.id
             if (iden != mpk['emoji']): return
@@ -168,12 +179,33 @@ class Starboard(commands.Cog):
                     embed.description += f"> <#{x}>\n"
             await ctx.send(embed=embed)
 
+    def refreshserver(self, gid):
+        mpk = mpku.getmpm('starboard', gid).data
+        if 'enabled' not in mpk['leaderboard']: lbe = True
+        else: lbe = mpk['leaderboard']['enabled']
+        mpk['leaderboard'] = {'enabled': lbe}
+        for x in mpk['messages']:
+            msg = mpk['messages'][x]
+            try: del msg['spstate']
+            except: pass
+            aid = str(msg['author'])
+            if aid not in mpk['leaderboard']: mpk['leaderboard'][aid] = 0
+            mpk['leaderboard'][aid] += msg['count']
+        print(f"refreshed leaderboard for {gid}")
+
+    @tasks.loop(hours=1, reconnect=True)
+    async def timeaction(self):
+        for guild in self.bot.guilds:
+            try: self.refreshserver(guild.id)
+            except KeyError: pass
+
     @starboard.command(aliases = ["lb"])
     async def leaderboard(self, ctx):
         mpm = mpku.getmpm('starboard', ctx.guild)
         mpk = mpm.data       
         if not (mpk['leaderboard']['enabled']): return
-        tbd = await ctx.send("Generating.. this may take a while..")
+        tbd = await ctx.send("Generating.. this may take a while.. (we're also refreshing the count)")
+        self.refreshserver(ctx.guild.id)
         await ctx.trigger_typing()
         cpy = copy.copy(mpk['leaderboard'])
         del cpy['enabled']

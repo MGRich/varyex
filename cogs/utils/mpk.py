@@ -1,4 +1,4 @@
-import msgpack, os
+import discord, msgpack, os
 
 class MPKManager:
     def __init__(self, direct, gid = None):
@@ -20,9 +20,9 @@ def testgiven(mpk, checks) -> bool:
         if x not in mpk: return False
     return True 
 
-def getmpm(type, gid, runchecks: list = None, runtmp: list = None) -> MPKManager:
-    if type(gid) != int: gid = gid.id
-    mpm = MPKManager(type, gid)
+def getmpm(typ, gid, runchecks: list = None, runtmp: list = None) -> MPKManager:
+    if type(gid) == discord.Guild: gid = gid.id
+    mpm = MPKManager(typ, gid)
     if runchecks:
         file = mpm.data
         i = 0
