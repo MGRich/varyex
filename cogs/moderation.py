@@ -18,7 +18,7 @@ def convert_to_bool(argument): #commands._convert_to_bool
         return False
     raise commands.BadArgument(lowered + ' is not a recognised boolean option')
 
-def getoffence
+#def getoffence
 
 class Moderation(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -336,7 +336,7 @@ class Moderation(commands.Cog):
             if uid not in mpk['users']: mpk['users'][uid] = []
             mpk['users'][uid].append({'reason': reason, 'timestamp': self.now(), 'who': ctx.author.id, 'major': True})
 
-            ofc = mpk['offences'][]
+            ofc = mpk['offences'][min(len(self.majorWarns(mpk['users'][uid])), len(mpk['offences'])) - 1]
             act = copy(mpk['actions'][ofc['action']])
 
             worked = True
