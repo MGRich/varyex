@@ -1,4 +1,4 @@
-import discord, os, math, re, difflib
+import discord, math, re, difflib
 from discord.ext import commands, tasks, menus
 from datetime import datetime, timedelta
 from cogs.utils.embeds import embeds
@@ -645,27 +645,28 @@ class Logging(commands.Cog):
             rolediff.append(list(set(after.roles) - set(before.roles))) #added roles
         embed = self.makebase(after)
         embed.description = ""
-        if (before.nick != after.nick): embed.description += f"**Nickname:** *{before.nick}* {self.arrow} *{after.nick}*\n"
-        if rolediff:
-            msg = "```diff\n"
-            for role in rolediff[0]:
-                msg += f"- {role.name}\n"
-            for role in rolediff[1]:
-                msg += f"+ {role.name}\n"
-            if msg != "```diff\n":
-                embed.description += f"**Roles:** {msg}```"
+        log = await self.getaudit([AuditLogAction.member_role_update, AuditLogAction.member_update], after.guild, target=after.id, after=True)
+        bystr = log and log.user != after
+        if (before.nick != after.nick): 
+            embed.description += f"**Nickname:** *{before.nick}* {self.arrow} *{after.nick}*"
+            if bystr: embed.description += f" - {log.user.mention}"
+        elif rolediff:
+            msg = ""
+            #you can only be given/revoked multiple at a time but not both at the same
+            if rolediff[1]:
+                msg += f"Given {', '.join([x.mention for x in rolediff[1]])}"
+            elif rolediff[0]:
+                msg += f"Removed {', '.join([x.mention for x in rolediff[1]])}"
+            if msg:
+                embed.description += f"{msg}"
+                if bystr: embed.description += f" by {log.user.mention}"
         embed.title = "Member Update"
         if not embed.description: return
         await chn.send(embed=embed)
 
     @commands.Cog.listener()
     async def on_user_update(self, before, after):
-        gids = []
-        for x in os.listdir("config"):
-            if os.path.isfile(f"config/{x}/moderation.json"):
-                gids.append(int(x))
-        for gid in gids:
-            guild = self.bot.get_guild(gid)
+        for guild in self.bot.guilds:
             chn = await self.checkbit(5, guild)
             if not chn: continue
             if (str(before) == str(after)): continue
