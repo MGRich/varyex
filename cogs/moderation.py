@@ -1,4 +1,4 @@
-import discord, os, timeago, pytimeparse
+import discord, timeago, pytimeparse
 from discord.ext import commands, tasks
 from copy import copy
 from datetime import datetime, timedelta
@@ -10,6 +10,9 @@ from cogs.utils.menus import Confirm
 
 loaded = None
 
+basis1 = ['users', 'inwarn', 'actions', 'offences']
+basis2 = [{}, {}, {}, []]
+
 def convert_to_bool(argument): #commands._convert_to_bool
     lowered = argument.lower()
     if lowered in ('yes', 'y', 'true', 't', '1', 'enable', 'on'):
@@ -18,7 +21,15 @@ def convert_to_bool(argument): #commands._convert_to_bool
         return False
     raise commands.BadArgument(lowered + ' is not a recognised boolean option')
 
-#def getoffence
+
+def toInt(dt):
+    return int(datetime.timestamp(dt) * 1000000)
+def now():
+    return toInt(datetime.utcnow())    
+def fromInt(dt):
+    return datetime.fromtimestamp(dt  / 1000000)
+def majorWarns(warns):
+    return [x for x in warns if (x['major'])]
 
 class Moderation(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -35,31 +46,6 @@ class Moderation(commands.Cog):
         # pylint: disable=no-member
         if (self.timeaction.get_task()): self.timeaction.cancel()
         self.timeaction.start()
-
-
-    def getmpm(self, guild) -> mpku.MPKManager:
-        return mpku.MPKManager("moderation", guild.id)
-
-    def testforguild(self, guild) -> mpku.MPKManager:
-        mpm = self.getmpm(guild)
-        file = mpm.data
-        try:    file['offences']
-        except: file['offences'] = []
-        else:
-            if type((file['offences'])) == dict:
-                x = copy(file['offences'])
-                file['offences'] = []
-                for y in x:
-                    file['offences'].append(x[y])
-                mpm.save()
-        try:    file['actions']
-        except: file['actions'] = {}
-        try:    file['users']
-        except: file['users'] = {}
-        try:    file['inwarn']
-        except: file['inwarn'] = {}
-
-        return mpm
 
     @commands.command()
     @commands.guild_only()
@@ -151,26 +137,15 @@ class Moderation(commands.Cog):
         msg = await ctx.send(f"Purged {count} messages!")
         await msg.delete(delay=3)
 
-    def now(self):
-        return self.toInt(datetime.utcnow())    
-    def toInt(self, dt):
-        return int(datetime.timestamp(dt) * 1000000)
-    def fromInt(self, dt):
-        return datetime.fromtimestamp(dt  / 1000000)
-
-    def majorWarns(self, warns):
-        return [x for x in warns if (x['major'])]
-    
-
     @commands.Cog.listener()
     async def on_member_join(self, member):
-        mpm = self.testforguild(member.guild)
+        mpm = mpku.getmpm('moderation', member.guild)
         mpk = mpm.data
         try: mpk['inwarn'][str(member.id)]
         except: return
         uid = str(member.id)
         if mpk['inwarn'][uid]['left'] != 0:
-            mpk['inwarn'][uid]['time'] += self.now() - mpk['inwarn'][uid]['left']
+            mpk['inwarn'][uid]['time'] += now() - mpk['inwarn'][uid]['left']
             mpk['inwarn'][uid]['left'] = 0
         ofc = mpk['offences'][str(len(mpk['users'][uid]))]
         act = copy(mpk['actions'][ofc['action']])
@@ -180,13 +155,13 @@ class Moderation(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_remove(self, member):
-        mpm = self.testforguild(member.guild)
+        mpm = mpku.getmpm('moderation', member.guild, ['inwarn'], [{}])
         mpk = mpm.data
         try: mpk['inwarn'][str(member.id)]
         except: return
         uid = str(member.id)
         if mpk['inwarn'][uid]['left'] == 0:
-            mpk['inwarn'][uid]['left'] = self.now()
+            mpk['inwarn'][uid]['left'] = now()
 
         mpm.save()
     
@@ -197,9 +172,9 @@ class Moderation(commands.Cog):
             changed = False
             #guild = self.bot.get_guild(int(gid))
             #if (guild == None): continue
-            mpm = self.testforguild(guild)
+            mpm = mpku.getmpm('moderation', guild)
             mpk = mpm.data
-            if not mpku.testgiven(['inwarn', 'offences', 'action', 'users']): continue
+            if not mpku.testgiven(mpk, ['inwarn', 'offences', 'action', 'users']): continue
             for uid in list(mpk['inwarn']):
                 try: mpk['inwarn'][uid]['time']
                 except: continue
@@ -210,24 +185,24 @@ class Moderation(commands.Cog):
                 print(uid + " " + str(user))
                 if not user:
                     if mpk['inwarn'][uid]['left'] == 0:
-                        mpk['inwarn'][uid]['left'] = self.now()
+                        mpk['inwarn'][uid]['left'] = now()
                         changed = True
                     #continue
                 elif mpk['inwarn'][uid]['left'] != 0:
-                    mpk['inwarn'][uid]['time'] += self.now() - mpk['inwarn'][uid]['left']
+                    mpk['inwarn'][uid]['time'] += now() - mpk['inwarn'][uid]['left']
                     mpk['inwarn'][uid]['left'] = 0
                     changed = True
                     continue
                 
-                try: cnt = len(self.majorWarns(mpk['users'][uid]))
+                try: cnt = len(majorWarns(mpk['users'][uid]))
                 except KeyError:
                     del mpk['inwarn'][uid]
                     changed = True
                     continue
 
                 #print(uid)
-                if (mpk['inwarn'][uid]['time'] <= self.now()):
-                    print(gid)
+                if (mpk['inwarn'][uid]['time'] <= now()):
+                    print(guild.id)
                     try: print(mpk['users'][uid])
                     except KeyError: print("fuck")
                     if cnt != 0:
@@ -271,7 +246,7 @@ class Moderation(commands.Cog):
             except TypeError: pass #we try again later and see if it matches a warn
             else: 
                 if case < 1: return await ctx.send("Please enter a valid case number.")
-        mpm = self.testforguild(ctx.guild)
+        mpm = mpku.getmpm('moderation', ctx.guild, ['users'], [{}])
         mpk = mpm.data
         uid = str(user.id)
         try: mpk['users'][uid]
@@ -296,7 +271,7 @@ class Moderation(commands.Cog):
         You must be able to **manage messages and kick.**
 
         `editwarn/ewarn/ew <user> <case number> <new reason>`"""
-        mpm = self.testforguild(ctx.guild)
+        mpm = mpku.getmpm('moderation', ctx.guild, ['users'], [{}])
         mpk = mpm.data
         uid = str(user.id)
         try: mpk['users'][uid]
@@ -327,16 +302,16 @@ class Moderation(commands.Cog):
         `w cfg settrack/track`"""
         if (ctx.invoked_subcommand): return
         users.insert(0, user)
-        mpm = self.testforguild(ctx.guild)
+        mpm = mpku.getmpm('moderation', ctx.guild, basis1, basis2)
         mpk = mpm.data
         if (not users) or (not reason): return
         if not mpk['offences']: return await ctx.send("Warns aren't configured!")
         for user in users:
             uid = str(user.id)
             if uid not in mpk['users']: mpk['users'][uid] = []
-            mpk['users'][uid].append({'reason': reason, 'timestamp': self.now(), 'who': ctx.author.id, 'major': True})
+            mpk['users'][uid].append({'reason': reason, 'timestamp': now(), 'who': ctx.author.id, 'major': True})
 
-            ofc = mpk['offences'][min(len(self.majorWarns(mpk['users'][uid])), len(mpk['offences'])) - 1]
+            ofc = mpk['offences'][min(len(majorWarns(mpk['users'][uid])), len(mpk['offences'])) - 1]
             act = copy(mpk['actions'][ofc['action']])
 
             worked = True
@@ -364,7 +339,7 @@ class Moderation(commands.Cog):
                         if (ofc['time']):
                             mpk['inwarn'][uid] = {}
                             mpk['inwarn'][uid]['left'] = 0
-                            mpk['inwarn'][uid]['time'] = self.toInt(datetime.utcnow() + timedelta(minutes=ofc['time']))
+                            mpk['inwarn'][uid]['time'] = toInt(datetime.utcnow() + timedelta(minutes=ofc['time']))
                 except KeyError:
                     pass
 
@@ -373,7 +348,7 @@ class Moderation(commands.Cog):
                 except discord.Forbidden: pass
             if (worked): await ctx.send(act['msg'])
             mpm.save()
-            try: await self.bot.get_cog('Logging').on_warn(user, ctx.guild, mpk['users'][uid][cnt], f"`{ofc['action']}`")
+            try: await self.bot.get_cog('Logging').on_warn(user, ctx.guild, mpk['users'][uid][-1], f"`{ofc['action']}`")
             except AttributeError: pass
 
 
@@ -381,7 +356,7 @@ class Moderation(commands.Cog):
     @commands.has_permissions(manage_guild=True, ban_members=True) 
     async def config(self, ctx, action: Optional[str]):
         if ctx.invoked_subcommand: return
-        mpm = self.testforguild(ctx.guild)
+        mpm = mpku.getmpm('moderation', ctx.guild, ['actions', 'offences'], [{}, []])
         mpk = mpm.data
         embed = discord.Embed(title="Warning Config", color=discord.Color(self.bot.data['color']), description="")
         if action:
@@ -439,7 +414,7 @@ class Moderation(commands.Cog):
         name = name.lower()
         if ' ' in name:
             return await ctx.send("Action names can't have spaces.")
-        mpm = self.testforguild(ctx.guild)
+        mpm = mpku.getmpm('moderation', ctx.guild, ['actions'], [{}])
         mpk = mpm.data
         if name in mpk['actions']:
             return await ctx.send("This action already exists! If you want to edit it, remove it and re-add it.")
@@ -525,7 +500,7 @@ class Moderation(commands.Cog):
 
     @config.command(aliases=['removeaction', 'remove', 'r'])
     async def rmaction(self, ctx, action):
-        mpm = self.testforguild(ctx.guild)
+        mpm = mpku.getmpm('moderation', ctx.guild, ['actions', 'offences'], [{}, []])
         mpk = mpm.data
         if not action in mpk['actions']:
             return await ctx.send("This action doesn't exist!")
@@ -537,7 +512,7 @@ class Moderation(commands.Cog):
     @config.command(aliases=['track'])
     async def settrack(self, ctx):
         if ctx.invoked_with == "track": return await ctx.invoke(self.config, None)
-        mpm = self.testforguild(ctx.guild)
+        mpm = mpku.getmpm('moderation', ctx.guild, ['actions', 'offences'], [{}, []])
         mpk = mpm.data
         valid = [x for x in mpk['actions'] if x != 'verbal']
         if not valid: return await ctx.send("There are no actions to use! Add some first!")
@@ -621,7 +596,7 @@ class Moderation(commands.Cog):
         and will never automatically culminate into a warn.
 
         `verbalwarn/vwarn/vw <users> <reason>`"""
-        mpm = self.testforguild(ctx.guild)
+        mpm = mpku.getmpm('moderation', ctx.guild, basis1, basis2)
         mpk = mpm.data
         strused = 'mute' if mute else 'verbal'
         try: mpk['actions'][strused]
@@ -636,7 +611,7 @@ class Moderation(commands.Cog):
 
             mpk['users'][uid].append({})
             mpk['users'][uid][cnt]['reason'] = reason + (' (Mute)' if mute else '')
-            mpk['users'][uid][cnt]['timestamp'] = self.now()
+            mpk['users'][uid][cnt]['timestamp'] = now()
             mpk['users'][uid][cnt]['who'] = ctx.author.id
             mpk['users'][uid][cnt]['major'] = False
 
@@ -656,7 +631,7 @@ class Moderation(commands.Cog):
                 act['msg'] = act['msg'].replace('[t]', str(int(mute)))
                 mpk['inwarn'][uid] = {}
                 mpk['inwarn'][uid]['left'] = 0
-                mpk['inwarn'][uid]['time'] = self.toInt(datetime.utcnow() + timedelta(minutes=mute))
+                mpk['inwarn'][uid]['time'] = toInt(datetime.utcnow() + timedelta(minutes=mute))
             if act['dmmsg']:
                 try: await user.send(act['dmmsg'])
                 except: pass
@@ -678,7 +653,7 @@ class Moderation(commands.Cog):
         if (user != ctx.author):
             if (not (ctx.author.guild_permissions.manage_messages and ctx.author.guild_permissions.kick_members)):
                 return
-        mpm = self.testforguild(ctx.guild)
+        mpm = mpku.getmpm('moderation', ctx.guild, ['users'], [{}])
         mpk = mpm.data
         #gid = str(ctx.guild.id)
         uid = str(user.id)
@@ -694,7 +669,7 @@ class Moderation(commands.Cog):
         for warn in reversed(mpk['users'][uid]):
             reason = f"*{warn['reason']}*"
             if (warn['major']): reason = f"*{reason}*"
-            desc += f"> {reason} - <@{warn['who']}>\n> *{timeago.format(self.fromInt(warn['timestamp']), datetime.utcnow())}* (Case {mpk['users'][uid].index(warn) + 1})\n> `-------------`\n"
+            desc += f"> {reason} - <@{warn['who']}>\n> *{timeago.format(fromInt(warn['timestamp']), datetime.utcnow())}* (Case {mpk['users'][uid].index(warn) + 1})\n> `-------------`\n"
         if not mpk['users'][uid]: desc = "__No warnings!__"
         else: desc = desc[:-18]
         embed.description = desc.strip()
