@@ -656,7 +656,7 @@ class Logging(commands.Cog):
             if rolediff[1]:
                 msg += f"Given {', '.join([x.mention for x in rolediff[1]])}"
             elif rolediff[0]:
-                msg += f"Removed {', '.join([x.mention for x in rolediff[1]])}"
+                msg += f"Removed {', '.join([x.mention for x in rolediff[0]])}"
             if msg:
                 embed.description += f"{msg}"
                 if bystr: embed.description += f" by {log.user.mention}"
