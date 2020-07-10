@@ -44,11 +44,9 @@ class Starboard(commands.Cog):
         mpm = mpku.getmpm('starboard',  msg.guild, ['blacklist', 'count', 'messages', 'leaderboard'], [[], 6, {}, {}])
         mpk = mpm.data       
         if not mpku.testgiven(mpk, ['channel', 'emoji']) or not mpk['channel'] or (payl.channel_id in mpk['blacklist']): return
-        if typ:
-            iden = payl.emoji.name if payl.emoji.is_unicode_emoji() else payl.emoji.id
-            if (iden != mpk['emoji']): return
+        if typ and ((payl.emoji.name if payl.emoji.is_unicode_emoji() else payl.emoji.id) != mpk['emoji']): return
 
-        chl = await self.bot.fetch_channel(mpk['channel'])  
+        chl = self.bot.get_channel(mpk['channel'])  
 
         try: sbmsg = await chl.fetch_message(mpk['messages'][str(msg.id)]['sbid'])
         except: sbmsg = None
@@ -81,7 +79,7 @@ class Starboard(commands.Cog):
         count = 0
         ulist = []
         for reaction in rlist:
-            if (iden == (reaction.emoji.id if reaction.custom_emoji else reaction.emoji)):
+            if (mpk['emoji'] == (reaction.emoji.id if reaction.custom_emoji else reaction.emoji)):
                 async for u in reaction.users():
                     if (u.id in ulist) or u.id == msg.author.id:
                         await reaction.remove(u)
