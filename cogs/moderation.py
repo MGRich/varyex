@@ -174,7 +174,7 @@ class Moderation(commands.Cog):
             #if (guild == None): continue
             mpm = mpku.getmpm('moderation', guild)
             mpk = mpm.data
-            if not mpku.testgiven(mpk, ['inwarn', 'offences', 'action', 'users']): continue
+            if not mpku.testgiven(mpk, ['inwarn', 'offences', 'actions', 'users']): continue
             for uid in list(mpk['inwarn']):
                 try: mpk['inwarn'][uid]['time']
                 except: continue
