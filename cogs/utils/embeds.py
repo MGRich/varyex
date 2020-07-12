@@ -19,6 +19,7 @@ class embeds:
         embed.set_author(name=msg.author.display_name, icon_url=msg.author.avatar_url)
         embed.timestamp = msg.created_at
         desc = msg.content
+        if re.fullmatch(r"https?:\/\/[^ ]*", desc) and (msg.embeds[0].type in ['image', 'gifv']): desc = ""
 
         done = False
         for attachment in msg.attachments:
@@ -30,7 +31,7 @@ class embeds:
                 done = True
             except: desc += f"\n[{attachment.filename}]"
 
-        if re.fullmatch("<@.+>", desc): desc += "\n(jump to message)"
+        if re.fullmatch(r"<@.+>", desc): desc += "\n(jump to message)"
         desc = desc.strip()
 
         if (link): 
@@ -65,7 +66,7 @@ class embeds:
             typ = ""
             if (e.color != discord.Color.default() and e.color != e.Empty): embed.colour = e.color
             try:
-                if (stardata):
+                if (stardata) and e.type == "rich":
                     if "https://twitter.com/" in e.url: typ = "twitter"
                     if "https://www.youtube.com/" == e.provider.url: typ = "yt"
                     if "Twitch" == e.provider.name: typ = "twitch"
@@ -130,12 +131,13 @@ class embeds:
                 data['tease'] = e.description.split("...")[0]
                 if (data['tease'] == e.description): data['tease'] = None
                 data['author'] = e.description.split(", submitted by ")[1]
-                data['name'] = e.title.split("[")[0][:-1]
-                data['full'] = e.title.split("[")[1].split("]")[0]  
-                data['type'] = e.title.split("[")[2].split("]")[0].split(" Mods")[0]
-                if (data['type'] == "Mods"): data['type'] = "Mod"
-                if (data['type'] == "Requests"): data['type'] = "Request"
-                if (data['type'] == "Works In Progress"): data['type'] = "WIP"
+                sidesplit = e.title.split("[")
+                data['name'] = sidesplit[0][:-1]
+                data['full'] = sidesplit[1].split("]")[0]  
+                data['type'] = sidesplit[2].split("]")[0].split(" Mods")[0]
+                if   (data['type'] == "Mods"): data['type'] = "Mod"
+                elif (data['type'] == "Requests"): data['type'] = "Request"
+                elif (data['type'] == "Works In Progress"): data['type'] = "WIP"
                 data['short'] = e.description.split(f"A {data['full']} (")[1].split(")")[0]
                 data['category'] = e.description.split(" in the ")[1].split(" category")[0]
 
@@ -148,7 +150,6 @@ class embeds:
             else:
                 try:
                     if (e.image.url == e.Empty): raise NameError() 
-                    #print(e.image.url) 
                     embed.set_image(url=e.image.url)
                 except:
                     try: 
