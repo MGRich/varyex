@@ -171,7 +171,7 @@ class Starboard(commands.Cog):
                 except: return "*Not set*"
             embed = discord.Embed(title="Starboard Config", color=discord.Color(self.bot.data['color']))
             embed.description = f"**Minimum:** `{fetch('amount')}`\n**Star:** {fetch('emoji')}\n**Leaderboard:** `{'enabled' if base['leaderboard']['enabled'] else 'disabled'}`\n**Channel:** <#{fetch('channel')}>\n"
-            if mpku.testgiven(base, 'blacklist') and base['blacklist']:
+            if mpku.testgiven(base, ['blacklist']) and base['blacklist']:
                 embed.description += "**Blacklist:**\n"
                 for x in base['blacklist']:
                     embed.description += f"> <#{x}>\n"
@@ -320,14 +320,6 @@ class Starboard(commands.Cog):
             cstr += f", {chn.mention}"
         cstr = cstr[2:]
         await ctx.send(f"Channel(s) {cstr} {'added to' if act.startswith('a') else 'removed from'} blacklist!")
-
-    #@config.command()
-    #@commands.has_permissions(administrator=True)
-    #async def funny(self, ctx):
-    #    async for msg in ctx.channel.history(limit = 50):
-    #        await msg.pin()
-
-
 
 
 def setup(bot):
