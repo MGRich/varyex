@@ -19,7 +19,7 @@ class embeds:
         embed.set_author(name=msg.author.display_name, icon_url=msg.author.avatar_url)
         embed.timestamp = msg.created_at
         desc = msg.content
-        if re.fullmatch(r"https?:\/\/[^ ]*", desc) and (msg.embeds[0].type in ['image', 'gifv']): desc = ""
+        if msg.embeds and re.fullmatch(r"https?:\/\/[^ ]*", desc) and (msg.embeds[0].type in ['image', 'gifv']): desc = ""
 
         done = False
         for attachment in msg.attachments:
