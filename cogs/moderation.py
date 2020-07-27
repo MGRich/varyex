@@ -58,12 +58,15 @@ class Moderation(commands.Cog):
         `ban <members> [reason]`"""
         for x in reason:
             uid = 0
+            user: discord.User
             try: uid = int(x)
             except:
                 try: uid = int(x[2:-1])
                 except: pass
             if not uid: break
-            members.append(await self.bot.fetch_user(uid))
+            try: user = await self.bot.fetch_user(uid)
+            except discord.NotFound: await ctx.send(f"<@{uid} is not a user ID.>")
+            else: members.append(user)
         if not members: return await ctx.send("There are no users in that list (that I could convert.)")
         banlist = []
         for member in members:
