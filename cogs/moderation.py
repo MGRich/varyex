@@ -63,7 +63,7 @@ class Moderation(commands.Cog):
                 try: uid = int(x[2:-1])
                 except: pass
             if not uid: break
-            members.append(self.bot.get_user(uid))
+            members.append(await self.bot.fetch_user(uid))
         if not members: return await ctx.send("There are no users in that list (that I could convert.)")
         banlist = []
         for member in members:
