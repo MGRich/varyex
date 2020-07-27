@@ -51,12 +51,12 @@ class Moderation(commands.Cog):
     @commands.guild_only()
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
-    async def ban(self, ctx, members:commands.Greedy[discord.User], *, reason: Optional[str] = ""):
+    async def ban(self, ctx, members: commands.Greedy[discord.User], *, reason: Optional[str] = ""):
         """Bans users.
         Both the bot and the runner **must be able to ban.**
 
         `ban <members> [reason]`"""
-        if not members: return
+        if not members: return await ctx.send("There are no users in that list (that I could convert.)")
         banlist = []
         for member in members:
             if member == ctx.message.author: continue
@@ -66,8 +66,9 @@ class Moderation(commands.Cog):
                 if (reason != ""): t += f" for {reason}{'.' if not reason[-1] in punctuation else ''}"
                 else: t += '.'
                 banlist.append(member.mention)
-                try: await member.send(t)
-                except discord.Forbidden: continue
+                if reason:
+                    try: await member.send(t)
+                    except discord.Forbidden: continue
             except discord.Forbidden: continue
         if not banlist:
             return await ctx.send("I was not able to ban any users.")
