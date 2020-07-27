@@ -67,6 +67,7 @@ class Moderation(commands.Cog):
             try: user = await self.bot.fetch_user(uid)
             except discord.NotFound: await ctx.send(f"<@{uid} is not a user ID.>")
             else: members.append(user)
+            reason = reason[len(str(uid)) - 1:]
         if not members: return await ctx.send("There are no users in that list (that I could convert.)")
         banlist = []
         for member in members:
