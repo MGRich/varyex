@@ -56,7 +56,7 @@ class Moderation(commands.Cog):
         Both the bot and the runner **must be able to ban.**
 
         `ban <members> [reason]`"""
-        for x in reason:
+        for x in reason.split():
             uid = 0
             user: discord.User
             try: uid = int(x)
