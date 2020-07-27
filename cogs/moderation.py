@@ -56,6 +56,14 @@ class Moderation(commands.Cog):
         Both the bot and the runner **must be able to ban.**
 
         `ban <members> [reason]`"""
+        for x in reason:
+            uid = 0
+            try: uid = int(x)
+            except:
+                try: uid = int(x[2:-1])
+                except: pass
+            if not uid: break
+            members.append(self.bot.get_user(uid))
         if not members: return await ctx.send("There are no users in that list (that I could convert.)")
         banlist = []
         for member in members:
