@@ -103,7 +103,9 @@ class Miscellaneous(commands.Cog):
         if not sromg: 
             while True:
                 url = f"https://d1ejxu6vysztl5.cloudfront.net/comics/garfield/{date.year}/{date.strftime('%Y-%m-%d')}.gif"
-                if requests.head(url).status_code == 200: return url
+                if requests.head(url).status_code == 200: return (url, date)
+                url = f"http://strips.garfield.com/iimages1200/{date.year}/ga{date.strftime('%y%m%d')}.gif"
+                if requests.head(url).status_code == 200: return (url, date)
                 date -= timedelta(days=1)
         else:
             days = (date - datetime(2010, 1, 25)).days
@@ -111,7 +113,7 @@ class Miscellaneous(commands.Cog):
             stripnum = days + 250
             while True:
                 url = f"https://www.mezzacotta.net/garfield/comics/{stripnum}.png"
-                if requests.head(url).status_code == 200: return url
+                if requests.head(url).status_code == 200: return (url, stripnum)
                 stripnum -= 1
 
     @commands.command(aliases=['gstrip', 'g', 'sromg'], hidden=True)
@@ -126,8 +128,9 @@ class Miscellaneous(commands.Cog):
             if not date: return await ctx.send("Could not parse the date given.")
             if date > datetime.utcnow() + timedelta(days=1): return await ctx.send("Please send a date that is not in the far future (1 day max).")
         isSROMG = ctx.message.content.startswith(f"{ctx.prefix}sromg")
-        url = self.calcstripfromdate(date, isSROMG)
-        if (date > datetime.utcnow()): date -= timedelta(days=1)
+        while (date > datetime.utcnow()): date -= timedelta(days=1)
+        url, datenum = self.calcstripfromdate(date, isSROMG)
+        if not isSROMG: date = datenum
         embed = discord.Embed(title=f"{'Garfield' if not isSROMG else 'SROMG'} Comic", colour=discord.Color(0xfe9701))
         embed.set_footer(text=f"Strip from {timeago.format(date, datetime.utcnow())} | {date.month}/{date.day}/{date.year}")
         embed.set_image(url=url)
@@ -135,6 +138,7 @@ class Miscellaneous(commands.Cog):
 
     @tasks.loop(minutes=3) #hacky but do not care
     async def garfloop(self):
+        return #nothing for now
         gids = []
         for x in os.listdir("config"):
             if os.path.isfile(f"config/{x}/misc.json"):
