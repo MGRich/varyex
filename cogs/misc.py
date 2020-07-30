@@ -165,7 +165,7 @@ class Miscellaneous(commands.Cog):
                 embed.title = f"SROMG | {js['name']}"
                 embed.url = f"http://www.mezzacotta.net/garfield/?comic={num}"
                 embed.description = self.htmltomarkup(js['authorWrites'].split("Original strip")[0])
-                tr = js['transcription'].replace("*", "\*")
+                tr = js['transcription'].replace("*", "\\*")
                 tr = self.htmltomarkup(tr.replace("\n", "").replace("{", "*").replace("}", "*"))
                 tl = []
                 for x in tr.splitlines():
