@@ -14,6 +14,7 @@ class Miscellaneous(commands.Cog):
         # pylint: disable=no-member
         self.bot = bot
         self.firstrun = True
+        self.lastsromg = self.lastdate = 0
         self.garfloop.start()
 
     def cog_unload(self):
@@ -164,7 +165,8 @@ class Miscellaneous(commands.Cog):
                 embed.title = f"SROMG | {js['name']}"
                 embed.url = f"http://www.mezzacotta.net/garfield/?comic={num}"
                 embed.description = self.htmltomarkup(js['authorWrites'].split("Original strip")[0])
-                tr = self.htmltomarkup(js['transcription'].replace("\n", "").replace("{", "*").replace("}", "*"))
+                tr = js['transcription'].replace("*", "\*")
+                tr = self.htmltomarkup(tr.replace("\n", "").replace("{", "*").replace("}", "*"))
                 tl = []
                 for x in tr.splitlines():
                     tl.append(re.sub(r"([^:]*):", r"**\1**:", x))
