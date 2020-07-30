@@ -165,9 +165,7 @@ class Miscellaneous(commands.Cog):
                 embed.set_author(name=js['author']['name'], url=f"https://www.mezzacotta.net/garfield/author.php?author={js['author']['number']}'")
                 if (js['originalStrips']):
                     embed.description += f"\n\n*Original strip{'s' if len(js['data']['originalStrips']) > 1 else ''}: "
-                    for x in js['originalStrips']:
-                        stripformat = re.sub(r"..([^-]*)-([^-]*)-(.*)", r"\2/\3/\1", x['strip'])
-                        embed.description += f"[{stripformat}]({x['href']}), "
+                    for x in js['originalStrips']: embed.description += f"[{re.sub(r'..([^-]*)-([^-]*)-(.*)', r'\2/\3/\1', x['strip'])}]({x['href']}), "
                     embed.description = embed.description[:-2] + "*"
                 embed.set_footer(text=f"Strip #{int(num)} | API by LiquidZulu")
         else:
@@ -182,6 +180,7 @@ class Miscellaneous(commands.Cog):
 
         `garfield/gstrip/g/sromg [date]`
         `g/sromg sub/subscribe`"""
+        await ctx.trigger_typing()
         isSROMG = ctx.message.content.startswith(f"{ctx.prefix}sromg")
         num = 0
         if not date:
