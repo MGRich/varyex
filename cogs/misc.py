@@ -13,8 +13,7 @@ class Miscellaneous(commands.Cog):
     def __init__(self, bot: commands.Bot):
         # pylint: disable=no-member
         self.bot = bot
-        self.lastdate = (await self.calcstripfromdate(datetime.utcnow() + timedelta(days=1), False))[1] #get rid of the time
-        self.lastsromg = (await self.calcstripfromdate(datetime.utcnow() + timedelta(days=1), True))[1]
+        self.firstrun = True
         self.garfloop.start()
 
     def cog_unload(self):
@@ -239,6 +238,11 @@ class Miscellaneous(commands.Cog):
         print("gstart")
         gurl, gdate = await self.calcstripfromdate(datetime.utcnow() + timedelta(days=1), False)
         surl, sdate = await self.calcstripfromdate(datetime.utcnow() + timedelta(days=1), True)
+        if self.firstrun:
+            self.firstrun = False
+            self.lastdate = gdate
+            self.lastsromg = sdate
+            return
         shown = 0b00
         if (gurl != -1) and gdate > self.lastdate:
             shown |= 0b01
