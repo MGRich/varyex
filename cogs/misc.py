@@ -8,6 +8,10 @@ from numpy import clip
 
 def limitdatetime(dt):
     return datetime.combine(dt.date(), datetime.min.time())
+def htmltomarkup(text):
+    text = re.sub(r"<a *href=\"([^\"]*)\">(.*(?=</a>))</a>", r"[\2](\1)", text)
+    text = re.sub(r"<(i|cite|em)>([^<]*)</(i|cite|em)>", "*\\2*", text)
+    return re.sub(r"<(b|strong)>([^<]*)</(b|strong)>", "**\\2**", text).replace("<br>", "\n")
 
 class Miscellaneous(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -144,10 +148,7 @@ class Miscellaneous(commands.Cog):
                 attempts += 1
         return (-1, datetime.utcnow())
 
-    def htmltomarkup(self, text):
-        text = re.sub(r"<a *href=\"([^\"]*)\">([^<]*)</a>", r"[\2](\1)", text)
-        text = re.sub(r"<i>([^<]*)</i>", "*\\1*", text)
-        return re.sub(r"<b>([^<]*)</b>", "**\\1**", text).replace("<br>", "\n")
+    
     async def formatembed(self, url, s, d, day=None):
         embed = discord.Embed(title=f"{'Daily ' if d else ''}{'SROMG' if s else 'Garfield'} Comic", colour=discord.Color(0xfe9701))
         if s: 
@@ -164,20 +165,35 @@ class Miscellaneous(commands.Cog):
             else:
                 embed.title = f"SROMG | {js['name']}"
                 embed.url = f"http://www.mezzacotta.net/garfield/?comic={num}"
-                embed.description = self.htmltomarkup(js['authorWrites'].split("Original strip")[0])
-                tr = self.htmltomarkup(js['transcription'].replace("*", "\\*").replace("\n", ""))
+                authordesc = htmltomarkup(js['authorWrites'].split("Original strip")[0])
+                print(authordesc)
+                tr = htmltomarkup(js['transcription'].replace("*", "\\*").replace("\n", ""))
                 tl = []
+                toadd = "*[visit SROMG page for rest]*" #keep here just in case
+                linecount = 0
                 for x in tr.splitlines():
                     if x.startswith("{"): x = x.replace("{", "*").replace("}", "*")
-                    tl.append(re.sub(r"([^:]*):", r"**\1**:", x))
+                    t = re.sub(r"([^:]*):", r"**\1**:", x)
+                    linecount += 1
+                    if linecount > 10:
+                        tl.append(toadd)
+                        break
+                    tl.append(t)
                 embed.add_field(name="Transcription", value='\n'.join(tl))
                 embed.set_author(name=js['author']['name'], url=f"https://www.mezzacotta.net/garfield/author.php?author={js['author']['number']}'")
+                ogstrips = toadd = ""
                 if (js['originalStrips']):
-                    embed.description += f"\n\n*Original strip{'s' if len(js['originalStrips']) > 1 else ''}: "
-                    for x in js['originalStrips']: 
+                    ogstrips += f"\n*Original strip{'s' if len(js['originalStrips']) > 1 else ''}: "
+                    for x in js['originalStrips'][:8]: 
                         formatted = re.sub(r'..([^-]*)-([^-]*)-(.*)', r'\2/\3/\1', x['strip'])
-                        embed.description += f"[{formatted}]({x['href']}), "
-                    embed.description = embed.description[:-2] + "*"
+                        ogstrips += f"[{formatted}]({x['href']}), "
+                    if js['originalStrips'][8:]:
+                        ogstrips += f"{len(js['originalStrips'][8:])} more  "
+                    ogstrips = ogstrips[:-2] + "*"
+                if len(authordesc) > (2048 - len(ogstrips)):
+                    toadd = "*[visit SROMG page for rest]*"
+                    authordesc = ''.join([(x + ".") for x in (authordesc[:(2048 - len(ogstrips) - len(toadd)) - 2].split('.'))[:-1]])
+                embed.description = authordesc + "\n" + toadd + "\n" + ogstrips
                 embed.set_footer(text=f"Strip #{int(num)} | API by LiquidZulu")
         else:
             embed.set_footer(text=f"Strip from {day.month}/{day.day}/{day.year}")
