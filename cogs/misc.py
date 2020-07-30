@@ -124,7 +124,7 @@ class Miscellaneous(commands.Cog):
     async def calcstripfromdate(self, date: Union[datetime, int], sromg): 
         attempts = 0
         if not sromg: 
-            while attempts <= 50:
+            while attempts <= 10:
                 url = f"http://strips.garfield.com/iimages1200/{date.year}/ga{date.strftime('%y%m%d')}.gif"
                 if (await self.getcode(url)) == 200: return (url, limitdatetime(date))
                 url = f"https://d1ejxu6vysztl5.cloudfront.net/comics/garfield/{date.year}/{date.strftime('%Y-%m-%d')}.gif"
@@ -137,7 +137,7 @@ class Miscellaneous(commands.Cog):
                 stripnum = (date - datetime(2010, 1, 25)).days + 251
             else: stripnum = date
             maxnum = (datetime.utcnow() - datetime(2010, 1, 25)).days + 251
-            while attempts <= 50:
+            while attempts <= 10:
                 url = f"https://www.mezzacotta.net/garfield/comics/{stripnum:04}.png"
                 if (await self.getcode(url)) == 200: return (url, limitdatetime(datetime.utcnow()) - timedelta(days=(maxnum - stripnum)))
                 stripnum -= 1
