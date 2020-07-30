@@ -95,7 +95,7 @@ class Miscellaneous(commands.Cog):
         e.description = f"""**Version:** {self.bot.data['version']}
         **Owned by:** {self.bot.owner.mention}
         **Stats:** {len(self.bot.guilds)} servers, unsharded
-        [__**Invite link**__]({discord.utils.oauth_url(str(self.bot.user.id), permissions=discord.Permissions(permissions=8))})"""
+        [__**Invite link**__]({discord.utils.oauth_url(str(self.bot.user.id), permissions=discord.Permissions(permissions=268446911))})"""
         e.set_footer(text=f"Made using discord.py version {discord.__version__}", icon_url="https://cdn.discordapp.com/icons/336642139381301249/3aa641b21acded468308a37eef43d7b3.webp")
         await ctx.send(embed=e)
     
@@ -115,7 +115,7 @@ class Miscellaneous(commands.Cog):
                 if (joined - x.created_at < timedelta(seconds=1)) and x.managed:
                     return await x.edit(color=discord.Color(brighten))
         except discord.Forbidden: return
-
+    ##########################################GARFIELD############################################
     async def getcode(self, url):
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
@@ -126,9 +126,9 @@ class Miscellaneous(commands.Cog):
         if not sromg: 
             while attempts <= 50:
                 url = f"http://strips.garfield.com/iimages1200/{date.year}/ga{date.strftime('%y%m%d')}.gif"
-                if (await self.getcode(url)) == 200: return (url, date)
+                if (await self.getcode(url)) == 200: return (url, limitdatetime(date))
                 url = f"https://d1ejxu6vysztl5.cloudfront.net/comics/garfield/{date.year}/{date.strftime('%Y-%m-%d')}.gif"
-                if (await self.getcode(url)) == 200: return (url, date)
+                if (await self.getcode(url)) == 200: return (url, limitdatetime(date))
                 date -= timedelta(days=1)
                 attempts += 1
         else:
@@ -188,7 +188,7 @@ class Miscellaneous(commands.Cog):
             if isSROMG: 
                 try: num = int(date)
                 except: pass
-                else:
+                else: 
                     if num <= 0:
                         return await ctx.send("Please send a valid SROMG strip #.")
             if not num:
