@@ -166,7 +166,6 @@ class Miscellaneous(commands.Cog):
                 embed.title = f"SROMG | {js['name']}"
                 embed.url = f"http://www.mezzacotta.net/garfield/?comic={num}"
                 authordesc = htmltomarkup(js['authorWrites'].split("Original strip")[0])
-                print(authordesc)
                 tr = htmltomarkup(js['transcription'].replace("*", "\\*").replace("\n", ""))
                 tl = []
                 toadd = "*[visit SROMG page for rest]*" #keep here just in case
@@ -200,6 +199,14 @@ class Miscellaneous(commands.Cog):
         embed.set_image(url=url)
         return embed
         
+    @commands.Cog.listener()
+    async def on_message(self, m):
+        if re.fullmatch("show (comic|sromg|strip)", m.content):
+            await m.channel.trigger_typing()
+            s = m.content.split()[1] == "sromg"
+            url, date = await self.calcstripfromdate(datetime.utcnow() + timedelta(days=1), s)
+            await m.channel.send(embed=await self.formatembed(url, s, False, date))    
+            
     @commands.command(aliases=['gstrip', 'garf', 'sromg'])
     async def garfield(self, ctx: commands.Context, *, date: Optional[str]):
         """Shows a Garfield or SROMG strip. You can also subscribe to daily strips (including DMs).
