@@ -153,19 +153,19 @@ class Miscellaneous(commands.Cog):
             try:
                 async with aiohttp.ClientSession() as session:
                     async with session.get(f"https://garfield-comics.glitch.me/~SRoMG/?comic={num}") as resp: #TODO: if and when zulu changes this, change how this works
-                        js = await resp.json()
+                        js = await resp.json()['data']
             except: pass
             if not js:
                 embed.description = f"View the details of the strip [here.](https://www.mezzacotta.net/garfield/?comic={num})"
             else:
-                embed.title = f"SROMG | {js['data']['name']}"
+                embed.title = f"SROMG | {js['name']}"
                 embed.url = f"http://www.mezzacotta.net/garfield/?comic={num}"
-                embed.description = re.sub(r"<a *href=\"([^\"]*)\">([^<]*)</a>", r"[\2](\1)", js['data']['authorWrites']).split("Original strip")[0]
-                embed.add_field(name="Transcription", value=js['data']['transcription'].replace("\n", "").replace("<br>", "\n"))
-                embed.set_author(name=js['data']['author']['name'], url=f"https://www.mezzacotta.net/garfield/author.php?author={js['data']['author']['number']}'")
-                if (js['data']['originalStrips']):
+                embed.description = re.sub(r"<a *href=\"([^\"]*)\">([^<]*)</a>", r"[\2](\1)", js['authorWrites']).split("Original strip")[0]
+                embed.add_field(name="Transcription", value=js['transcription'].replace("\n", "").replace("<br>", "\n"))
+                embed.set_author(name=js['author']['name'], url=f"https://www.mezzacotta.net/garfield/author.php?author={js['author']['number']}'")
+                if (js['originalStrips']):
                     embed.description += f"\n\n*Original strip{'s' if len(js['data']['originalStrips']) > 1 else ''}: "
-                    for x in js['data']['originalStrips']:
+                    for x in js['originalStrips']:
                         stripformat = re.sub(r"..([^-]*)-([^-]*)-(.*)", r"\2/\3/\1", x['strip'])
                         embed.description += f"[{stripformat}]({x['href']}), "
                     embed.description = embed.description[:-2] + "*"
