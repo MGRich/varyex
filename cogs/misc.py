@@ -164,7 +164,7 @@ class Miscellaneous(commands.Cog):
                 embed.add_field(name="Transcription", value=js['transcription'].replace("\n", "").replace("<br>", "\n"))
                 embed.set_author(name=js['author']['name'], url=f"https://www.mezzacotta.net/garfield/author.php?author={js['author']['number']}'")
                 if (js['originalStrips']):
-                    embed.description += f"\n\n*Original strip{'s' if len(js['data']['originalStrips']) > 1 else ''}: "
+                    embed.description += f"\n\n*Original strip{'s' if len(js['originalStrips']) > 1 else ''}: "
                     for x in js['originalStrips']: 
                         formatted = re.sub(r'..([^-]*)-([^-]*)-(.*)', r'\2/\3/\1', x['strip'])
                         embed.description += f"[{formatted}]({x['href']}), "
