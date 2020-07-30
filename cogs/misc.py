@@ -1,4 +1,4 @@
-import discord, dateparser, aiohttp
+import discord, dateparser, aiohttp, re
 from discord.ext import commands, tasks
 import cogs.utils.mpk as mpku
 from typing import Optional, Union
@@ -144,12 +144,32 @@ class Miscellaneous(commands.Cog):
                 attempts += 1
         return (-1, datetime.utcnow())
 
-    def formatembed(self, url, s, d, day=None):
+    async def formatembed(self, url, s, d, day=None):
         embed = discord.Embed(title=f"{'Daily ' if d else ''}{'SROMG' if s else 'Garfield'} Comic", colour=discord.Color(0xfe9701))
         if s: 
             num = url.split('/')[-1][:-4]
             embed.set_footer(text=f"Strip #{int(num)}")
-            embed.description = f"View the details of the strip [here.](https://www.mezzacotta.net/garfield/?comic={num})"
+            js = None
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(f"https://garfield-comics.glitch.me/~SRoMG/?comic={num}") as resp: #TODO: if and when zulu changes this, change how this works
+                        js = await resp.json()
+            except: pass
+            if not js:
+                embed.description = f"View the details of the strip [here.](https://www.mezzacotta.net/garfield/?comic={num})"
+            else:
+                embed.title = f"SROMG | {js['data']['name']}"
+                embed.url = f"http://www.mezzacotta.net/garfield/?comic={num}"
+                embed.description = re.sub(r"<a *href=\"([^\"]*)\">([^<]*)</a>", r"[\2](\1)", js['data']['authorWrites']).split("Original strip")[0]
+                embed.add_field(name="Transcription", value=js['data']['transcription'].replace("\n", "").replace("<br>", "\n"))
+                embed.set_author(name=js['data']['author']['name'], url=f"https://www.mezzacotta.net/garfield/author.php?author={js['data']['author']['number']}'")
+                if (js['data']['originalStrips']):
+                    embed.description += f"\n\n*Original strip{'s' if len(js['data']['originalStrips']) > 1 else ''}: "
+                    for x in js['data']['originalStrips']:
+                        stripformat = re.sub(r"..([^-]*)-([^-]*)-(.*)", r"\2/\3/\1", x['strip'])
+                        embed.description += f"[{stripformat}]({x['href']}), "
+                    embed.description = embed.description[:-2] + "*"
+                embed.set_footer(text=f"Strip #{int(num)} | API by LiquidZulu")
         else:
             embed.set_footer(text=f"Strip from {day.month}/{day.day}/{day.year}")
         embed.set_image(url=url)
@@ -203,7 +223,7 @@ class Miscellaneous(commands.Cog):
         url, date = await self.calcstripfromdate(date, isSROMG)
         if (url == -1):
             return await ctx.send("Could not find that strip.")
-        await ctx.send(embed=self.formatembed(url, isSROMG, False, date))
+        await ctx.send(embed=await self.formatembed(url, isSROMG, False, date))
 
     @tasks.loop(minutes=5, reconnect=True)
     async def garfloop(self):
@@ -227,11 +247,11 @@ class Miscellaneous(commands.Cog):
             if (shown & 0b01) and mpk['g']:
                 chn = guild.get_channel(mpk['g'])
                 if chn:
-                    await chn.send(embed=self.formatembed(gurl, False, True, gdate))
+                    await chn.send(embed=await self.formatembed(gurl, False, True, gdate))
             if (shown & 0b10) and mpk['s']:
                 chn = guild.get_channel(mpk['s'])
                 if chn:
-                    await chn.send(embed=self.formatembed(surl, True, True, sdate))
+                    await chn.send(embed=await self.formatembed(surl, True, True, sdate))
         mpkr = mpku.MPKManager("users", None).data
         for uid in mpkr:
             try: mpk = mpkr[uid]['garfield']
@@ -240,10 +260,10 @@ class Miscellaneous(commands.Cog):
             if not user: user = await self.bot.fetch_user(uid)
             if not user: continue
             if (shown & 0b01) and mpk['g']:
-                try: await user.send(embed=self.formatembed(gurl, False, True, gdate))
+                try: await user.send(embed=await self.formatembed(gurl, False, True, gdate))
                 except: continue
             if (shown & 0b10) and mpk['s']:
-                try: await user.send(embed=self.formatembed(surl, True, True, sdate))
+                try: await user.send(embed=await self.formatembed(surl, True, True, sdate))
                 except: continue
 
 
