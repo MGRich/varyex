@@ -165,7 +165,9 @@ class Miscellaneous(commands.Cog):
                 embed.set_author(name=js['author']['name'], url=f"https://www.mezzacotta.net/garfield/author.php?author={js['author']['number']}'")
                 if (js['originalStrips']):
                     embed.description += f"\n\n*Original strip{'s' if len(js['data']['originalStrips']) > 1 else ''}: "
-                    for x in js['originalStrips']: embed.description += f"[{re.sub(r'..([^-]*)-([^-]*)-(.*)', r'\2/\3/\1', x['strip'])}]({x['href']}), "
+                    for x in js['originalStrips']: 
+                        foprmatted = re.sub(r'..([^-]*)-([^-]*)-(.*)', r'\2/\3/\1', x['strip'])
+                        embed.description += f"[{formatted}]({x['href']}), "
                     embed.description = embed.description[:-2] + "*"
                 embed.set_footer(text=f"Strip #{int(num)} | API by LiquidZulu")
         else:
