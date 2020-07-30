@@ -160,8 +160,10 @@ class Miscellaneous(commands.Cog):
             else:
                 embed.title = f"SROMG | {js['name']}"
                 embed.url = f"http://www.mezzacotta.net/garfield/?comic={num}"
-                embed.description = re.sub(r"<a *href=\"([^\"]*)\">([^<]*)</a>", r"[\2](\1)", js['authorWrites']).split("Original strip")[0]
-                embed.add_field(name="Transcription", value=js['transcription'].replace("\n", "").replace("<br>", "\n"))
+                embed.description = discord.utils.escape_markdown(re.sub(r"<a *href=\"([^\"]*)\">([^<]*)</a>", r"[\2](\1)", js['authorWrites']).split("Original strip")[0])
+                tr = js['transcription'].replace("\n", "").replace("<br>", "\n").replace("{", "*").replace("}", "*")
+                tr = re.sub(r"\n([^:]*):", r"\n**\1**:", tr)
+                embed.add_field(name="Transcription", value=tr)
                 embed.set_author(name=js['author']['name'], url=f"https://www.mezzacotta.net/garfield/author.php?author={js['author']['number']}'")
                 if (js['originalStrips']):
                     embed.description += f"\n\n*Original strip{'s' if len(js['originalStrips']) > 1 else ''}: "
