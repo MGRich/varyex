@@ -153,7 +153,7 @@ class Miscellaneous(commands.Cog):
             try:
                 async with aiohttp.ClientSession() as session:
                     async with session.get(f"https://garfield-comics.glitch.me/~SRoMG/?comic={num}") as resp: #TODO: if and when zulu changes this, change how this works
-                        js = await resp.json()['data']
+                        js = (await resp.json())['data']
             except: pass
             if not js:
                 embed.description = f"View the details of the strip [here.](https://www.mezzacotta.net/garfield/?comic={num})"
@@ -166,7 +166,7 @@ class Miscellaneous(commands.Cog):
                 if (js['originalStrips']):
                     embed.description += f"\n\n*Original strip{'s' if len(js['data']['originalStrips']) > 1 else ''}: "
                     for x in js['originalStrips']: 
-                        foprmatted = re.sub(r'..([^-]*)-([^-]*)-(.*)', r'\2/\3/\1', x['strip'])
+                        formatted = re.sub(r'..([^-]*)-([^-]*)-(.*)', r'\2/\3/\1', x['strip'])
                         embed.description += f"[{formatted}]({x['href']}), "
                     embed.description = embed.description[:-2] + "*"
                 embed.set_footer(text=f"Strip #{int(num)} | API by LiquidZulu")
