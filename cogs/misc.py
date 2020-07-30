@@ -13,8 +13,8 @@ class Miscellaneous(commands.Cog):
     def __init__(self, bot: commands.Bot):
         # pylint: disable=no-member
         self.bot = bot
-        self.lastdate = limitdatetime(datetime.utcnow()) #get rid of the time
-        self.lastsromg = self.lastdate
+        self.lastdate = (await self.calcstripfromdate(datetime.utcnow() + timedelta(days=1), False))[1] #get rid of the time
+        self.lastsromg = (await self.calcstripfromdate(datetime.utcnow() + timedelta(days=1), True))[1]
         self.garfloop.start()
 
     def cog_unload(self):
