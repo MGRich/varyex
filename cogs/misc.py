@@ -165,10 +165,10 @@ class Miscellaneous(commands.Cog):
                 embed.title = f"SROMG | {js['name']}"
                 embed.url = f"http://www.mezzacotta.net/garfield/?comic={num}"
                 embed.description = self.htmltomarkup(js['authorWrites'].split("Original strip")[0])
-                tr = js['transcription'].replace("*", "\\*")
-                tr = self.htmltomarkup(tr.replace("\n", "").replace("{", "*").replace("}", "*"))
+                tr = self.htmltomarkup(js['transcription'].replace("*", "\\*").replace("\n", ""))
                 tl = []
                 for x in tr.splitlines():
+                    if x.startswith("{"): x = x.replace("{", "*").replace("}", "*")
                     tl.append(re.sub(r"([^:]*):", r"**\1**:", x))
                 embed.add_field(name="Transcription", value='\n'.join(tl))
                 embed.set_author(name=js['author']['name'], url=f"https://www.mezzacotta.net/garfield/author.php?author={js['author']['number']}'")
