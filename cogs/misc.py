@@ -144,6 +144,10 @@ class Miscellaneous(commands.Cog):
                 attempts += 1
         return (-1, datetime.utcnow())
 
+    def htmltomarkup(self, text):
+        text = re.sub(r"<a *href=\"([^\"]*)\">([^<]*)</a>", r"[\2](\1)", text)
+        text = re.sub(r"<i>([^<]*)</i>", "*\\1*", text)
+        return re.sub(r"<b>([^<]*)</b>", "**\\1**", text).replace("<br>", "\n")
     async def formatembed(self, url, s, d, day=None):
         embed = discord.Embed(title=f"{'Daily ' if d else ''}{'SROMG' if s else 'Garfield'} Comic", colour=discord.Color(0xfe9701))
         if s: 
@@ -160,10 +164,12 @@ class Miscellaneous(commands.Cog):
             else:
                 embed.title = f"SROMG | {js['name']}"
                 embed.url = f"http://www.mezzacotta.net/garfield/?comic={num}"
-                embed.description = discord.utils.escape_markdown(re.sub(r"<a *href=\"([^\"]*)\">([^<]*)</a>", r"[\2](\1)", js['authorWrites']).split("Original strip")[0])
-                tr = js['transcription'].replace("\n", "").replace("<br>", "\n").replace("{", "*").replace("}", "*")
-                tr = re.sub(r"\n([^:]*):", r"\n**\1**:", tr)
-                embed.add_field(name="Transcription", value=tr)
+                embed.description = self.htmltomarkup(js['authorWrites'].split("Original strip")[0])
+                tr = self.htmltomarkup(js['transcription'].replace("\n", "").replace("{", "*").replace("}", "*"))
+                tl = []
+                for x in tr.splitlines():
+                    tl.append(re.sub(r"([^:]*):", r"**\1**:", x))
+                embed.add_field(name="Transcription", value='\n'.join(tl))
                 embed.set_author(name=js['author']['name'], url=f"https://www.mezzacotta.net/garfield/author.php?author={js['author']['number']}'")
                 if (js['originalStrips']):
                     embed.description += f"\n\n*Original strip{'s' if len(js['originalStrips']) > 1 else ''}: "
