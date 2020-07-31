@@ -12,7 +12,7 @@ def limitdatetime(dt):
 def htmltomarkup(text):
     text = re.sub(r"<a *href=\"([^\"]*)\">(.*?(?=</a>))</a>", r"[\2](\1)", text)
     text = re.sub(r"<(i|cite|em)>([^<]*)</(i|cite|em)>", "*\\2*", text)
-    text = re.sub(r"<u>([^<]*)</u>", "*\\1*", text)
+    text = re.sub(r"<u>([^<]*)</u>", "__\\1__", text)
     text = re.sub(r"<(b|strong)>([^<]*)</(b|strong)>", "**\\2**", text)
     text = re.sub(r"<code>(.*?(?=</code>))</code>", "`\\1`", text)
     coderebuild = []
