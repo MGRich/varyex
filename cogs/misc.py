@@ -9,9 +9,11 @@ from numpy import clip
 def limitdatetime(dt):
     return datetime.combine(dt.date(), datetime.min.time())
 def htmltomarkup(text):
-    text = re.sub(r"<a *href=\"([^\"]*)\">(.*(?=</a>))</a>", r"[\2](\1)", text)
+    print(text)
+    text = re.sub(r"<a *href=\"([^\"]*)\">(.*?(?=</a>))</a>", r"[\2](\1)", text)
+    print(text)
     text = re.sub(r"<(i|cite|em)>([^<]*)</(i|cite|em)>", "*\\2*", text)
-    text = re.sub(r"<code>(.*(?=</code>))</code>", "`\\1`", text)
+    text = re.sub(r"<code>(.*?(?=</code>))</code>", "`\\1`", text)
     coderebuild = []
     addtilde = False
     for x in text.splitlines():
