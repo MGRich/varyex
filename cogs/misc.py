@@ -192,7 +192,7 @@ class Miscellaneous(commands.Cog):
             if not js:
                 embed.description = f"View the details of the strip [here.](https://www.mezzacotta.net/garfield/?comic={num})"
             else:
-                embed.title = f"SROMG | {js['name']}"
+                embed.title = f"{'Daily ' if d else ''}SROMG | {js['name']}"
                 embed.url = f"http://www.mezzacotta.net/garfield/?comic={num}"
                 authordesc = htmltomarkup(js['authorWrites'].split("Original strip")[0])
                 tr = htmltomarkup(js['transcription'].replace("*", "\\*").replace("\n", ""))
