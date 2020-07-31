@@ -35,12 +35,14 @@ def htmltomarkup(text):
     text = re.sub(r"<img.*src=\"([^\"]*)\"[^>]*>", r"[[IMG]](\1)", text)
     text = re.sub(r"\[([^\]]*)(\]*)\(\/([^\)]*)\)", "[\\1\\2(https://mezzacotta.net/\\3)", text) #should only be mezzacotta, we should be fine
     text = re.sub(r"<iframe.*?>.*<\/iframe>", "[iframe]", text)
+    #lets try and move external markup to the outside
+    text = re.sub(r"\[((\*|_)*)([^*\]]*)\1\](\([^\)]*\))", "\\1[\\3]\\4\\1", text)
     #print(text)
     return html.unescape(text).strip()
 
 async def getcode(url):
     async with aiohttp.ClientSession() as session:
-        async with session.get(url) as resp:
+        async with session.head(url) as resp:
             return resp.status
 
 
@@ -198,8 +200,9 @@ class Miscellaneous(commands.Cog):
                 toadd = "*[visit SROMG page for rest]*" #keep here just in case
                 linecount = 0
                 for x in tr.splitlines():
-                    if re.fullmatch(r"({|\().*(}|\))", x): x = "*" + x[1:-1] + "*" 
-                    t = re.sub(r"^([^:]*):", r"**\1**:", x, 1)
+                    if re.fullmatch(r"({|\().*(}|\))", x): 
+                        t = "*" + x[1:-1] + "*" 
+                    else: t = re.sub(r"^([^:]*):", r"**\1**:", x, 1)
                     linecount += 1
                     if linecount > 10:
                         tl.append(toadd)
