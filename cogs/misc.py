@@ -215,7 +215,7 @@ class Miscellaneous(commands.Cog):
                 if len(authordesc) > (2048 - len(ogstrips)):
                     toadd = "*[visit SROMG page for rest]*"
                     authordesc = ''.join([(x + ".") for x in (authordesc[:(2048 - len(ogstrips) - len(toadd)) - 2].split('.'))[:-1]])
-                embed.description = authordesc + "\n" + toadd + "\n" + ogstrips
+                embed.description = authordesc + (("\n" + toadd) if toadd else "") + "\n" + ogstrips
                 embed.set_footer(text=f"Strip #{int(num)} | API by LiquidZulu")
         else:
             embed.set_footer(text=f"Strip from {day.month}/{day.day}/{day.year}")
