@@ -1,4 +1,4 @@
-import discord, dateparser, aiohttp, re
+import discord, dateparser, aiohttp, re, random, html
 from discord.ext import commands, tasks
 import cogs.utils.mpk as mpku
 from typing import Optional, Union
@@ -11,7 +11,30 @@ def limitdatetime(dt):
 def htmltomarkup(text):
     text = re.sub(r"<a *href=\"([^\"]*)\">(.*(?=</a>))</a>", r"[\2](\1)", text)
     text = re.sub(r"<(i|cite|em)>([^<]*)</(i|cite|em)>", "*\\2*", text)
-    return re.sub(r"<(b|strong)>([^<]*)</(b|strong)>", "**\\2**", text).replace("<br>", "\n")
+    text = re.sub(r"<code>(.*(?=</code>))</code>", "`\\1`", text)
+    coderebuild = []
+    addtilde = False
+    for x in text.splitlines():
+        if re.fullmatch(r"<code>", x): 
+            addtilde = True
+            continue
+        if re.fullmatch(r"</code>", x):
+            coderebuild[-1] += "`" 
+            continue
+        if addtilde:
+            x = "`" + x
+            addtilde = False
+        coderebuild.append(x)
+    text = '\n'.join(coderebuild)
+    text = re.sub(r"<(b|strong)>([^<]*)</(b|strong)>", "**\\2**", text)
+    text = re.sub("<br>\n*", "\n", text) 
+    #1st, lets handle those with an alt so we dont have to deal with them later
+    text = re.sub(r"<img.*src=\"([^\"]*)\"(.*(?=alt=))alt=\"([^\"]*)\"[^>]*>", r"[[IMG: \3]](\1)", text)
+    #now we can do ones without alt
+    text = re.sub(r"<img.*src=\"([^\"]*)\"[^>]*>", r"[[IMG]](\1)", text)
+    text = re.sub(r"\[([^\]]*)(\]*)\(\/([^\)]*)\)", "[\\1\\2(https://mezzacotta.net/\\3)", text) #should only be mezzacotta, we should be fine
+    print(text)
+    return html.unescape(text).strip()
 
 class Miscellaneous(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -213,7 +236,8 @@ class Miscellaneous(commands.Cog):
         Subscribing to a **channel** (not DMs) requires you to have **manage channel** for that channel.
 
         `garfield/gstrip/g/sromg [date]`
-        `g/sromg sub/subscribe`"""
+        `g/sromg sub/subscribe`
+        `g/sromg random`"""
         await ctx.trigger_typing()
         isSROMG = ctx.message.content.startswith(f"{ctx.prefix}sromg")
         num = 0
@@ -237,6 +261,14 @@ class Miscellaneous(commands.Cog):
             mpk['garfield'][check] = 0
             mpm.save()
             return await ctx.send(f"{'This channel' if ctx.guild else 'You'} will no longer recieve {'SROMG' if isSROMG else 'Garfield'} strips.")
+        elif date == "random":
+            if isSROMG:
+                num = random.randrange(1, self.lastsromg + 1)
+            else:
+                start = datetime(1978, 6, 19) #https://stackoverflow.com/questions/553303/
+                delt = datetime.utcnow() - start
+                intd = (delt.days * 24 * 60 * 60) + delt.seconds
+                date = start + timedelta(seconds=random.randrange(intd))
         else:
             if isSROMG: 
                 try: num = int(date)
@@ -262,19 +294,22 @@ class Miscellaneous(commands.Cog):
     async def garfloop(self):
         print("gstart")
         gurl, gdate = await self.calcstripfromdate(datetime.utcnow() + timedelta(days=1), False)
-        surl, sdate = await self.calcstripfromdate(datetime.utcnow() + timedelta(days=1), True)
+        surl, _sdate = await self.calcstripfromdate(datetime.utcnow() + timedelta(days=1), True)
         if self.firstrun:
+            if (surl == -1) or (gurl == -1): return
             self.firstrun = False
             self.lastdate = gdate
-            self.lastsromg = sdate
+            self.lastsromg = int(surl.split('/')[-1][:-4])
             return
-        shown = 0b00
+        shown = 0
         if (gurl != -1) and gdate > self.lastdate:
-            shown |= 0b01
+            shown |= 1
             self.lastdate = gdate
-        if (surl != -1) and sdate > self.lastsromg:
-            shown |= 0b10
-            self.lastsromg = sdate
+        if (surl != -1):
+            snum = int(surl.split('/')[-1][:-4])
+            if snum > self.lastsromg:
+                shown |= 2
+                self.lastsromg = snum
         print(shown)
         #if not shown: return
         #first we check guilds cause thats easy
@@ -289,7 +324,7 @@ class Miscellaneous(commands.Cog):
             if (shown & 0b10) and mpk['s']:
                 chn = guild.get_channel(mpk['s'])
                 if chn:
-                    await chn.send(embed=await self.formatembed(surl, True, True, sdate))
+                    await chn.send(embed=await self.formatembed(surl, True, True))
         mpkr = mpku.MPKManager("users", None).data
         for uid in mpkr:
             try: mpk = mpkr[uid]['garfield']
@@ -301,7 +336,7 @@ class Miscellaneous(commands.Cog):
                 try: await user.send(embed=await self.formatembed(gurl, False, True, gdate))
                 except: continue
             if (shown & 0b10) and mpk['s']:
-                try: await user.send(embed=await self.formatembed(surl, True, True, sdate))
+                try: await user.send(embed=await self.formatembed(surl, True, True))
                 except: continue
 
 
