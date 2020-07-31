@@ -12,6 +12,8 @@ def limitdatetime(dt):
 def htmltomarkup(text):
     text = re.sub(r"<a *href=\"([^\"]*)\">(.*?(?=</a>))</a>", r"[\2](\1)", text)
     text = re.sub(r"<(i|cite|em)>([^<]*)</(i|cite|em)>", "*\\2*", text)
+    text = re.sub(r"<u>([^<]*)</u>", "*\\1*", text)
+    text = re.sub(r"<(b|strong)>([^<]*)</(b|strong)>", "**\\2**", text)
     text = re.sub(r"<code>(.*?(?=</code>))</code>", "`\\1`", text)
     coderebuild = []
     addtilde = False
@@ -27,7 +29,6 @@ def htmltomarkup(text):
             addtilde = False
         coderebuild.append(x)
     text = '\n'.join(coderebuild)
-    text = re.sub(r"<(b|strong)>([^<]*)</(b|strong)>", "**\\2**", text)
     text = re.sub("<br>\n*", "\n", text) 
     #1st, lets handle those with an alt so we dont have to deal with them later
     text = re.sub(r"<img.*src=\"([^\"]*)\"(.*(?=alt=))alt=\"([^\"]*)\"[^>]*>", r"[[IMG: \3]](\1)", text)
@@ -36,7 +37,7 @@ def htmltomarkup(text):
     text = re.sub(r"\[([^\]]*)(\]*)\(\/([^\)]*)\)", "[\\1\\2(https://mezzacotta.net/\\3)", text) #should only be mezzacotta, we should be fine
     text = re.sub(r"<iframe.*?>.*<\/iframe>", "[iframe]", text)
     #lets try and move external markup to the outside
-    text = re.sub(r"\[((\*|_)*)([^*\]]*)\1\](\([^\)]*\))", "\\1[\\3]\\4\\1", text)
+    text = re.sub(r"\[((\*|_)*)([^\1\]]*)\1\](\([^\)]*\))", "\\1[\\3]\\4\\1", text)
     #print(text)
     return html.unescape(text).strip()
 
@@ -195,7 +196,8 @@ class Miscellaneous(commands.Cog):
                 embed.title = f"{'Daily ' if d else ''}SROMG | {js['name']}"
                 embed.url = f"http://www.mezzacotta.net/garfield/?comic={num}"
                 authordesc = htmltomarkup(js['authorWrites'].split("Original strip")[0])
-                tr = htmltomarkup(js['transcription'].replace("*", "\\*").replace("\n", ""))
+                tr = re.sub("<br>\n*", "\n", js['transcription'].replace("*", "\\*").replace("\n", "")) 
+                tr = htmltomarkup('\n'.join(tr.splitlines()[:11]))
                 tl = []
                 toadd = "*[visit SROMG page for rest]*" #keep here just in case
                 linecount = 0
