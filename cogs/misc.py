@@ -34,7 +34,8 @@ def htmltomarkup(text):
     #now we can do ones without alt
     text = re.sub(r"<img.*src=\"([^\"]*)\"[^>]*>", r"[[IMG]](\1)", text)
     text = re.sub(r"\[([^\]]*)(\]*)\(\/([^\)]*)\)", "[\\1\\2(https://mezzacotta.net/\\3)", text) #should only be mezzacotta, we should be fine
-    print(text)
+    text = re.sub(r"<iframe.*?>.*<\/iframe>", "[iframe]", text)
+    #print(text)
     return html.unescape(text).strip()
 
 async def getcode(url):
