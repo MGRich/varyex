@@ -42,9 +42,8 @@ def htmltomarkup(text):
     return html.unescape(text).strip()
 
 async def getcode(url):
-    async with aiohttp.ClientSession() as session:
-        async with session.head(url) as resp:
-            return resp.status
+    async with aiohttp.request('HEAD', url) as resp:
+        return resp.status
 
 
 class Miscellaneous(commands.Cog):
@@ -186,9 +185,8 @@ class Miscellaneous(commands.Cog):
             embed.set_footer(text=f"Strip #{int(num)}")
             js = None
             try:
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(f"https://garfield-comics.glitch.me/~SRoMG/?comic={num}") as resp: #TODO: if and when zulu changes this, change how this works
-                        js = (await resp.json())['data']
+                async with aiohttp.request('GET', f"https://garfield-comics.glitch.me/~SRoMG/?comic={num}") as resp: #TODO: if and when zulu changes this, change how this works
+                    js = (await resp.json())['data']
             except: pass
             if not js:
                 embed.description = f"View the details of the strip [here.](https://www.mezzacotta.net/garfield/?comic={num})"
