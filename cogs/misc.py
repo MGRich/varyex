@@ -10,9 +10,7 @@ def limitdatetime(dt):
     return datetime.combine(dt.date(), datetime.min.time())
 
 def htmltomarkup(text):
-    print(text)
     text = re.sub(r"<a *href=\"([^\"]*)\">(.*?(?=</a>))</a>", r"[\2](\1)", text)
-    print(text)
     text = re.sub(r"<(i|cite|em)>([^<]*)</(i|cite|em)>", "*\\2*", text)
     text = re.sub(r"<code>(.*?(?=</code>))</code>", "`\\1`", text)
     coderebuild = []
@@ -152,7 +150,6 @@ class Miscellaneous(commands.Cog):
                     return await x.edit(color=discord.Color(brighten))
         except discord.Forbidden: return
     ##########################################GARFIELD############################################
-    
     async def calcstripfromdate(self, date: Union[datetime, int], sromg): 
         attempts = 0
         if not sromg: 
@@ -201,7 +198,7 @@ class Miscellaneous(commands.Cog):
                 linecount = 0
                 for x in tr.splitlines():
                     if re.fullmatch(r"({|\().*(}|\))", x): x = "*" + x[1:-1] + "*" 
-                    t = re.sub(r"([^:]*):", r"**\1**:", x)
+                    t = re.sub(r"^([^:]*):", r"**\1**:", x, 1)
                     linecount += 1
                     if linecount > 10:
                         tl.append(toadd)
@@ -271,8 +268,8 @@ class Miscellaneous(commands.Cog):
             if isSROMG:
                 num = random.randrange(1, self.lastsromg + 1)
             else:
-                start = datetime(1978, 6, 19) #https://stackoverflow.com/questions/553303/
-                delt = datetime.utcnow() - start
+                start = datetime(1978, 6, 19)
+                delt = datetime.utcnow() - start #https://stackoverflow.com/questions/553303/
                 intd = (delt.days * 24 * 60 * 60) + delt.seconds
                 date = start + timedelta(seconds=random.randrange(intd))
         else:
@@ -301,20 +298,23 @@ class Miscellaneous(commands.Cog):
         print("gstart")
         gurl, gdate = await self.calcstripfromdate(datetime.utcnow() + timedelta(days=1), False)
         surl, _sdate = await self.calcstripfromdate(datetime.utcnow() + timedelta(days=1), True)
+        gembed = sembed = None
         if self.firstrun:
             if (surl == -1) or (gurl == -1): return
-            self.firstrun = False
             self.lastdate = gdate
             self.lastsromg = int(surl.split('/')[-1][:-4])
+            self.firstrun = False
             return
         shown = 0
         if (gurl != -1) and gdate > self.lastdate:
             shown |= 1
+            gembed = await self.formatembed(gurl, False, True, gdate)
             self.lastdate = gdate
         if (surl != -1):
             snum = int(surl.split('/')[-1][:-4])
             if snum > self.lastsromg:
                 shown |= 2
+                sembed = await self.formatembed(surl, True, True)
                 self.lastsromg = snum
         print(shown)
         #if not shown: return
@@ -326,11 +326,11 @@ class Miscellaneous(commands.Cog):
             if (shown & 0b01) and mpk['g']:
                 chn = guild.get_channel(mpk['g'])
                 if chn:
-                    await chn.send(embed=await self.formatembed(gurl, False, True, gdate))
+                    await chn.send(embed=gembed)
             if (shown & 0b10) and mpk['s']:
                 chn = guild.get_channel(mpk['s'])
                 if chn:
-                    await chn.send(embed=await self.formatembed(surl, True, True))
+                    await chn.send(embed=sembed)
         mpkr = mpku.MPKManager("users", None).data
         for uid in mpkr:
             try: mpk = mpkr[uid]['garfield']
@@ -339,10 +339,10 @@ class Miscellaneous(commands.Cog):
             if not user: user = await self.bot.fetch_user(uid)
             if not user: continue
             if (shown & 0b01) and mpk['g']:
-                try: await user.send(embed=await self.formatembed(gurl, False, True, gdate))
+                try: await user.send(embed=gembed)
                 except: continue
             if (shown & 0b10) and mpk['s']:
-                try: await user.send(embed=await self.formatembed(surl, True, True))
+                try: await user.send(embed=sembed)
                 except: continue
 
 
