@@ -8,6 +8,7 @@ from numpy import clip
 
 def limitdatetime(dt):
     return datetime.combine(dt.date(), datetime.min.time())
+
 def htmltomarkup(text):
     print(text)
     text = re.sub(r"<a *href=\"([^\"]*)\">(.*?(?=</a>))</a>", r"[\2](\1)", text)
@@ -37,6 +38,12 @@ def htmltomarkup(text):
     text = re.sub(r"\[([^\]]*)(\]*)\(\/([^\)]*)\)", "[\\1\\2(https://mezzacotta.net/\\3)", text) #should only be mezzacotta, we should be fine
     print(text)
     return html.unescape(text).strip()
+
+async def getcode(url):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as resp:
+            return resp.status
+
 
 class Miscellaneous(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -145,19 +152,15 @@ class Miscellaneous(commands.Cog):
                     return await x.edit(color=discord.Color(brighten))
         except discord.Forbidden: return
     ##########################################GARFIELD############################################
-    async def getcode(self, url):
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as resp:
-                return resp.status
     
     async def calcstripfromdate(self, date: Union[datetime, int], sromg): 
         attempts = 0
         if not sromg: 
             while attempts <= 10:
                 url = f"http://strips.garfield.com/iimages1200/{date.year}/ga{date.strftime('%y%m%d')}.gif"
-                if (await self.getcode(url)) == 200: return (url, limitdatetime(date))
+                if (await getcode(url)) == 200: return (url, limitdatetime(date))
                 url = f"https://d1ejxu6vysztl5.cloudfront.net/comics/garfield/{date.year}/{date.strftime('%Y-%m-%d')}.gif"
-                if (await self.getcode(url)) == 200: return (url, limitdatetime(date))
+                if (await getcode(url)) == 200: return (url, limitdatetime(date))
                 date -= timedelta(days=1)
                 attempts += 1
         else:
@@ -169,7 +172,7 @@ class Miscellaneous(commands.Cog):
             while attempts <= 10:
                 for x in ['png', 'gif', 'jpg', 'jpeg', 'webm']:
                     url = f"https://www.mezzacotta.net/garfield/comics/{stripnum:04}.{x}"
-                    if (await self.getcode(url)) == 200: return (url, limitdatetime(datetime.utcnow()) - timedelta(days=(maxnum - stripnum)))
+                    if (await getcode(url)) == 200: return (url, limitdatetime(datetime.utcnow()) - timedelta(days=(maxnum - stripnum)))
                 stripnum -= 1
                 attempts += 1
         return (-1, datetime.utcnow())
@@ -197,7 +200,7 @@ class Miscellaneous(commands.Cog):
                 toadd = "*[visit SROMG page for rest]*" #keep here just in case
                 linecount = 0
                 for x in tr.splitlines():
-                    if x.startswith("{"): x = x.replace("{", "*").replace("}", "*")
+                    if re.fullmatch(r"({|\().*(}|\))", x): x = "*" + x[1:-1] + "*" 
                     t = re.sub(r"([^:]*):", r"**\1**:", x)
                     linecount += 1
                     if linecount > 10:
