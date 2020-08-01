@@ -121,7 +121,7 @@ class Miscellaneous(commands.Cog):
         """Says something in a channel.
         **Must have administrator permission.**
 
-        `say <text>`"""
+        `say <chn> <text>`"""
         await chn.send(funny)
 
     @commands.command(aliases = ['about', 'invite'])
@@ -132,7 +132,7 @@ class Miscellaneous(commands.Cog):
         e.description = f"""**Version:** {self.bot.data['version']}
         **Owned by:** {self.bot.owner.mention}
         **Stats:** {len(self.bot.guilds)} servers, unsharded
-        [__**Invite link**__]({discord.utils.oauth_url(str(self.bot.user.id), permissions=discord.Permissions(permissions=268446911))})"""
+        __**[Invite link]({discord.utils.oauth_url(str(self.bot.user.id), permissions=discord.Permissions(permissions=268446911))})**__"""
         e.set_footer(text=f"Made using discord.py version {discord.__version__}", icon_url="https://cdn.discordapp.com/icons/336642139381301249/3aa641b21acded468308a37eef43d7b3.webp")
         await ctx.send(embed=e)
     
