@@ -300,7 +300,7 @@ class Miscellaneous(commands.Cog):
     @tasks.loop(minutes=5, reconnect=True)
     async def garfloop(self):
         print("gstart")
-        gurl, gdate = (None, datetime.min())#await self.calcstripfromdate(datetime.utcnow() + timedelta(days=1), False)
+        gurl, gdate = (None, datetime.min)#await self.calcstripfromdate(datetime.utcnow() + timedelta(days=1), False)
         surl, _sdate = await self.calcstripfromdate(datetime.utcnow() + timedelta(days=1), True)
         gembed = sembed = None
         if self.firstrun:
