@@ -42,8 +42,11 @@ def htmltomarkup(text):
     return html.unescape(text).strip()
 
 async def getcode(url):
-    async with aiohttp.request('HEAD', url) as resp:
-        return resp.status
+    print(f"try {url}")
+    try: 
+        async with aiohttp.request('HEAD', url, timeout=aiohttp.ClientTimeout(total=2)) as resp:
+            return resp.status
+    except: return 408  
 
 
 class Miscellaneous(commands.Cog):
