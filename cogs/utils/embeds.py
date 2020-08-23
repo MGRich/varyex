@@ -67,16 +67,17 @@ class embeds:
             if (e.color != discord.Color.default() and e.color != e.Empty): embed.colour = e.color
             try:
                 if (stardata) and e.type == "rich":
-                    if "https://twitter.com/" in e.url: typ = "twitter"
-                    if "https://www.youtube.com/" == e.provider.url: typ = "yt"
-                    if "Twitch" == e.provider.name: typ = "twitch"
-                    if "GameBanana" == e.provider.name: typ = "gb"
+                    if   "https://twitter.com/" in e.url: typ = "twitter"
+                    elif "https://www.youtube.com/" == e.provider.url: typ = "yt"
+                    elif "Twitch" == e.provider.name: typ = "twitch"
+                    elif "https://gamebanana.com" in e.url: typ = "gb"
             except: pass
             #SPECIAL HANDLING   
             if typ == "twitter":
                 embed.colour = discord.Color(0x1DA1F2)
                 if e.description != e.Empty:
-                    embed.add_field(name="Tweet", value=f"**__{e.author.name}__** {'*(multiple images)*' if len(msg.embeds) > 1 else ''}\n{e.description}")
+                    at = e.author.name.split("@")[-1]
+                    embed.add_field(name="Tweet", value=f"**__[{e.author.name}](https://twitter.com/{at})__** {'*(multiple images)*' if len(msg.embeds) > 1 else ''}\n{e.description}")
                 
                 if len(e.fields) != 0: 
                     ftxt.append(" [")
