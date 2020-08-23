@@ -76,7 +76,7 @@ class embeds:
             if typ == "twitter":
                 embed.colour = discord.Color(0x1DA1F2)
                 if e.description != e.Empty:
-                    at = e.author.name.split("@")[-1]
+                    at = e.author.name.split("@")[-1].split(")")[0]
                     embed.add_field(name="Tweet", value=f"**__[{e.author.name}](https://twitter.com/{at})__** {'*(multiple images)*' if len(msg.embeds) > 1 else ''}\n{e.description}")
                 
                 if len(e.fields) != 0: 
