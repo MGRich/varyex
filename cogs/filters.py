@@ -163,7 +163,7 @@ class Filters(commands.Cog):
         if (not isfp): return await ctx.send("This only applies to filterpings.")
         mpm.data['channel'] = chn.id
         mpm.save()
-        await ctx.send(f"Set 'filterping' channel to {chn.mention}!")
+        await ctx.send(f"Set filterping channel to {chn.mention}!")
 
     @commands.Cog.listener()
     async def on_message(self, msg):
