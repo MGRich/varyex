@@ -10,8 +10,7 @@ class Filters(commands.Cog):
         self.bot = bot
 
     def getmpm(self, guild) -> mpku.MPKManager:
-        return mpku.MPKManager("filters", guild.id)
-
+        return mpku.getmpm("filters", guild.id, ['channel'], ['0'])
 
     @commands.group(aliases = ["filterping", "fp", 'f'])
     @commands.has_permissions(manage_messages = True)
@@ -35,7 +34,8 @@ class Filters(commands.Cog):
             except:
                 ebase.description = "*No data.*"
                 return await ctx.send(embed=ebase)
-            ebase.description = ""
+            ch = "*No channel*" if not mpk['channel'] else f"<#{mpk['channel']}"
+            ebase.description = f"Channel: {ch}\n"
             if isfp:
                 for entry in mpk['filterping'].items(): 
                     #print(entry)
@@ -156,7 +156,13 @@ class Filters(commands.Cog):
             removed = [f"`{x}`" for x in removed]
             await ctx.send(f"Removed {', '.join(removed)} from filters!") 
 
-
+    @config.command(aliases = ['channel'])
+    async def setchannel(self, ctx, chn: discord.Channel):
+        mpm = self.getmpm(ctx.guild)
+        mpk = mpm.data
+        mpk['channel'] = chn.id
+        mpm.save()
+        await ctx.send(f"Set channel to {chn.mention}!")
 
     @commands.Cog.listener()
     async def on_message(self, msg):
