@@ -10,7 +10,7 @@ class Filters(commands.Cog):
         self.bot = bot
 
     def getmpm(self, guild) -> mpku.MPKManager:
-        return mpku.getmpm("filters", guild.id, ['channel', 'filters', 'filterping'], ['0', [], {}])
+        return mpku.getmpm("filters", guild.id, ['channel', 'filter', 'filterping'], ['0', [], {}])
 
     @commands.group(aliases = ["filterping", "fp", 'f'])
     @commands.has_permissions(manage_messages = True)
@@ -188,6 +188,7 @@ class Filters(commands.Cog):
 
         if hasfp:
             for entry in mpk['filterping'].items():
+                if (type(entry) == int): continue
                 if re.search(entry[0], msg.content, re.IGNORECASE):
                     flist.append(entry[0])
                     for memb in entry[1]:
