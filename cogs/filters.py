@@ -10,7 +10,7 @@ class Filters(commands.Cog):
         self.bot = bot
 
     def getmpm(self, guild) -> mpku.MPKManager:
-        return mpku.getmpm("filters", guild.id, ['channel'], ['0'])
+        return mpku.getmpm("filters", guild.id, ['channel', 'filters', 'filterping'], ['0', [], {}])
 
     @commands.group(aliases = ["filterping", "fp", 'f'])
     @commands.has_permissions(manage_messages = True)
@@ -159,10 +159,11 @@ class Filters(commands.Cog):
     @config.command(aliases = ['channel'])
     async def setchannel(self, ctx, chn: discord.TextChannel):
         mpm = self.getmpm(ctx.guild)
-        mpk = mpm.data
-        mpk['channel'] = chn.id
+        isfp = ctx.message.content.split()[0][len(ctx.prefix):] in ['fp', 'filterping']
+        strused = 'filterping' if isfp else 'filter'
+        mpm.data[strused]['channel'] = chn.id
         mpm.save()
-        await ctx.send(f"Set channel to {chn.mention}!")
+        await ctx.send(f"Set {'filterping' if isfp else 'filter'} channel to {chn.mention}!")
 
     @commands.Cog.listener()
     async def on_message(self, msg):
