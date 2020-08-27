@@ -160,7 +160,7 @@ class Filters(commands.Cog):
     async def setchannel(self, ctx, chn: discord.TextChannel):
         mpm = self.getmpm(ctx.guild)
         isfp = ctx.message.content.split()[0][len(ctx.prefix):] in ['fp', 'filterping']
-        if (not isfp) return await ctx.send("This only applies to filterpings.")
+        if (not isfp): return await ctx.send("This only applies to filterpings.")
         mpm.data['channel'] = chn.id
         mpm.save()
         await ctx.send(f"Set 'filterping' channel to {chn.mention}!")
