@@ -157,7 +157,7 @@ class Filters(commands.Cog):
             await ctx.send(f"Removed {', '.join(removed)} from filters!") 
 
     @config.command(aliases = ['channel'])
-    async def setchannel(self, ctx, chn: discord.Channel):
+    async def setchannel(self, ctx, chn: discord.TextChannel):
         mpm = self.getmpm(ctx.guild)
         mpk = mpm.data
         mpk['channel'] = chn.id
