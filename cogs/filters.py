@@ -176,6 +176,7 @@ class Filters(commands.Cog):
         try:
             mpk['filterping']
             if (not mpk['channel']): raise Exception()
+            chn = await self.bot.fetch_channel(mpk['channel'])
             hasfp = not msg.author.bot
         except: pass
         try:
@@ -207,7 +208,6 @@ class Filters(commands.Cog):
                 plist[i] = f"<@{p}>"
                 i += 1
 
-            chn = await self.bot.fetch_channel(mpk['channel'])
             e = await embeds.buildembed(embeds, msg, focus=flist)
             e.set_footer(text=f"Focused: {', '.join(flist)}")
             await chn.send(' '.join(plist), embed=e)
