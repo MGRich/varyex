@@ -229,6 +229,8 @@ class Moderation(commands.Cog):
                                 await guild.unban(discord.Object(int(uid)), reason="Time for warning ran out.")
                         except discord.Forbidden:
                             pass #dm someone who can?
+                        except discord.NotFound:
+                            pass #oops
                         
                     del(mpk['inwarn'][uid])
                     changed = True
