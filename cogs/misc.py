@@ -207,7 +207,9 @@ class Miscellaneous(commands.Cog):
                         t = "*" + x[1:-1] + "*" 
                     else: t = re.sub(r"^([^:]*):", r"**\1**:", x, 1)
                     linecount += 1
-                    if linecount > 10:
+                    over = (len('\n'.join(tl)) > 1024 - len(toadd))
+                    if (linecount > 10) or over:
+                        if (over): tl = tl[:-1]
                         tl.append(toadd)
                         break
                     tl.append(t)
