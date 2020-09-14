@@ -34,7 +34,7 @@ class Filters(commands.Cog):
             except:
                 ebase.description = "*No data.*"
                 return await ctx.send(embed=ebase)
-            ch = "*No channel*" if not mpk['channel'] else f"<#{mpk['channel']}"
+            ch = "*No channel*" if (not mpk['channel']) else f"<#{mpk['channel']}>"
             ebase.description = f"Channel: {ch}\n"
             if isfp:
                 for entry in mpk['filterping'].items(): 
