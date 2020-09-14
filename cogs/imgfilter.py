@@ -61,6 +61,7 @@ class IMGFilter(commands.Cog):
                         oB = (val & 0x1F)
                         #and turn back into 888
                         map[x, y] = (((oR * 527 + 23) >> 6), ((oG * 259 + 33) >> 6), ((oB * 527 + 23) >> 6), A)
+            else: return await ctx.send("Invalid filter!")
             img.save(f"{ctx.message.id}{done}.png")
             files.append(discord.File(f"{ctx.message.id}{done}.png"))
             done += 1
