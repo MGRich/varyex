@@ -1,10 +1,11 @@
-import discord, dateparser, aiohttp, re, random, html
+import discord, dateparser, aiohttp, re, random, html, imghdr, io, os
 from discord.ext import commands, tasks
 import cogs.utils.mpk as mpku
 from typing import Optional, Union
 from datetime import datetime, timedelta
 from asyncio import sleep
 from numpy import clip
+from PIL import Image
 
 def limitdatetime(dt):
     return datetime.combine(dt.date(), datetime.min.time())
@@ -44,9 +45,12 @@ def htmltomarkup(text):
 async def getcode(url):
     print(f"try {url}")
     try: 
-        async with aiohttp.request('HEAD', url, timeout=aiohttp.ClientTimeout(total=2)) as resp:
+        async with aiohttp.request('HEAD', url) as resp:
+            print(resp.status)
             return resp.status
-    except: return 408  
+    except:
+        print(408)
+        return 408  
 
 
 class Miscellaneous(commands.Cog):
@@ -159,11 +163,14 @@ class Miscellaneous(commands.Cog):
     async def calcstripfromdate(self, date: Union[datetime, int], sromg): 
         attempts = 0
         if not sromg: 
-            while attempts <= 10:
-                url = f"http://strips.garfield.com/iimages1200/{date.year}/ga{date.strftime('%y%m%d')}.gif"
-                if (await getcode(url)) == 200: return (url, limitdatetime(date))
+            while attempts <= 5:
                 url = f"https://d1ejxu6vysztl5.cloudfront.net/comics/garfield/{date.year}/{date.strftime('%Y-%m-%d')}.gif"
                 if (await getcode(url)) == 200: return (url, limitdatetime(date))
+                #url = f"http://strips.garfield.com/iimages1200/{date.year}/ga{date.strftime('%y%m%d')}.gif"
+                #if (await getcode(url)) == 200: return (url, limitdatetime(date)) #currently frozen
+                for fn in ['gif', 'jpg', 'png']:
+                    url = f"http://picayune.uclick.com/comics/ga/{date.year}/ga{date.strftime('%y%m%d')}.{fn}"
+                    if (await getcode(url)) == 200: return (url, limitdatetime(date))
                 date -= timedelta(days=1)
                 attempts += 1
         else:
@@ -173,7 +180,7 @@ class Miscellaneous(commands.Cog):
             else: stripnum = date
             maxnum = (datetime.utcnow() - datetime(2010, 1, 25)).days + 251
             while attempts <= 10:
-                for x in ['png', 'gif', 'jpg', 'jpeg', 'webm']:
+                for x in ['png', 'gif', 'jpg']:
                     url = f"https://www.mezzacotta.net/garfield/comics/{stripnum:04}.{x}"
                     if (await getcode(url)) == 200: return (url, limitdatetime(datetime.utcnow()) - timedelta(days=(maxnum - stripnum)))
                 stripnum -= 1
@@ -230,7 +237,8 @@ class Miscellaneous(commands.Cog):
                 embed.description = authordesc + (("\n" + toadd) if toadd else "") + "\n" + ogstrips
                 embed.set_footer(text=f"Strip #{int(num)} | API by LiquidZulu")
         else:
-            embed.set_footer(text=f"Strip from {day.month}/{day.day}/{day.year}")
+            isfallback = 'picayune' in url
+            embed.set_footer(text=f"Strip from {day.month}/{day.day}/{day.year}{' (fallback CDN)' if isfallback else ''}")
         embed.set_image(url=url)
         return embed
         
@@ -305,7 +313,7 @@ class Miscellaneous(commands.Cog):
     @tasks.loop(minutes=5, reconnect=True)
     async def garfloop(self):
         print("gstart")
-        gurl, gdate = (None, datetime.min)#await self.calcstripfromdate(datetime.utcnow() + timedelta(days=1), False)
+        gurl, gdate = await self.calcstripfromdate(datetime.utcnow() + timedelta(days=1), False)
         surl, _sdate = await self.calcstripfromdate(datetime.utcnow() + timedelta(days=1), True)
         gembed = sembed = None
         if self.firstrun:
@@ -353,6 +361,78 @@ class Miscellaneous(commands.Cog):
             if (shown & 0b10) and mpk['s']:
                 try: await user.send(embed=sembed)
                 except: continue
+
+    @commands.command()
+    async def imgfilter(self, ctx, filter, *links):
+        """Applies a filter to images.
+        You can send images as links or attachments.
+        GIFs are not supported.
+
+        `imgfilter <filter> [links]` where `filter` CONTAINS (ex. `genesis` works):
+        > `gen` - Sega Genesis 3-bit filter
+        > `565` - RGB565 filter, used for some consoles and other graphics"""
+        if (len(ctx.message.attachments) == 0 and not links): return
+        ftouse = ""
+        if   ("gen" in filter.lower()): ftouse = "gen"
+        elif ("565" in filter.lower()): ftouse = "565"
+        if not ftouse: return await ctx.send("Invalid filter!")
+        images = []
+        invalid = []
+        total = list(links) + [x.url for x in ctx.message.attachments]
+        for link in total:
+            #try:
+            print(link)
+            async with aiohttp.request('GET', link) as resp:
+                read = await resp.read()
+                if imghdr.what("", h=read) == "gif": invalid.append(link)
+                else: 
+                    images.append(Image.open(io.BytesIO(read)))
+            #except: invalid.append(link)
+        msg = await ctx.send("Converting, please wait...")
+        done = 0
+        files = []
+        for img in images:
+            await msg.edit(content=f"Converting, please wait... {str(done)}/{len(images)} done")
+            img.convert('RGB')
+            map = img.load()
+            if ftouse == "gen":
+                gencolour = [00, 0x34, 0x57, 0x74, 0x90, 0xAC, 0xCE, 0xFF]
+                clrchecks = [0x20, 0x40, 0x60, 0x80, 0xA0, 0xC0, 0xE0, 0xFE]
+                for y in range(img.height):
+                    for x in range(img.width):
+                        tup = list(map[x, y])
+                        for ii in range(3):
+                            for i in range(8):
+                                if (tup[ii] < clrchecks[i]):
+                                    tup[ii] = gencolour[i]
+                                    break
+                        map[x, y] = tuple(tup)
+            elif ftouse == "565":
+                #first we need to turn into 565
+                for y in range(img.height):
+                    for x in range(img.width):
+                        #print(map[x, y])
+                        if (len(map[x, y]) == 4):
+                            R, G, B, A = map[x, y]
+                        else:
+                            R, G, B = map[x, y]
+                            A = 255
+                        val = ((B >> 3) | (G >> 2) << 5 | ((R >> 3) << 11)) & 0xFFFF
+                        #now we seperate
+                        oR = (val & 0xF800) >> 11
+                        oG = (val & 0x7E0) >> 5
+                        oB = (val & 0x1F)
+                        #and turn back into 888
+                        map[x, y] = (((oR * 527 + 23) >> 6), ((oG * 259 + 33) >> 6), ((oB * 527 + 23) >> 6), A)
+            img.save(f"{ctx.message.id}{done}.png")
+            files.append(discord.File(f"{ctx.message.id}{done}.png"))
+            done += 1
+        await msg.delete()
+        await ctx.send(files=files)
+        for x in range(done):
+            os.remove(f"{ctx.message.id}{x}.png")
+
+
 
 
 def setup(bot):

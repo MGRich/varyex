@@ -37,6 +37,7 @@ class Starboard(commands.Cog):
 
     async def handlereact(self, payl: discord.RawReactionActionEvent, typ):
         if not payl.guild_id: return
+        if payl.user_id == self.bot.user.id: return
         start = default_timer()
         #typ of 0 is pin, 1 or -1 is star/unstar
         try: msg = await self.bot.get_channel(payl.channel_id).fetch_message(payl.message_id)

@@ -161,7 +161,7 @@ class Moderation(commands.Cog):
         if mpk['inwarn'][uid]['left'] != 0:
             mpk['inwarn'][uid]['time'] += now() - mpk['inwarn'][uid]['left']
             mpk['inwarn'][uid]['left'] = 0
-        ofc = mpk['offences'][str(len(mpk['users'][uid]))]
+        ofc = mpk['offences'][min(len(majorWarns(mpk['users'][uid])), len(mpk['offences'])) - 1]
         act = copy(mpk['actions'][ofc['action']])
         if (act['type'] == "gr"):
             await member.add_roles(member.guild.get_role(act['role']), reason="User rejoined while in punishment.")    
@@ -332,12 +332,11 @@ class Moderation(commands.Cog):
 
             worked = True
             try:
-                if   (act['type'] == "gr"): await user.add_roles(ctx.guild.get_role(act['role']), reason=reason)
+                if   (act['name'] == "verbal"): pass
+                elif (act['type'] == "gr"): await user.add_roles(ctx.guild.get_role(act['role']), reason=reason)
                 elif (act['type'] == "k"): await user.kick(reason=reason)
                 elif (act['type'] == "b" ): await user.ban(reason=reason)
-            except discord.Forbidden: 
-                worked = False
-                #print(e.with_traceback())
+            except: worked = False
 
             if (not worked):
                 await ctx.send("I'm not able to take action, but the user will be warned.")
@@ -445,7 +444,9 @@ class Moderation(commands.Cog):
         async def waitfor():
             nonlocal ret
             try: ret = await self.bot.wait_for('message', check=check, timeout=180.0)
-            except asyncio.TimeoutError: return await ctx.send("Cancelled due to 3 minute timeout.")
+            except asyncio.TimeoutError: 
+                await ctx.send("Cancelled due to 3 minute timeout.")
+                raise commands.CommandNotFound()
             if ret.content == "cancel":
                 await ctx.send("Cancelled the addition.")
                 raise commands.CommandNotFound() #LOL
@@ -531,7 +532,8 @@ class Moderation(commands.Cog):
         if ctx.invoked_with == "track": return await ctx.invoke(self.config, None)
         mpm = mpku.getmpm('moderation', ctx.guild, ['actions', 'offences'], [{}, []])
         mpk = mpm.data
-        valid = [x for x in mpk['actions'] if x != 'verbal']
+        #valid = [x for x in mpk['actions'] if x != 'verbal']
+        valid = mpk['actions']
         if not valid: return await ctx.send("There are no actions to use! Add some first!")
         embed = discord.Embed(title="Warn Config - Track Setup", color=discord.Color(self.bot.data['color']))
         embed.description = "__**Valid track actions:**__\n"

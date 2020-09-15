@@ -83,24 +83,29 @@ async def on_ready():
     try: redirloop.start()
     except: pass
 
+errored = []
+
 @bot.event
 async def on_command_error(ctx: commands.Context, error):
     if hasattr(ctx.command, 'on_error'):
         return
 
-    ignored = (commands.CommandNotFound, commands.CommandOnCooldown)
+    ignored = (commands.CommandOnCooldown, commands.NotOwner)
     error = getattr(error, 'original', error)
-    
+    print('\n'.join(traceback.format_exception(type(error), error, error.__traceback__)))
     if isinstance(error, ignored): return
-    name = ctx.command.root_parent.name if ctx.command.root_parent else ctx.command.name
-    if isinstance(error, commands.DisabledCommand):
-        return await ctx.send(f'{ctx.command} has been disabled.')
-    elif isinstance(error, commands.NoPrivateMessage):
-        try: return await ctx.message.author.send('This command cannot be used in Private Messages.')
-        except: return
-    elif isinstance(error, commands.UserInputError):
-        return await ctx.invoke(bot.get_command("help"), name)
-    elif isinstance(error, commands.MissingPermissions):
+    #if isinstance(error, commands.DisabledCommand):
+    #    return await ctx.send(f'{ctx.command} has been disabled.')
+    if isinstance(error, commands.NoPrivateMessage):
+        try: await ctx.message.author.send('This command cannot be used in Private Messages.')
+        except: pass
+        return
+    #NOW we start being linient
+    errored.append([ctx.message.id, 0])
+    if isinstance(error, commands.CommandNotFound): return
+    if isinstance(error, commands.UserInputError):
+        return await ctx.invoke(bot.get_command("help"), ctx.command.root_parent.name if ctx.command.root_parent else ctx.command.name)
+    if isinstance(error, commands.MissingPermissions):
         return await ctx.send("You don't have sufficient permissions to run this.")
 
     if bot.owner == ctx.author:
@@ -110,14 +115,18 @@ async def on_command_error(ctx: commands.Context, error):
     embed = discord.Embed(title=f"Error in {ctx.command}")
     st = '\n'.join(traceback.format_exception(type(error), error, error.__traceback__))
     embed.description = f"```py\n{st}\n```"
-    embed.description += f"\nServer ID: {ctx.guild.id}\nUser ID: {ctx.author.id}\nMessage ID: {ctx.message.id}"
+    embed.description += f"\nServer ID: `{ctx.guild.id}`\nUser ID: `{ctx.author.id}`\nMessage ID: `{ctx.message.id}``"
     try: return await bot.owner.send(embed=embed)
     except: pass
 
 redirect = False
 @tasks.loop(seconds=1, reconnect=True)
-async def redirloop():
-    global redirect, usrout, stable
+async def redirloop(): #also the global loop
+    global redirect, usrout, stable, errored
+    for i in range(len(errored)):
+        errored[i][1] += 1
+        if (errored[i][1] > 5): errored[i][0] = 0
+    errored = [x for x in errored if x[0]]
     s = usrout.getvalue()
     if not s: return
     await bot.owner.send(f"```\n{usrout.getvalue()}```")
@@ -127,6 +136,13 @@ async def redirloop():
         sys.stderr = usrout
     if redirect:
         sys.stdout = usrout
+
+@bot.event
+async def on_message_edit(before, after):
+    global errored
+    if (before.content != after.content) and (after.id in [x[0] for x in errored]):
+        await bot.process_commands(after)
+        errored = [x for x in errored if x[0] != after.id]
 
 @bot.command(hidden=True)
 @commands.is_owner()
