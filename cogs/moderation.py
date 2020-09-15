@@ -7,6 +7,7 @@ from discord.ext.commands import Greedy
 from typing import Optional
 from string import punctuation
 from cogs.utils.menus import Confirm
+import asyncio
 
 loaded = None
 
@@ -434,7 +435,7 @@ class Moderation(commands.Cog):
         if name in mpk['actions']:
             return await ctx.send("This action already exists! If you want to edit it, remove it and re-add it.")
         def check(m):
-            return m.author == ctx.author
+            return (m.author == ctx.author) and (m.channel == ctx.channel)
         ret: discord.Message = None
         timed = False
         embed = discord.Embed(title=f"Action Setup - `{name}`", color=discord.Color(self.bot.data['color']))
@@ -443,7 +444,8 @@ class Moderation(commands.Cog):
         msg = await ctx.send(embed=embed)
         async def waitfor():
             nonlocal ret
-            ret = await self.bot.wait_for('message', check=check)
+            try: ret = await self.bot.wait_for('message', check=check, timeout=180.0)
+            except asyncio.TimeoutError: return await ctx.send("Cancelled due to 3 minute timeout.")
             if ret.content == "cancel":
                 await ctx.send("Cancelled the addition.")
                 raise commands.CommandNotFound() #LOL
