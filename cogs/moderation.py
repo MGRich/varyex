@@ -289,7 +289,7 @@ class Moderation(commands.Cog):
     @commands.group(aliases=["w"], invoke_without_command=True)
     @commands.guild_only()
     @commands.has_permissions(manage_messages=True, kick_members=True)
-    async def warn(self, ctx, user: UserLookup, users: Greedy[UserLookup], *, reason):
+    async def warn(self, ctx, user: MemberLookup, users: Greedy[UserLookup], *, reason):
         """Warns users and sets up warnings.
         The bot must be able to do the action given, and you must be able to **manage messages and kick.**
         Additionally, to configure it, you must be able to **manage the server and ban.**
