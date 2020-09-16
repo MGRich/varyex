@@ -98,10 +98,8 @@ class embeds:
                 if (e.image.url != e.Empty):
                     embed.set_image(url=e.image.url)
                 if (e.thumbnail.url != e.Empty):
-                    if e.description == e.Empty:
-                        embed.set_thumbnail(url=e.thumbnail.url)
-                    else:
-                        embed.set_image(url=e.thumbnail.url)
+                    if e.description == e.Empty: embed.set_thumbnail(url=e.thumbnail.url)
+                    else: embed.set_image(url=e.thumbnail.url)
             elif typ == "yt":
                 try:
                     if (e.author.name == e.Empty): raise ValueError()

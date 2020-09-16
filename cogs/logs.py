@@ -67,7 +67,7 @@ class LogMenu(menus.Menu):
         await self.editmessage()
         await self.message.remove_reaction("\U0001F53D", payload.member)
     @menus.button("\u23F9") #stop
-    async def stopemote(self, _unusedpayload):
+    async def stopemote(self, _payload):
         self.stop()
 
     @menus.button("\u0031\uFE0F\u20e3") #1
@@ -683,7 +683,7 @@ class Logging(commands.Cog):
             
 
     @commands.Cog.listener()
-    async def on_guild_update(self, _unusedbefore, after):
+    async def on_guild_update(self, _before, after):
         chn = await self.checkbit(6, after)
         if not chn: return
         log = await self.getaudit(AuditLogAction.guild_update, after)

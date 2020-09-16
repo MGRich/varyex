@@ -33,8 +33,6 @@ class Starboard(commands.Cog):
         if (self.timeaction.get_task()): self.timeaction.cancel()
         self.timeaction.start()
 
-
-
     async def handlereact(self, payl: discord.RawReactionActionEvent, typ):
         if not payl.guild_id: return
         if payl.user_id == self.bot.user.id: return
@@ -276,7 +274,7 @@ class Starboard(commands.Cog):
     @config.command(aliases = ['setstar'])
     @commands.has_permissions(manage_guild=True)
     async def setemoji(self, ctx):
-        def check(_unusedr, u):
+        def check(_r, u):
             return u.id == ctx.message.author.id
         
         await ctx.send("Please react to this with the emoji you want.")

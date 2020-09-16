@@ -13,7 +13,7 @@ if stable:
     sys.stderr = usrout 
 regout = sys.stdout
 
-def prefix(_unusedbot, message):
+def prefix(_bot, message):
     prf = data['prefix'].copy()
     if message.guild:
         con = mpku.MPKManager("misc", message.guild.id).data
@@ -45,7 +45,6 @@ print(bot.data)
 @bot.event
 async def on_ready():
     print(f'\n\nin as: {bot.user.name} - {bot.user.id}\non version: {discord.__version__}\n')
-    await bot.change_presence(activity=discord.Activity(name=f"{data['status']} | v!help", type=0))
     global first
     if (not first):
         bot.__dict__['owner'] = bot.get_user(bot.owner_id)
@@ -120,13 +119,35 @@ async def on_command_error(ctx: commands.Context, error):
     except: pass
 
 redirect = False
+iteration = 0
+count = 181
 @tasks.loop(seconds=1, reconnect=True)
 async def redirloop(): #also the global loop
-    global redirect, usrout, stable, errored
+    ####EDIT LOOP
+    global errored
     for i in range(len(errored)):
         errored[i][1] += 1
-        if (errored[i][1] > 5): errored[i][0] = 0
+        if (errored[i][1] > 3): errored[i][0] = 0
     errored = [x for x in errored if x[0]]
+    ####STATUS LOOP
+    global count, iteration
+    count += 1
+    last = iteration
+    if count > 180:
+        count = 0
+        iteration += 1
+        iteration %= 3
+    if last != iteration:
+        if iteration == 0: st = f"{len(bot.guilds)} servers"
+        elif iteration == 1:
+            c = 0
+            for x in [x.members for x in bot.guilds]:
+                c += len(x) 
+            st = f"{c} members"
+        elif iteration == 2: st = f"v{data['version']}"
+        await bot.change_presence(activity=discord.Activity(name=f"{data['status'].replace('[ch]', st)}", type=0))
+    ####REDIRECT
+    global redirect, usrout, stable
     s = usrout.getvalue()
     if not s: return
     await bot.owner.send(f"```\n{usrout.getvalue()}```")
@@ -146,7 +167,7 @@ async def on_message_edit(before, after):
 
 @bot.command(hidden=True)
 @commands.is_owner()
-async def redir(_unusedctx):
+async def redir(_ctx):
     global redirect, regout, usrout, stable
     if redirect:
         sys.stdout = regout
@@ -308,13 +329,13 @@ async def _eval(ctx, *, evl):
 
 @bot.command(name="c")
 @commands.is_owner()
-async def nomore(_unusedctx):
+async def nomore(_ctx):
     await bot.close()
 
 upd = False
 @bot.command()
 @commands.is_owner()
-async def update(_unusedctx):
+async def update(_ctx):
     global upd
     upd = True
     await bot.logout()

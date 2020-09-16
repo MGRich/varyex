@@ -1,11 +1,13 @@
-import discord, dateparser, aiohttp, re, random, html, imghdr, io, os
+import discord, dateparser, aiohttp, re, random, html, imghdr, io, os, asyncio, timeago
 from discord.ext import commands, tasks
 import cogs.utils.mpk as mpku
-from typing import Optional, Union
+from typing import Optional, Union, List
 from datetime import datetime, timedelta
 from asyncio import sleep
 from numpy import clip
 from PIL import Image
+from asyncio.locks import Semaphore
+from cogs.utils.converters import UserLookup
 
 def limitdatetime(dt):
     return datetime.combine(dt.date(), datetime.min.time())
@@ -124,7 +126,7 @@ class Miscellaneous(commands.Cog):
 
     @commands.command()
     @commands.has_permissions(administrator=True)
-    async def say(self, _unusedctx, chn: discord.TextChannel, *, funny):
+    async def say(self, _ctx, chn: discord.TextChannel, *, funny):
         """Says something in a channel.
         **Must have administrator permission.**
 
@@ -379,20 +381,30 @@ class Miscellaneous(commands.Cog):
         images = []
         invalid = []
         total = list(links) + [x.url for x in ctx.message.attachments]
-        for link in total:
-            #try:
+        sem = Semaphore(1)
+        tasks = []
+        loop = asyncio.get_event_loop()
+        async def dl(link):
             print(link)
             async with aiohttp.request('GET', link) as resp:
                 read = await resp.read()
                 if imghdr.what("", h=read) == "gif": invalid.append(link)
                 else: 
-                    images.append(Image.open(io.BytesIO(read)))
+                    try:
+                        im = Image.open(io.BytesIO(read))
+                        images.append(im)
+                    except: invalid.append(link)
             #except: invalid.append(link)
-        msg = await ctx.send("Converting, please wait...")
+        if not images: return await ctx.send("None of the images given are valid.")
+        for x in total:
+            tasks.append(loop.create_task(dl(x)))
+        await asyncio.wait(tasks)
+        tasks = []
         done = 0
+        msg = await ctx.send("Converting, please wait...")
         files = []
-        for img in images:
-            await msg.edit(content=f"Converting, please wait... {str(done)}/{len(images)} done")
+        async def imageconv(img):
+            nonlocal done, images
             img.convert('RGB')
             map = img.load()
             if ftouse == "gen":
@@ -424,16 +436,102 @@ class Miscellaneous(commands.Cog):
                         oB = (val & 0x1F)
                         #and turn back into 888
                         map[x, y] = (((oR * 527 + 23) >> 6), ((oG * 259 + 33) >> 6), ((oB * 527 + 23) >> 6), A)
-            img.save(f"{ctx.message.id}{done}.png")
-            files.append(discord.File(f"{ctx.message.id}{done}.png"))
-            done += 1
+            async with sem:
+                img.save(f"{ctx.message.id}{done}.png")
+                files.append(discord.File(f"{ctx.message.id}{done}.png"))
+                done += 1
+        for x in images:
+            tasks.append(loop.create_task(imageconv(x)))
+        await asyncio.wait(tasks)
         await msg.delete()
         await ctx.send(files=files)
         for x in range(done):
             os.remove(f"{ctx.message.id}{x}.png")
+        await ctx.send(f"Finished {done} images with {len(invalid)} invalid images.")
 
+    @commands.command(aliases = ["uinfo"])
+    async def userinfo(self, ctx, user: Optional[UserLookup]):
+        """Get your own or someone else's user info.
 
+        `userinfo/uinfo <user>`"""
+        if not user: user = ctx.author
+        user: discord.User
+        e = discord.Embed(title=str(user))
+        e.set_thumbnail(url=str(user.avatar_url))
+        isguild = bool(ctx.guild)
+        bm = ""
+        isbot = user.bot
+        if isguild:
+            m: discord.Member = ctx.guild.get_member(user.id)
+            isguild = bool(m)
+            if m:
+                e.color = m.color if m.color != discord.Color.default() else e.color
+                gl = [f" - *{m.nick}*" if m.nick else "", f"**{'Added' if isbot else 'Joined'} at**: {m.joined_at.strftime('%m/%d/%y %I:%M %p')} UTC ({timeago.format(m.joined_at)})\n"]
+            try: 
+                l = [x for x in (await ctx.guild.bans()) if x.user.id == user.id]
+                if l and (ctx.author.permissions_in(ctx.channel).ban_members):
+                    be = l[0]
+                    if be.reason:
+                        bm = f" for reason `{be.reason}`"
+                    bm = f" **(is banned{bm})**"
+            except discord.Forbidden: pass
+        def glp(index):
+            nonlocal gl, isguild
+            return (gl[index] if isguild else "")
+        e.description = f"""{user.mention}{glp(0)}{bm}\n**Created at**: {user.created_at.strftime('%m/%d/%y %I:%M %p')} UTC ({timeago.format(user.created_at)})\n{glp(1)}"""
+        if isguild and m.roles[1:]:
+            rev = m.roles[1:]
+            rev.reverse()
+            e.add_field(name=f"Roles ({len(m.roles[1:])})", value=' '.join([x.mention for x in rev]))
+        e.set_footer(text=f"ID: {user.id}")
+        await ctx.send(embed=e)
+
+class Help(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+
+    def parse(self, cog, command, prefix="v!") -> Union[List[discord.Embed], discord.Embed]:
+        if (not cog) and (not command): #v!help
+            ret = []
+            for x in list(self.bot.cogs):
+                ret.append(self.parse(x, None))
+            return ret
+        if command:
+            command = self.bot.get_command(command)
+            if not command: return None
+            cog = command.cog.qualified_name
+            return discord.Embed(title=f"{cog} - {command.name}", color=self.bot.data['color'], description=command.help)
+        #cog
+        embed = discord.Embed(title=cog, color=self.bot.data['color'], description="")
+        for cmd in self.bot.get_cog(cog).walk_commands():
+            if cmd.hidden or (not cmd.enabled) or (not cmd.help) or cmd.parent: continue
+            summary = cmd.help.split('\n')[0]
+            aliasstr = ""
+            if (cmd.aliases):
+                aliasstr = f" - `{'`, `'.join(cmd.aliases)}`"
+            embed.description += f"__**`{cmd.name}`**__ - {summary}{aliasstr}\n"
+        embed.set_footer(text = f"Use {prefix}help [command] for more info on a command.")            
+        return embed
+        
+    @commands.command()
+    async def help(self, ctx, c: Optional[str] = None):
+        if not c:
+            embed = discord.Embed(title="Help", color=self.bot.data['color']) 
+            for e in sorted(self.parse(None, None), key=lambda x: len(x.description)):
+                if e.description:
+                    embed.add_field(name=e.title, value=e.description, inline=True)
+            embed.set_footer(text = f"Use {ctx.prefix}help [command] for more info on a command.")
+            return await ctx.send(embed=embed)
+        for x in list(self.bot.cogs):
+            if x.lower() == c.lower():
+                return await ctx.send(embed=self.parse(x, None, prefix=ctx.prefix))
+        embed = self.parse(None, c.lower())
+        if not embed:
+            await ctx.send("That command doesn't exist!")
+            return await ctx.invoke(self.help)
+        return await ctx.send(embed=embed)
 
 
 def setup(bot):
     bot.add_cog(Miscellaneous(bot))
+    bot.add_cog(Help(bot))

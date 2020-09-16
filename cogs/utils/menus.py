@@ -12,12 +12,12 @@ class Confirm(menus.Menu):
         return await channel.send(self.msg)
 
     @menus.button('\N{WHITE HEAVY CHECK MARK}')
-    async def do_confirm(self, _unusedpayload):
+    async def do_confirm(self, _payload):
         self.result = True
         self.stop()
 
     @menus.button('\N{CROSS MARK}')
-    async def do_deny(self, _unusedpayload):
+    async def do_deny(self, _payload):
         self.result = False
         self.stop()
 
@@ -62,7 +62,7 @@ class Paginator(menus.Menu):
         await self.message.remove_reaction("\u25C0", payload.member)
 
     @menus.button('\u23F9')
-    async def stopbutton(self, _unusedpayload):
+    async def stopbutton(self, _payload):
         self.stop()
 
     @menus.button('\u25B6')
@@ -80,4 +80,4 @@ class Paginator(menus.Menu):
         if not payload.member: return
         self.page = self.max
         await self.edit()
-        await self.message.remove_reaction("\u25B6", payload.member)
+        await self.message.remove_reaction('\u23e9', payload.member)

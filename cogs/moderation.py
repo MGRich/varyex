@@ -7,6 +7,7 @@ from discord.ext.commands import Greedy
 from typing import Optional
 from string import punctuation
 from cogs.utils.menus import Confirm
+from cogs.utils.converters import UserLookup, MemberLookup
 import asyncio
 
 loaded = None
@@ -52,23 +53,11 @@ class Moderation(commands.Cog):
     @commands.guild_only()
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
-    async def ban(self, ctx, members: commands.Greedy[discord.User], *, reason: Optional[str] = ""):
+    async def ban(self, ctx, members: commands.Greedy[UserLookup], *, reason: Optional[str] = ""):
         """Bans users.
         Both the bot and the runner **must be able to ban.**
 
         `ban <members> [reason]`"""
-        for x in reason.split():
-            uid = 0
-            user: discord.User
-            try: uid = int(x)
-            except:
-                try: uid = int(x[2:-1])
-                except: pass
-            if not uid: break
-            try: user = await self.bot.fetch_user(uid)
-            except discord.NotFound: await ctx.send(f"<@{uid} is not a user ID.>")
-            else: members.append(user)
-            reason = reason[len(str(uid)) - 1:]
         if not members: return await ctx.send("There are no users in that list (that I could convert.)")
         banlist = []
         for member in members:
@@ -91,7 +80,7 @@ class Moderation(commands.Cog):
     @commands.guild_only()
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
-    async def unban(self, ctx, members:commands.Greedy[discord.User], *, reason: Optional[str] = ""):
+    async def unban(self, ctx, members:commands.Greedy[UserLookup], *, reason: Optional[str] = ""):
         """Unbans users.
         Both the bot and the runner **must be able to unban.**
 
@@ -113,7 +102,7 @@ class Moderation(commands.Cog):
     @commands.guild_only()
     @commands.has_permissions(kick_members=True)
     @commands.bot_has_permissions(kick_members=True)
-    async def kick(self, ctx, members:commands.Greedy[discord.Member], *, reason: Optional[str] = ""):
+    async def kick(self, ctx, members:commands.Greedy[MemberLookup], *, reason: Optional[str] = ""):
         """Kicks users.
         Both the bot and the runner **must be able to kick.**
 
@@ -138,7 +127,7 @@ class Moderation(commands.Cog):
     @commands.command()
     @commands.guild_only()
     @commands.has_permissions(manage_messages=True, read_message_history=True)
-    async def purge(self, ctx: commands.Context, count = 100, member: Optional[discord.Member] = None):
+    async def purge(self, ctx: commands.Context, count = 100, member: Optional[MemberLookup] = None):
         """Purges messages.
 
         `purge [count (default 100)] [member]`"""
@@ -246,7 +235,7 @@ class Moderation(commands.Cog):
     @commands.command(aliases = ["clearwarns", "rmwarn", "cwarns", "rmw", "cw"])
     @commands.guild_only()
     @commands.has_permissions(manage_messages=True, kick_members=True)
-    async def removewarn(self, ctx, user: discord.User, *, case: Optional[str]):
+    async def removewarn(self, ctx, user: UserLookup, *, case: Optional[str]):
         """Removes a warn or all warns from a user.
         You must be able to **manage messages and kick.**
 
@@ -282,7 +271,7 @@ class Moderation(commands.Cog):
     @commands.command(aliases = ["ewarn", "ew"])
     @commands.guild_only()
     @commands.has_permissions(manage_messages=True, kick_members=True)
-    async def editwarn(self, ctx, user: discord.User, case: int, *, newreason: str):
+    async def editwarn(self, ctx, user: UserLookup, case: int, *, newreason: str):
         """Edits a warn from a user.
         You must be able to **manage messages and kick.**
 
@@ -300,7 +289,7 @@ class Moderation(commands.Cog):
     @commands.group(aliases=["w"], invoke_without_command=True)
     @commands.guild_only()
     @commands.has_permissions(manage_messages=True, kick_members=True)
-    async def warn(self, ctx, user: discord.Member, users: Greedy[discord.Member], *, reason):
+    async def warn(self, ctx, user: UserLookup, users: Greedy[UserLookup], *, reason):
         """Warns users and sets up warnings.
         The bot must be able to do the action given, and you must be able to **manage messages and kick.**
         Additionally, to configure it, you must be able to **manage the server and ban.**
@@ -597,7 +586,7 @@ class Moderation(commands.Cog):
     @commands.command(aliases=['m'])
     @commands.guild_only()
     @commands.has_permissions(manage_messages=True, kick_members=True)
-    async def mute(self, ctx, users: Greedy[discord.Member], duration, *, reason):
+    async def mute(self, ctx, users: Greedy[UserLookup], duration, *, reason):
         """Mutes users for a durarion. **Must be setup.**
         
         `mute/m <users> <duration> <reason>`"""
@@ -608,7 +597,7 @@ class Moderation(commands.Cog):
     @commands.command(aliases=['vwarn', 'vw'])
     @commands.guild_only()
     @commands.has_permissions(manage_messages=True, kick_members=True)
-    async def verbalwarn(self, ctx, users: Greedy[discord.User], *, reason, mute=0):
+    async def verbalwarn(self, ctx, users: Greedy[UserLookup], *, reason, mute=0):
         """Verbally warns users. **Must be setup.**
         The user calling it must be able to **manage messages and kick.**
         These are intended to be used as a sort of push saying "don't do that",
