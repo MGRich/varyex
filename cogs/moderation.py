@@ -320,15 +320,18 @@ class Moderation(commands.Cog):
             act = copy(mpk['actions'][ofc['action']])
 
             worked = True
+            ex = None
             try:
                 if   (act['name'] == "verbal"): pass
                 elif (act['type'] == "gr"): await user.add_roles(ctx.guild.get_role(act['role']), reason=reason)
                 elif (act['type'] == "k"): await user.kick(reason=reason)
                 elif (act['type'] == "b" ): await user.ban(reason=reason)
-            except: worked = False
+            except Exception as e: 
+                worked = False
+                ex = e
 
             if (not worked):
-                await ctx.send("I'm not able to take action, but the user will be warned.")
+                await ctx.send(f"I'm not able to take action, but the user will be warned. (Error of type `{type(ex)}`)")
                 act['dmmsg'] = "I'm not able to take the action I'm told to take, but you are still warned for [r]."
             
             act['dmmsg'] = act['dmmsg'].replace('[r]', reason)
