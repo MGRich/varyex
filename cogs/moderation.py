@@ -322,7 +322,7 @@ class Moderation(commands.Cog):
             worked = True
             ex = None
             try:
-                if   (act['name'] == "verbal"): pass
+                if (ofc['action'] == "verbal"): pass
                 elif (act['type'] == "gr"): await user.add_roles(ctx.guild.get_role(act['role']), reason=reason)
                 elif (act['type'] == "k"): await user.kick(reason=reason)
                 elif (act['type'] == "b" ): await user.ban(reason=reason)
