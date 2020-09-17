@@ -1,7 +1,8 @@
-import discord, traceback, json, os, sys, subprocess, textwrap, contextlib
+import discord, traceback, json, os, sys, subprocess, textwrap, contextlib, base64, lzma, msgpack, github
 from discord.ext import commands, tasks
 from io import StringIO
 import cogs.utils.mpk as mpku
+from pathlib import Path
 
 stable = False
 if stable or (len(sys.argv) > 1 and sys.argv[1] == "stable"): data = json.load(open("stable.json"))
@@ -120,6 +121,7 @@ async def on_command_error(ctx: commands.Context, error):
 redirect = False
 iteration = 0
 count = 181
+hourcounter = 0
 @tasks.loop(seconds=1, reconnect=True)
 async def redirloop(): #also the global loop
     ####EDIT LOOP
@@ -145,8 +147,22 @@ async def redirloop(): #also the global loop
             st = f"{c} members"
         elif iteration == 2: st = f"v{data['version']}"
         await bot.change_presence(activity=discord.Activity(name=f"{data['status'].replace('[ch]', st)}", type=0))
+    ####BACKUP LOOP
+    global hourcounter
+    if stable:
+        hourcounter += 1
+        if hourcounter >= 3600:
+            fd = {}
+            for p in Path("config").rglob('*.mpk'):
+                n = p.parent.name
+                if not n in fd: fd[n] = {}
+                fd[n][p.stem] = open(p.resolve(), "rb").read()
+            f = {'varyexbackup': github.InputFileContent(content=base64.a85encode(lzma.compress(msgpack.packb(fd), format=lzma.FORMAT_ALONE)).decode('ascii'))}
+            github.Github(data['key']).get_gist(data['gist']).edit(files=f)
+            print("backed up configs")
+            hourcounter = 0
     ####REDIRECT
-    global redirect, usrout, stable
+    global redirect, usrout
     s = usrout.getvalue()
     if not s: return
     await bot.owner.send(f"```\n{usrout.getvalue()}```")
@@ -156,6 +172,8 @@ async def redirloop(): #also the global loop
         sys.stderr = usrout
     if redirect:
         sys.stdout = usrout
+
+
 
 @bot.event
 async def on_message_edit(before, after):
