@@ -331,7 +331,7 @@ class Moderation(commands.Cog):
                 ex = e
 
             if (not worked):
-                await ctx.send(f"I'm not able to take action, but the user will be warned. (Error of type `{type(ex)}`)")
+                await ctx.send(f"I'm not able to take action, but the user will be warned. (Error of type `{type(ex).__name__}`)")
                 act['dmmsg'] = "I'm not able to take the action I'm told to take, but you are still warned for [r]."
             
             act['dmmsg'] = act['dmmsg'].replace('[r]', reason)
