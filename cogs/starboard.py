@@ -123,7 +123,7 @@ class Starboard(commands.Cog):
     @commands.Cog.listener()
     async def on_guild_channel_pins_update(self, chn: discord.TextChannel, pin: Optional[datetime]):
         pins = (await chn.pins())
-        if not pin or not pins or ((datetime.utcnow() - pin) > timedelta(seconds=3)): return
+        if not pin or not pins or ((datetime.utcnow() - pin) > timedelta(seconds=10)): return
         msg: discord.Message = pins[0]
         print(msg)
         fakepay = discord.RawReactionActionEvent({'message_id': msg.id, 'channel_id': chn.id, 'user_id': 0, 'guild_id': 1}, None, "")
