@@ -91,7 +91,6 @@ async def on_command_error(ctx: commands.Context, error):
 
     ignored = (commands.CommandOnCooldown, commands.NotOwner)
     error = getattr(error, 'original', error)
-    print('\n'.join(traceback.format_exception(type(error), error, error.__traceback__)))
     if isinstance(error, ignored): return
     #if isinstance(error, commands.DisabledCommand):
     #    return await ctx.send(f'{ctx.command} has been disabled.')
