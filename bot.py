@@ -176,7 +176,7 @@ async def redirloop(): #also the global loop
         sys.stdout = usrout
 
 upd = False
-@bot.command()
+@bot.command(aliases = ['get'])
 @commands.is_owner()
 async def retrieve(ctx):
     global upd
