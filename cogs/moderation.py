@@ -170,7 +170,7 @@ class Moderation(commands.Cog):
     
     @tasks.loop(seconds=30, reconnect=True)
     async def timeaction(self):
-        print('we exist')
+        #print('we exist')
         for guild in self.bot.guilds:
             changed = False
             #guild = self.bot.get_guild(int(gid))
@@ -185,7 +185,7 @@ class Moderation(commands.Cog):
 
                 try: user = await guild.fetch_member(int(uid))
                 except discord.NotFound: user = None 
-                print(uid + " " + str(user))
+                #print(uid + " " + str(user))
                 if not user:
                     if mpk['inwarn'][uid]['left'] == 0:
                         mpk['inwarn'][uid]['left'] = now()
@@ -205,11 +205,11 @@ class Moderation(commands.Cog):
 
                 #print(uid)
                 if (mpk['inwarn'][uid]['time'] <= now()):
-                    print(guild.id)
-                    try: print(mpk['users'][uid])
-                    except KeyError: print("fuck")
+                    #print(guild.id)
+                    #try: print(mpk['users'][uid])
+                    #except KeyError: print("fuck")
                     if cnt != 0:
-                        ofc = mpk['offences'][cnt - 1]
+                        ofc = mpk['offences'][min(cnt - 1, len(mpk['actions']))]
                         act = mpk['actions'][ofc['action']]
                         try:
                             if (act['type'] == "gr"):
@@ -230,7 +230,7 @@ class Moderation(commands.Cog):
                     try: await user.send("The above message's time is now over.")
                     except: pass
             if changed: mpm.save()
-        print('we exist')
+        #print('we exist')
 
     @commands.command(aliases = ["clearwarns", "rmwarn", "cwarns", "rmw", "cw"])
     @commands.guild_only()

@@ -48,11 +48,11 @@ async def getcode(url):
     print(f"try {url}")
     try: 
         async with aiohttp.request('HEAD', url) as resp:
-            print(resp.status)
+            #print(resp.status)
             return resp.status
     except:
-        print(408)
-        return 408  
+        #print(408)
+        return 408
 
 
 class Miscellaneous(commands.Cog):
