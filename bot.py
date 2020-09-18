@@ -3,12 +3,14 @@ from discord.ext import commands, tasks
 from io import StringIO
 import cogs.utils.mpk as mpku
 from pathlib import Path
+from cogs.utils.menus import Confirm
 
 stable = False
-if stable or (len(sys.argv) > 1 and sys.argv[1] == "stable"): data = json.load(open("stable.json"))
+if (len(sys.argv) > 1 and sys.argv[1] == "stable"): data = json.load(open("stable.json"))
 else: data = json.load(open("info.json"))
 
 stable = data['stable']
+#stable = True
 usrout = StringIO()
 if stable:
     sys.stderr = usrout 
@@ -121,7 +123,7 @@ async def on_command_error(ctx: commands.Context, error):
 redirect = False
 iteration = 0
 count = 181
-hourcounter = 3600 - 20 
+hourcounter = 3600 - 10 
 @tasks.loop(seconds=1, reconnect=True)
 async def redirloop(): #also the global loop
     ####EDIT LOOP
@@ -172,6 +174,32 @@ async def redirloop(): #also the global loop
         sys.stderr = usrout
     if redirect:
         sys.stdout = usrout
+
+upd = False
+@bot.command()
+@commands.is_owner()
+async def retrieve(ctx):
+    global upd
+    c = Confirm("you sure? thisll backup config folder and run update")
+    a = await c.prompt(ctx)
+    if not a: return
+    await bot.logout()
+    try: Path("config").rename("configold")
+    except: pass
+    Path("config").mkdir(exist_ok=True)
+    c = github.Github(data['key']).get_gist(data['gist']).files['varyexbackup'].content
+    result = msgpack.unpackb(lzma.decompress(base64.a85decode(c), format=lzma.FORMAT_ALONE))
+    if ('config' in result):
+        for x in result['config']:
+            open(f"config/{x}.mpk", "wb").write(result['config'][x])
+            print(f"config/{x}.mpk")
+        del result['config']
+    for x in result:
+        for y in result[x]:
+            Path(f"config/{x}").mkdir(exist_ok=True)
+            open(f"config/{x}/{y}.mpk", "wb").write(result[x][y])
+            print(f"config/{x}/{y}.mpk")
+    upd = True
 
 
 
@@ -349,7 +377,6 @@ async def _eval(ctx, *, evl):
 async def nomore(_ctx):
     await bot.close()
 
-upd = False
 @bot.command()
 @commands.is_owner()
 async def update(_ctx):
