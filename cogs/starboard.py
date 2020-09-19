@@ -111,7 +111,8 @@ class Starboard(commands.Cog):
         print("EMBED " + str(default_timer() - start))
         if sbmsg:
             if not spstate:
-                await sbmsg.delete()
+                try: await sbmsg.delete()
+                except discord.NotFound: pass #cover this incase it ever happens for some reason
                 return
             try: return await sbmsg.edit(embed=e)
             except: pass
