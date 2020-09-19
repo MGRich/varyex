@@ -528,19 +528,8 @@ class Logging(commands.Cog):
     async def on_guild_channel_update(self, before, after):
         chn = await self.checkbit(3, after.guild)
         if not chn: return
-        #im going to rip my fucking hair out
-        actlist = [AuditLogAction.overwrite_update, AuditLogAction.overwrite_create, AuditLogAction.overwrite_delete, AuditLogAction.channel_update]
-        log = await self.getaudit(actlist, after.guild, after=True)
-        if not (await self.checkbit(12, after.guild)):
-            if log and log.user.bot: return
-        if log: embed = self.makebase(log.user, log.created_at)
-        else: embed = self.makebase(after.guild) #why is this needed? im not sure myself
         isVoice = type(after) == discord.VoiceChannel
         isCategory = type(after) == discord.CategoryChannel
-        embed.title = f"Channel Edited ({'Voice' if isVoice else 'Text'})"
-        if isCategory:
-            embed.title = "Category Edited"
-        embed.description =  after.mention + "\n"
         dic = {
             'name': [before.name, after.name], 
             'position': [before.position, after.position], 
@@ -554,7 +543,20 @@ class Logging(commands.Cog):
                 'slowmode_delay': [before.slowmode_delay, after.slowmode_delay], 
                 'nsfw': [before.is_nsfw(), after.is_nsfw()], 
                 'topic': [before.topic, after.topic]})
-        if before.position == after.position: del dic['position']
+        if (not {x: dic[x] for x in dic if ((x != 'position') or dic[x][0] != dic[x][1])}): 
+            #if all is literally the same except for position just don't bother
+            return
+        #im going to rip my fucking hair out
+        actlist = [AuditLogAction.overwrite_update, AuditLogAction.overwrite_create, AuditLogAction.overwrite_delete, AuditLogAction.channel_update]
+        log = await self.getaudit(actlist, after.guild, after=True)
+        if not (await self.checkbit(12, after.guild)):
+            if log and log.user.bot: return
+        if log: embed = self.makebase(log.user, log.created_at)
+        else: embed = self.makebase(after.guild)
+        embed.title = f"Channel Edited ({'Voice' if isVoice else 'Text'})"
+        if isCategory:
+            embed.title = "Category Edited"
+        embed.description =  after.mention + "\n"
         embed.description += self.capitalize(self.changedicttostr(dic), 'NSFW')
         embed.set_footer(text=f"{'Channel' if not isCategory else 'Category'} ID: {after.id} | {embed.footer.text}")
         pre = []
@@ -726,7 +728,7 @@ class Logging(commands.Cog):
         chn = await self.checkbit(7, after.guild)
         if not chn: return
         log = await self.getaudit(AuditLogAction.role_update, after.guild, after=True)
-        if after.id != log.target.id: return
+        if (not log) or (after.id != log.target.id): return
         embed = self.makebase(log.user, log.created_at)
         embed.title = "Role Updated"
         dic = self.changestodict(log.changes)
