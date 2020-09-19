@@ -10,6 +10,8 @@ class Filters(commands.Cog):
         self.bot = bot
 
     def getmpm(self, guild) -> mpku.MPKManager:
+        mpm = mpku.getmpm("filters", guild.id, ['channel', 'filter', 'filterping'], ['0', [], {}])
+        mpm.data['filter'] = [x.lower() for x in mpm.data['filter']]
         return mpku.getmpm("filters", guild.id, ['channel', 'filter', 'filterping'], ['0', [], {}])
 
     @commands.group(aliases = ["filterping", "fp", 'f'])
