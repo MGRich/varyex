@@ -192,6 +192,7 @@ class Filters(commands.Cog):
         if hasfp:
             for entry in mpk['filterping'].items():
                 if (type(entry) == int): continue
+                if (type(entry[1]) == int): continue
                 if re.search(entry[0], msg.content, re.IGNORECASE):
                     flist.append(entry[0])
                     for memb in entry[1]:
