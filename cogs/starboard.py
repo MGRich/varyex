@@ -1,12 +1,14 @@
 import discord, copy, math
 from discord.ext import commands, tasks
-from cogs.utils.embeds import embeds
-from asyncio import sleep
-from timeit import default_timer
+
 import cogs.utils.mpk as mpku
 from cogs.utils.menus import Paginator
+from cogs.utils.embeds import embeds
+
 from typing import Optional
 from datetime import datetime, timedelta
+from timeit import default_timer
+from asyncio import sleep
 
 def getord(num):
     st = "th"
@@ -180,6 +182,8 @@ class Starboard(commands.Cog):
     def refreshserver(self, gid):
         mpm = mpku.getmpm('starboard', gid)
         mpk = mpm.data
+        try: mpk['leaderboard']
+        except: mpk['leaderboard'] = {}
         if 'enabled' not in mpk['leaderboard']: lbe = True
         else: lbe = mpk['leaderboard']['enabled']
         mpk['leaderboard'] = {'enabled': lbe}
