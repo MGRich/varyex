@@ -269,7 +269,10 @@ class Starboard(commands.Cog):
         mpm = mpku.getmpm('starboard', ctx.guild)
         mpk = mpm.data
         try: mpk['leaderboard']['enabled'] ^= True
-        except KeyError: mpk['leaderboard']['enabled'] = False
+        except KeyError: 
+            try: mpk['leaderboard']
+            except: mpk['leaderboard'] = {'enabled': False}
+            else: mpk['leaderboard']['enabled'] = False
         mpm.save()
         await ctx.send(f"Leaderboard has been {'enabled' if mpk['leaderboard']['enabled'] else 'disabled'}.")
 
