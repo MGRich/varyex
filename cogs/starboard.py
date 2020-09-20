@@ -267,8 +267,9 @@ class Starboard(commands.Cog):
     @config.command(name = "leaderboard", aliases = ['lb'])
     async def lbcfg(self, ctx):
         mpm = mpku.getmpm('starboard', ctx.guild)
-        mpk = mpm.data       
-        mpk['leaderboard']['enabled'] ^= True
+        mpk = mpm.data
+        try: mpk['leaderboard']['enabled'] ^= True
+        except KeyError: mpk['leaderboard']['enabled'] = False
         mpm.save()
         await ctx.send(f"Leaderboard has been {'enabled' if mpk['leaderboard']['enabled'] else 'disabled'}.")
 
