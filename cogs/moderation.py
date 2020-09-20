@@ -289,7 +289,7 @@ class Moderation(commands.Cog):
     @commands.group(aliases=["w"], invoke_without_command=True)
     @commands.guild_only()
     @commands.has_permissions(manage_messages=True, kick_members=True)
-    async def warn(self, ctx, user: MemberLookup, users: Greedy[UserLookup], *, reason):
+    async def warn(self, ctx, user: MemberLookup, users: Greedy[MemberLookup], *, reason):
         """Warns users and sets up warnings.
         The bot must be able to do the action given, and you must be able to **manage messages and kick.**
         Additionally, to configure it, you must be able to **manage the server and ban.**
@@ -305,11 +305,10 @@ class Moderation(commands.Cog):
         > `name` is `verbal` or `mute`, as they are considered special
         `w cfg removeaction/rmaction/remove <name>`
         `w cfg settrack/track`"""
-        if (ctx.invoked_subcommand): return
         users.insert(0, user)
+        if (ctx.invoked_subcommand) or ((not users) or (not reason)): return
         mpm = mpku.getmpm('moderation', ctx.guild, basis1, basis2)
         mpk = mpm.data
-        if (not users) or (not reason): return
         if not mpk['offences']: return await ctx.send("Warns aren't configured!")
         for user in users:
             uid = str(user.id)
