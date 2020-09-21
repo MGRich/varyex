@@ -413,7 +413,7 @@ class Moderation(commands.Cog):
         if name == "mute": typ = 'gr'
         elif name == "verbal": typ = None
         if (name != "verbal") and typ not in ['gr', 'giverole', 'ban', 'b', 'kick', 'k']:
-            return await ctx.invoke(self.bot.get_command("help"), "wcfg")
+            return await ctx.send("Please give a valid type.")
         if   typ == 'giverole': typ = 'gr'
         elif typ == 'ban': typ = 'b'
         elif typ == 'kick': typ = 'k'
