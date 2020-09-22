@@ -162,7 +162,7 @@ class Profile(commands.Cog):
             isguild = bool(m)
             if m:
                 e.color = m.color if m.color != discord.Color.default() else e.color
-                gl = [f" - *{m.nick}*" if m.nick else "", f"**{'Added' if isbot else 'Joined'} at**: {m.joined_at.strftime('%m/%d/%y %I:%M %p')} UTC ({timeago.format(m.joined_at)})\n"]
+                gl = [f" - *{m.nick}*" if m.nick else "", f"**{'Added' if isbot else 'Joined'} at**: {m.joined_at.strftime('%m/%d/%y %I:%M %p')} UTC ({timeago.format(m.joined_at, datetime.utcnow())})\n"]
             try: 
                 l = [x for x in (await ctx.guild.bans()) if x.user.id == user.id]
                 if l and (ctx.author.permissions_in(ctx.channel).ban_members):
@@ -174,7 +174,7 @@ class Profile(commands.Cog):
         def glp(index):
             nonlocal gl, isguild
             return (gl[index] if isguild else "")
-        e.description = f"""{user.mention}{glp(0)}{bm}\n**Created at**: {user.created_at.strftime('%m/%d/%y %I:%M %p')} UTC ({timeago.format(user.created_at)})\n{glp(1)}"""
+        e.description = f"""{user.mention}{glp(0)}{bm}\n**Created at**: {user.created_at.strftime('%m/%d/%y %I:%M %p')} UTC ({timeago.format(user.created_at, datetime.utcnow())})\n{glp(1)}"""
         if isguild and m.roles[1:]:
             rev = m.roles[1:]
             rev.reverse()
