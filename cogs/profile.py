@@ -318,8 +318,9 @@ class Profile(commands.Cog):
         def waitforcheck(m):
             return (m.author == ctx.author) and (m.channel == ctx.channel)
         while True:
-            ret = await self.bot.wait_for('message', check=waitforcheck)
-            if (ret.content == "cancel"):
+            try: ret = await self.bot.wait_for('message', check=waitforcheck, timeout= timeout=60.0)
+            except: return
+            if (ret.content.lower() == "cancel"):
                 await ctx.send("Cancelled name setting.")
                 break
             if (len(ret.content) > 40): 
@@ -338,8 +339,9 @@ class Profile(commands.Cog):
         def waitforcheck(m):
             return (m.author == ctx.author) and (m.channel == ctx.channel)
         while True:
-            ret = await self.bot.wait_for('message', check=waitforcheck)
-            if (ret.content == "cancel"):
+            try: ret = await self.bot.wait_for('message', check=waitforcheck, timeout=60.0)
+            except: return
+            if (ret.content.lower() == "cancel"):
                 await ctx.send("Cancelled name setting.")
                 break
             if (len(ret.content) > 30): 
@@ -358,8 +360,9 @@ class Profile(commands.Cog):
         def waitforcheck(m):
             return (m.author == ctx.author) and (m.channel == ctx.channel)
         while True:
-            ret = await self.bot.wait_for('message', check=waitforcheck)
-            if (ret.content == "cancel"):
+            try: ret = await self.bot.wait_for('message', check=waitforcheck, timeout=60.0)
+            except: return
+            if (ret.content.lower() == "cancel"):
                 await ctx.send("Cancelled location setting.")
                 break
             if (len(ret.content) > 30): 
@@ -379,8 +382,9 @@ class Profile(commands.Cog):
         def waitforcheck(m):
             return (m.author == ctx.author) and (m.channel == ctx.channel)
         while True:
-            ret = await self.bot.wait_for('message', check=waitforcheck)
-            if (ret.content == "cancel"):
+            try: ret = await self.bot.wait_for('message', check=waitforcheck, timeout=60.0)
+            except: return
+            if (ret.content.lower() == "cancel"):
                 await ctx.send("Cancelled bio setting.")
                 break
             if (len(ret.content) > 400): 
@@ -389,6 +393,7 @@ class Profile(commands.Cog):
             mpk['bio'] = ret.content
             mpm.save()
             return await ctx.send("Bio set!")
+
 
     @edit.command(aliases = ['setbday', 'bday', 'setbirthday'])
     async def birthday(self, ctx):
@@ -399,8 +404,9 @@ class Profile(commands.Cog):
         def waitforcheck(m):
             return (m.author == ctx.author) and (m.channel == ctx.channel)
         while True:
-            ret = await self.bot.wait_for('message', check=waitforcheck)
-            if (ret.content == "cancel"):
+            try: ret = await self.bot.wait_for('message', check=waitforcheck, timeout=60.0)
+            except: return
+            if (ret.content.lower() == "cancel"):
                 await ctx.send("Cancelled birthday setting.")
                 break
             tod = await ctx.send("Parsing date...")
@@ -439,7 +445,8 @@ class Profile(commands.Cog):
             def waitforcheck(m):
                 return (m.author == ctx.author) and (m.channel == ctx.channel)
             while True:
-                ret = await self.bot.wait_for('message', check=waitforcheck)
+                try: ret = await self.bot.wait_for('message', check=waitforcheck, timeout=60.0)
+                except: return
                 if (len(ret.content) > 50): 
                     await (await ctx.send("Please keep it under 50 characters.")).delete(delay=5)
                     continue
