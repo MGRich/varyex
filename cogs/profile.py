@@ -178,7 +178,7 @@ class Profile(commands.Cog):
         if isguild and m.roles[1:]:
             rev = m.roles[1:]
             rev.reverse()
-            e.add_field(name=f"Roles ({len(m.roles[1:])})", value=' '.join([x.mention for x in rev]))
+            e.add_field(name=f"Roles ({len(m.roles[1:])})", value=' '.join([x.mention for x in rev]), inline=False)
         e.set_footer(text=f"ID: {user.id}")
         ##BEGIN PROFILE SHIT
         if isbot: return await ctx.send(embed=e) #botphobia
@@ -252,7 +252,7 @@ class Profile(commands.Cog):
         if not last:
             pval += "*Bio not set*"
         else: pval += last
-        e.add_field(name="Profile", value=pval)   
+        e.add_field(name="Profile", value=pval, inline=False)   
 
         if (user.id == ctx.author.id):
             e.set_footer(text=f"Edit/set your profile using {ctx.prefix}profile edit!")
