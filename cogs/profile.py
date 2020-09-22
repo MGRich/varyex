@@ -43,6 +43,7 @@ class TZMenu(menus.Menu):
         self.list: list 
         self.sortlist()
         self.result = None
+        self.user: discord.User
 
     def sortlist(self):
         self.list = [x + "/" if self.current[x] else x for x in self.current]
@@ -57,7 +58,7 @@ class TZMenu(menus.Menu):
         self.list = fd + tz
 
     async def pick(self, payload: discord.RawReactionActionEvent):
-        if not (payload.member): return
+        if payload.event_type == "REACTION_REMOVE": return
         il = [str(x) + "\uFE0F\u20E3" for x in range(1, 6)]
         try: picked = self.list[self.page * 5 + il.index(payload.emoji.name)]
         except IndexError: return await self.handler(payload)
@@ -72,6 +73,8 @@ class TZMenu(menus.Menu):
         await self.handler(payload)
 
     async def send_initial_message(self, ctx, channel):
+        if not ctx.guild:
+            await channel.send("Please note that since this is in DMS, you must remove the reactions yourself.")
         m = await channel.send(embed=self.ebase)
         fakep = discord.RawReactionActionEvent({'message_id': 0, 'channel_id': 0, 'user_id': 0}, discord.PartialEmoji(name='\u25C0'), "REACTION_ADD")
         self.message = m
@@ -79,12 +82,12 @@ class TZMenu(menus.Menu):
         return m
 
     async def handler(self, payload):
-        if (not payload.member) and payload.message_id: return
+        if payload.event_type == "REACTION_REMOVE": return
         pw = self.message.embeds[0]
         pw.set_footer(text="Please wait...")
         await self.message.edit(content="", embed=pw)
-        if (payload.member):
-            await self.message.remove_reaction(payload.emoji, payload.member)
+        try: await self.message.remove_reaction(payload.emoji, self.user)
+        except: pass
         c = ""
         max = -(-len(self.list) // 5)
         if payload.emoji.name == '\u25C0':
@@ -128,6 +131,7 @@ class TZMenu(menus.Menu):
         self.stop()
 
     async def prompt(self, ctx):
+        self.user = ctx.author
         await self.start(ctx, wait=True)
         return self.result
 
