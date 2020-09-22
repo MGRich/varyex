@@ -404,8 +404,8 @@ class Profile(commands.Cog):
                 await ctx.send("Cancelled birthday setting.")
                 break
             tod = await ctx.send("Parsing date...")
-            try: dt = dateparser.parse(ret.content)
-            except: 
+            dt = dateparser.parse(ret.content)
+            if not dt: 
                 await tod.delete()
                 await (await ctx.send("Could not parse date given. Please try again.")).delete(delay=5)
                 continue
