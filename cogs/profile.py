@@ -50,7 +50,7 @@ class TZMenu(menus.Menu):
         tz = [x for x in self.list if not x.endswith("/")]
         fd.sort()
         tz.sort()
-        if not (self.page):
+        if not (self.deepl):
             #put US/ at the VERY top cause its easier
             fd.remove("US/")
             fd.insert(0, "US/")
