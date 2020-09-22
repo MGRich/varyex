@@ -318,7 +318,7 @@ class Profile(commands.Cog):
         def waitforcheck(m):
             return (m.author == ctx.author) and (m.channel == ctx.channel)
         while True:
-            try: ret = await self.bot.wait_for('message', check=waitforcheck, timeout= timeout=60.0)
+            try: ret = await self.bot.wait_for('message', check=waitforcheck, timeout=60.0)
             except: return
             if (ret.content.lower() == "cancel"):
                 await ctx.send("Cancelled name setting.")
