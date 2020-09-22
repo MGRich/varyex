@@ -194,7 +194,7 @@ class Profile(commands.Cog):
             e.add_field(name=f"Roles ({len(m.roles[1:])})", value=' '.join([x.mention for x in rev]), inline=False)
         bt = ""
         if (user.id == ctx.author.id):
-            bt = f"Edit/set your profile using {ctx.prefix}profile edit! | ")
+            bt = f"Edit/set your profile using {ctx.prefix}profile edit! | "
         e.set_footer(text=f"{bt}ID: {user.id}")
         ##BEGIN PROFILE SHIT
         if isbot: return await ctx.send(embed=e) #botphobia
