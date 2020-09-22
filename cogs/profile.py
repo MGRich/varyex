@@ -216,7 +216,7 @@ class Profile(commands.Cog):
         getfromprofile("birthday")
         pval += "**Birthday**: "
         if not last:
-            pval += "*Not set*"
+            pval += "*Not set*\n"
         else:
             hasy = True
             curr = ""
