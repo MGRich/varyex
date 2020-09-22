@@ -82,8 +82,9 @@ class Misc(commands.Cog):
 
         `prefix <prefix>`
         `userprefix/usrprefix <prefix>`"""
-        mpm = mpku.getmpm("misc", ctx.guild.id)
-        mpk = mpm.data
+        try: mpm = mpku.getmpm("misc", ctx.guild.id)
+        except AttributeError: mpm = None
+        else: mpk = mpm.data
         user = False
         users = mpku.getmpm("users", None)
         mid = str(ctx.author.id)
@@ -97,7 +98,7 @@ class Misc(commands.Cog):
                 return await ctx.send(f"My main prefix here is `{self.bot.command_prefix(self.bot, ctx.message)[0]}`.")
             prefixes = self.bot.command_prefix(self.bot, ctx.message)
             return await ctx.send(f"Your personal prefix is `{prefixes[0]}` and my main prefix here is `{prefixes[1]}`.")
-        user = ctx.invoked_with in ['usrprefix', 'userprefix']
+        user = (ctx.invoked_with in ['usrprefix', 'userprefix']) or (not mpm)
         rem = prefix in ["reset", "off"]
         if user:
             try: users.data[mid]
@@ -115,7 +116,8 @@ class Misc(commands.Cog):
         else:
             try: del mpk['prefix']
             except: pass
-        mpm.save()
+        try: mpm.save()
+        except AttributeError: pass
         if not rem: await ctx.send(f"My prefix here is now `{prefix}`!")
         else: await ctx.send("My prefix here has been reset.")
 

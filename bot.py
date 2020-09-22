@@ -123,7 +123,7 @@ async def on_command_error(ctx: commands.Context, error):
 redirect = False
 iteration = 0
 count = 181
-hourcounter = 3600 - 10 
+hourcounter = 3600 - 30
 @tasks.loop(seconds=1, reconnect=True)
 async def redirloop(): #also the global loop
     ####EDIT LOOP
