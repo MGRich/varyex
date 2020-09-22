@@ -297,7 +297,7 @@ class Profile(commands.Cog):
                         if (len(last) == 4): embed.description += datetime.strptime(last, "%d%m").strftime("%m/%d")
                         else: embed.description += datetime.strptime(last, "%d%m%y").strftime("%m/%d/%y")
                 elif x == "pronoun":
-                    getfromprofile(x)
+                    getfromprofile(x, False)
                     if not last:
                         embed.description += "*Not set*"
                     else:
