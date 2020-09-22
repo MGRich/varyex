@@ -192,7 +192,10 @@ class Profile(commands.Cog):
             rev = m.roles[1:]
             rev.reverse()
             e.add_field(name=f"Roles ({len(m.roles[1:])})", value=' '.join([x.mention for x in rev]), inline=False)
-        e.set_footer(text=f"ID: {user.id}")
+        bt = ""
+        if (user.id == ctx.author.id):
+            bt = f"Edit/set your profile using {ctx.prefix}profile edit! | ")
+        e.set_footer(text=f"{bt}ID: {user.id}")
         ##BEGIN PROFILE SHIT
         if isbot: return await ctx.send(embed=e) #botphobia
         pval = ""
@@ -267,12 +270,9 @@ class Profile(commands.Cog):
         else: pval += last
         e.add_field(name="Profile", value=pval, inline=False)   
 
-        if (user.id == ctx.author.id):
-            e.set_footer(text=f"Edit/set your profile using {ctx.prefix}profile edit!")
-            
         await ctx.send(embed=e)     
 
-    @profile.group()
+    @profile.group(aliases = ["set"])
     async def edit(self, ctx: commands.Context):
         if ctx.invoked_subcommand: return
         try: mpk = self.getmpm().getanddel()[str(ctx.author.id)]['profile']
