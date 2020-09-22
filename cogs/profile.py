@@ -40,8 +40,21 @@ class TZMenu(menus.Menu):
         self.deepl = []
         self.current = tzd
         self.base = tzd
-        self.list = [x + "/" if tzd[x] else x for x in tzd]
+        self.list: list 
+        self.sortlist()
         self.result = None
+
+    def sortlist(self):
+        self.list = [x + "/" if self.current[x] else x for x in self.current]
+        fd = [x for x in self.list if x.endswith("/")]
+        tz = [x for x in self.list if not x.endswith("/")]
+        fd.sort()
+        tz.sort()
+        if not (self.page):
+            #put US/ at the VERY top cause its easier
+            fd.remove("US/")
+            fd.insert(0, "US/")
+        self.list = fd + tz
 
     async def pick(self, payload: discord.RawReactionActionEvent):
         if not (payload.member): return
@@ -54,7 +67,7 @@ class TZMenu(menus.Menu):
             #we found it 
             self.result = '/'.join(self.deepl) + picked[-1]
             return self.stop()
-        self.list = [x + "/" if self.current[x] else x for x in self.current]
+        self.sortlist()       
         self.page = 0 
         await self.handler(payload)
 
@@ -84,7 +97,7 @@ class TZMenu(menus.Menu):
             for x in self.deepl:
                 self.current = self.current[x]
             self.page = 0
-            self.list = [x + "/" if self.current[x] else x for x in self.current]
+            self.sortlist()
             max = -(-len(self.list) // 5)
         try:
             if self.deepl: await self.add_button(menus.Button('\u21A9', self.handler), react=True)
