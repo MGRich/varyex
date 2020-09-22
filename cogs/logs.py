@@ -1,10 +1,12 @@
 import discord, math, re, difflib
 from discord.ext import commands, tasks, menus
-from datetime import datetime, timedelta
-from cogs.utils.embeds import embeds
-from typing import Union, List, Optional
-import cogs.utils.mpk as mpku
 from discord import AuditLogAction
+
+from cogs.utils.embeds import embeds
+import cogs.utils.mpk as mpku
+
+from typing import Union, List, Optional
+from datetime import datetime, timedelta
 
 bitlist = ["Message Delete", "Message Edit", "Channel Edits", "Member Joining/Leaving", 
     "Member Updates", "Server Updates", "Role Updates", "Emoji Updates", "Voice Updates",
@@ -12,7 +14,7 @@ bitlist = ["Message Delete", "Message Edit", "Channel Edits", "Member Joining/Le
 class LogMenu(menus.Menu):
     def __init__(self, gid, datadict, prefix):
         super().__init__(timeout = 30.0, delete_message_after=False, clear_reactions_after=True)
-        self.mpk = mpku.MPKManager("moderation", gid)
+        self.mpk = mpku.getmpm("moderation", gid)
         self.page = 0
         self.max = math.ceil(float(len(bitlist)) / 5)
         self.color = discord.Color(datadict['color'])
@@ -127,7 +129,7 @@ class Logging(commands.Cog):
 
     ######FUNCTIONS######
     def getmpm(self, guild) -> mpku.MPKManager:
-        return mpku.MPKManager("moderation", guild.id)
+        return mpku.getmpm("moderation", guild.id)
     
     def setupjson(self, guild):
         mpm = self.getmpm(guild)
@@ -147,7 +149,7 @@ class Logging(commands.Cog):
     def forceset(self, val, on, pos):
         return val ^ (-on ^ val) & (1 << (pos - 1))
 
-    async def checkbit(self, pos, gid, full = False, holdoff = False) -> Union[discord.TextChannel, mpku.MPKManager]:
+    async def checkbit(self, pos, gid, holdoff = False) -> Union[discord.TextChannel, mpku.MPKManager]:
         if not gid: return None
         if (type(gid) == int):
             guild = self.bot.get_guild(gid)
@@ -157,13 +159,13 @@ class Logging(commands.Cog):
             if not holdoff: 
                 self.invites[guild.id] = await guild.invites()
         except discord.Forbidden: pass
-        mpk = self.getmpm(guild).data
+        mpk = self.getmpm(guild).getanddel()
         try: mpk['log']['flags']
         except: return None
         if (not self.getbit(mpk['log']['flags'], pos)):
             return None
-        if full: return self.getmpm(guild)
-        else: return (guild.get_channel(mpk['log']['channel']) if mpk['log']['channel'] != 0 else None)
+        #if full: return self.getmpm(guild)
+        return (guild.get_channel(mpk['log']['channel']) if mpk['log']['channel'] != 0 else None)
     
     def makebase(self, member, timestamp=None, colortype = 2) -> discord.Embed:
         if not timestamp: timestamp = datetime.utcnow()
@@ -261,7 +263,7 @@ class Logging(commands.Cog):
         `log cfg channel/setchannel [channel]`"""
         self.setupjson(ctx.guild)
         if (ctx.invoked_subcommand == None):
-            mpk = self.getmpm(ctx.guild).data
+            mpk = self.getmpm(ctx.guild).getanddel()
             embed = discord.Embed(title = "Log Config", color=discord.Color(self.bot.data['color']), description = "")
             for i in range(len(bitlist)):
                 unic = '\u2705' if (mpk['log']['flags'] >> i) & 1 else '\u26D4'

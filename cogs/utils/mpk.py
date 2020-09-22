@@ -9,6 +9,9 @@ class MPKManager:
         if (not os.path.exists(self.path)): return
         with open(self.path, "rb") as f: self.data = msgpack.load(f)
 
+    def getanddel(self):
+        return self.data
+    
     def save(self, d=None):
         if (not d): d = self.data
         with open(self.path, "wb") as f: msgpack.dump(d, f)

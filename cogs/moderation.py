@@ -1,28 +1,20 @@
-import discord, timeago, pytimeparse
+import discord, timeago, pytimeparse, asyncio
 from discord.ext import commands, tasks
-from copy import copy
-from datetime import datetime, timedelta
-import cogs.utils.mpk as mpku
 from discord.ext.commands import Greedy
-from typing import Optional
-from string import punctuation
+
+import cogs.utils.mpk as mpku
 from cogs.utils.menus import Confirm
 from cogs.utils.converters import UserLookup, MemberLookup
-import asyncio
+
+from typing import Optional
+from copy import copy
+from datetime import datetime, timedelta
+from string import punctuation
 
 loaded = None
 
 basis1 = ['users', 'inwarn', 'actions', 'offences']
 basis2 = [{}, {}, {}, []]
-
-def convert_to_bool(argument): #commands._convert_to_bool
-    lowered = argument.lower()
-    if lowered in ('yes', 'y', 'true', 't', '1', 'enable', 'on'):
-        return True
-    if lowered in ('no', 'n', 'false', 'f', '0', 'disable', 'off'):
-        return False
-    raise commands.BadArgument(lowered + ' is not a recognised boolean option')
-
 
 def toInt(dt):
     return int(datetime.timestamp(dt) * 1000000)
@@ -58,12 +50,12 @@ class Moderation(commands.Cog):
         Both the bot and the runner **must be able to ban.**
 
         `ban <members> [reason]`"""
-        if not members: return await ctx.send("There are no users in that list (that I could convert.)")
+        if not members: return
         banlist = []
         for member in members:
             if member == ctx.message.author: continue
             try:
-                await ctx.guild.ban(member, reason=reason + (' ' if reason != '' else '') + f"(Banned by {ctx.author})", delete_message_days=0)
+                await ctx.guild.ban(member, reason=(f'{reason} ' if reason else '') + f"(Banned by {ctx.author})", delete_message_days=0)
                 t = f"You have been banned in {ctx.guild} by {ctx.author.mention}"
                 if (reason != ""): t += f" for {reason}{'.' if not reason[-1] in punctuation else ''}"
                 else: t += '.'
@@ -230,6 +222,7 @@ class Moderation(commands.Cog):
                     try: await user.send("The above message's time is now over.")
                     except: pass
             if changed: mpm.save()
+            else: del mpm
         #print('we exist')
 
     @commands.command(aliases = ["clearwarns", "rmwarn", "cwarns", "rmw", "cw"])
@@ -286,10 +279,22 @@ class Moderation(commands.Cog):
         mpm.save()
         await ctx.send(f"Updated reason for case {case} of {user.mention}!")
 
+    #async def warnbackend(self, mpm, guild: discord.Guild, warner: discord.User, users: List[discord.Member], typ, reason):
+    #    mpk = mpm.data
+    #    if (typ):
+    #        if not mpk['offences']: return 1
+    #        if (typ == 2):
+    #            try: mpk['action']['mute']
+    #            except: return 1
+    #TODO: get back to this i just wanna start profiles LOL   
+        
+
+
+
     @commands.group(aliases=["w"], invoke_without_command=True)
     @commands.guild_only()
     @commands.has_permissions(manage_messages=True, kick_members=True)
-    async def warn(self, ctx, user: MemberLookup, users: Greedy[MemberLookup], *, reason):
+    async def warn(self, ctx, users: Greedy[MemberLookup], *, reason):
         """Warns users and sets up warnings.
         The bot must be able to do the action given, and you must be able to **manage messages and kick.**
         Additionally, to configure it, you must be able to **manage the server and ban.**
@@ -305,7 +310,6 @@ class Moderation(commands.Cog):
         > `name` is `verbal` or `mute`, as they are considered special
         `w cfg removeaction/rmaction/remove <name>`
         `w cfg settrack/track`"""
-        users.insert(0, user)
         if (ctx.invoked_subcommand) or ((not users) or (not reason)): return
         mpm = mpku.getmpm('moderation', ctx.guild, basis1, basis2)
         mpk = mpm.data
@@ -362,8 +366,7 @@ class Moderation(commands.Cog):
     @commands.has_permissions(manage_guild=True, ban_members=True) 
     async def config(self, ctx, action: Optional[str]):
         if ctx.invoked_subcommand: return
-        mpm = mpku.getmpm('moderation', ctx.guild, ['actions', 'offences'], [{}, []])
-        mpk = mpm.data
+        mpk = mpku.getmpm('moderation', ctx.guild, ['actions', 'offences'], [{}, []]).getanddel()
         embed = discord.Embed(title="Warning Config", color=discord.Color(self.bot.data['color']), description="")
         if action:
             try: a = mpk['actions'][action]
@@ -387,8 +390,8 @@ class Moderation(commands.Cog):
         embed.description += "__**Actions:**__\n"
         if not mpk['actions']: embed.description += f"*No actions.* Use `{ctx.prefix}w {ctx.invoked_with} add [name]`\n"
         else: 
-            for action in mpk['actions']:
-                embed.description += f"> `{action}`\n"
+            for a in mpk['actions']:
+                embed.description += f"> `{a}`\n"
         if 'mute' not in mpk['actions']:
             embed.description += "*Recommended: `mute`*\n"
         embed.description += "__**Track:**__\n"
@@ -433,13 +436,15 @@ class Moderation(commands.Cog):
         embed.set_footer(text="You can type cancel at any time to stop.")
         msg = await ctx.send(embed=embed)
         async def waitfor():
-            nonlocal ret
+            nonlocal ret, mpm
             try: ret = await self.bot.wait_for('message', check=check, timeout=180.0)
             except asyncio.TimeoutError: 
                 await ctx.send("Cancelled due to 3 minute timeout.")
+                del mpm
                 raise commands.CommandNotFound()
             if ret.content == "cancel":
                 await ctx.send("Cancelled the addition.")
+                del mpm
                 raise commands.CommandNotFound() #LOL
             try: await ret.delete()
             except discord.Forbidden: pass
@@ -539,10 +544,11 @@ class Moderation(commands.Cog):
         msg = await ctx.send(embed=embed)
         track = []
         async def waitfor():
-            nonlocal ret
+            nonlocal ret, mpm
             ret = await self.bot.wait_for('message', check=check)
             if ret.content == "cancel":
                 await ctx.send("Cancelled the track setting.")
+                del mpm
                 raise commands.CommandNotFound() #LOL
             try: await ret.delete()
             except discord.Forbidden: pass
@@ -634,7 +640,7 @@ class Moderation(commands.Cog):
             if (mute):
                 try: await user.add_roles(ctx.guild.get_role(act['role']), reason=reason)
                 except discord.Forbidden:
-                    await ctx.send("I'm not able to mute, so this will be counted as a verbal. Please make sure the mute role is below my role.")
+                    await ctx.send("I'm not able to mute, so this will be counted only as a verbal. Please make sure the mute role is below my role.")
                     return await ctx.invoke(self.verbalwarn, users, reason=reason, mute=0)
                 mute = float(mute) / 60
                 act['dmmsg'] = act['dmmsg'].replace('[t]', str(int(mute)))
@@ -663,8 +669,7 @@ class Moderation(commands.Cog):
         if (user != ctx.author):
             if (not (ctx.author.guild_permissions.manage_messages and ctx.author.guild_permissions.kick_members)):
                 return
-        mpm = mpku.getmpm('moderation', ctx.guild, ['users'], [{}])
-        mpk = mpm.data
+        mpk = mpku.getmpm('moderation', ctx.guild, ['users'], [{}]).getanddel()
         #gid = str(ctx.guild.id)
         uid = str(user.id)
         embed = discord.Embed(color=(discord.Color(self.bot.data['color']) if user.color == discord.Color.default() else user.color))

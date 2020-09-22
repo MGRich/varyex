@@ -19,14 +19,14 @@ regout = sys.stdout
 def prefix(_bot, message):
     prf = data['prefix'].copy()
     if message.guild:
-        con = mpku.MPKManager("misc", message.guild.id).data
+        con = mpku.getmpm("misc", message.guild).getanddel()
         try: 
             con['prefix']
             prf.clear()
             prf.append(con['prefix'])
         except: pass
     
-    users = mpku.MPKManager('users', None).data
+    users = mpku.getmpm('users', None).getanddel()
     try: prf.insert(0, users[str(message.author.id)]['prefix'])
     except: pass
     return prf

@@ -1,15 +1,18 @@
 import discord
 from discord.ext import menus
+
 from typing import List
 
 class Confirm(menus.Menu):
-    def __init__(self, msg, timeout=None):
-        super().__init__(timeout=timeout, delete_message_after=True)
+    def __init__(self, msg, timeout=None, **kwargs):
+        super().__init__(timeout=timeout, **kwargs)
         self.msg = msg
         self.result = None
 
     async def send_initial_message(self, ctx, channel):
-        return await channel.send(self.msg)
+        if (type(self.msg) == str):
+            return await channel.send(self.msg)
+        return await channel.send(embed=self.msg)
 
     @menus.button('\N{WHITE HEAVY CHECK MARK}')
     async def do_confirm(self, _payload):
@@ -24,7 +27,29 @@ class Confirm(menus.Menu):
     async def prompt(self, ctx):
         await self.start(ctx, wait=True)
         return self.result
-    
+
+class Choice(menus.Menu):
+    def __init__(self, msg, emoji: List[str], **kwargs):
+        super().__init__(**kwargs)
+        self.msg = msg
+        self.emoji = emoji
+        self.choice = None
+        for x in emoji:
+            self.add_button(menus.Button(x, self.onpick))
+
+    async def send_initial_message(self, ctx, channel):
+        if (type(self.msg) == str):
+            return await channel.send(self.msg)
+        return await channel.send(embed=self.msg)        
+
+    async def onpick(self, payload: discord.RawReactionActionEvent):
+        self.choice = self.emoji.index(payload.emoji.name)
+        self.stop()
+
+    async def prompt(self, ctx):
+        await self.start(ctx, wait=True)
+        return self.choice
+
 class Paginator(menus.Menu):
     def __init__(self, embeds: List[discord.Embed], timeout=None, footer=None, title=None, loop=False):
         super().__init__(timeout=timeout, clear_reactions_after=True)

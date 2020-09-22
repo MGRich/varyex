@@ -1,5 +1,5 @@
 import discord, copy, math
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 import cogs.utils.mpk as mpku
 from cogs.utils.menus import Paginator
@@ -23,17 +23,6 @@ class Starboard(commands.Cog):
     def __init__(self, bot: commands.Bot):
         # pylint: disable=no-member
         self.bot = bot
-        self.timeaction.start()
-
-    def cog_unload(self):
-        # pylint: disable=no-member
-        self.timeaction.cancel()
-
-    @commands.Cog.listener()
-    async def on_ready(self):
-        # pylint: disable=no-member
-        if (self.timeaction.get_task()): self.timeaction.cancel()
-        self.timeaction.start()
 
     async def handlereact(self, payl: discord.RawReactionActionEvent, typ):
         if not payl.guild_id: return
@@ -108,16 +97,20 @@ class Starboard(commands.Cog):
             except AttributeError: pass
         print("MISC  " + str(default_timer() - start))
         start = default_timer()
-        mpm.save()
+        mpm.save(False)
         e = await embeds.buildembed(embeds, msg, stardata=[count, spstate, mpk], compare=sbmsg.embeds[0] if sbmsg else None)
         print("EMBED " + str(default_timer() - start))
         if sbmsg:
             if not spstate:
                 try: await sbmsg.delete()
                 except discord.NotFound: pass #cover this incase it ever happens for some reason
+                del mpm
                 return
-            try: return await sbmsg.edit(embed=e)
+            try: await sbmsg.edit(embed=e)
             except: pass
+            else: 
+                del mpm
+                return
         if (not spstate) or (not datetime.now() - (msg.created_at) < timedelta(days=60)): return
         made = await chl.send(embed=e)
         msgdata['sbid'] = made.id
@@ -167,7 +160,7 @@ class Starboard(commands.Cog):
     @commands.has_permissions(manage_messages=True, manage_guild=True)
     async def config(self, ctx):
         if (ctx.invoked_subcommand == None):
-            base = mpku.getmpm('starboard', ctx.guild).data
+            base = mpku.getmpm('starboard', ctx.guild).getanddel()
             def fetch(st):
                 try: return base[st]
                 except: return "*Not set*"
@@ -197,16 +190,9 @@ class Starboard(commands.Cog):
         mpm.save()
         print(f"refreshed leaderboard for {gid}")
 
-    @tasks.loop(hours=1, reconnect=True)
-    async def timeaction(self):
-        for guild in self.bot.guilds:
-            try: self.refreshserver(guild.id)
-            except KeyError: pass
-
     @starboard.command(aliases = ["lb"])
     async def leaderboard(self, ctx):
-        mpm = mpku.getmpm('starboard', ctx.guild)
-        mpk = mpm.data       
+        mpk = mpku.getmpm('starboard', ctx.guild).getanddel()
         if not (mpk['leaderboard']['enabled']): return
         tbd = await ctx.send("Generating.. this may take a while.. (we're also refreshing the count)")
         self.refreshserver(ctx.guild.id)
@@ -311,9 +297,9 @@ class Starboard(commands.Cog):
     @config.command()
     @commands.has_permissions(manage_guild=True)
     async def blacklist(self, ctx, act, *channel: discord.TextChannel):
+        if (len(channel) == 0): return
         mpm = mpku.getmpm('starboard', ctx.guild)
         mpk = mpm.data       
-        if (len(channel) == 0): return
         try: mpk['blacklist']
         except: mpk['blacklist'] = []
         channel = list(channel)

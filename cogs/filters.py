@@ -1,9 +1,11 @@
 import discord, re
 from discord.ext import commands
-from cogs.utils.embeds import embeds
-from datetime import datetime, timedelta
+
 import cogs.utils.mpk as mpku
-from typing import Optional
+from cogs.utils.embeds import embeds
+from cogs.utils.converters import MemberLookup, UserLookup
+
+from datetime import datetime, timedelta
 
 class Filters(commands.Cog):
     def __init__(self, bot):
@@ -12,157 +14,160 @@ class Filters(commands.Cog):
     def getmpm(self, guild) -> mpku.MPKManager:
         mpm = mpku.getmpm("filters", guild.id, ['channel', 'filter', 'filterping'], ['0', [], {}])
         mpm.data['filter'] = [x.lower() for x in mpm.data['filter']]
+        mpm.data['filterping'] = {x.lower(): mpm.data['filterping'][x] for x in mpm.data['filterping']}
         return mpku.getmpm("filters", guild.id, ['channel', 'filter', 'filterping'], ['0', [], {}])
 
-    @commands.group(aliases = ["filterping", "fp", 'f'])
+    @commands.group(aliases = ['f'])
     @commands.has_permissions(manage_messages = True)
     async def filter(self, ctx):
-        """Manage filters/filterpings.
+        """Manage filters.
         You **must be able to manage messages.**
 
         `filter/f`
-        `filterping/fp`
         `f cfg [add/remove] [phrases]`
+        """
+        if not (ctx.invoked_subcommand):
+            ebase = discord.Embed(title="Current Filters", color=discord.Color(self.bot.data['color']))
+            mpk = self.getmpm(ctx.guild).getanddel()
+            ebase.set_footer(text=f"Add with {ctx.prefix}f cfg add [phrases]")
+            if not mpk['filter']:
+                ebase.description = "*No filters.*"
+                return await ctx.send(embed=ebase)
+            fstr = '`\n`'.join(mpk['filter'])
+            ebase.description = f"`{fstr}`"
+            await ctx.send(embed=ebase)
+    @commands.group(aliases = ['fp'])
+    @commands.has_permissions(manage_messages = True)
+    async def filterping(self, ctx):
+        """Manage filterpings.
+        You **must be able to manage messages.**
+
+        `filterping/fp`
         `fp cfg [add/remove] [phrase] <members>` 
         """
-        isfp = ctx.invoked_with in ['fp', 'filterping']
-        strused = 'filterping' if isfp else 'filter'
         if not (ctx.invoked_subcommand):
-            ebase = discord.Embed(title=f"Current {strused.title()}s", color=discord.Color(self.bot.data['color']))
-            mpm = self.getmpm(ctx.guild)
-            mpk = mpm.data
-            ebase.set_footer(text=f"Add with {ctx.prefix}{ctx.invoked_with} cfg add {'[phrase] [members]' if isfp else '[phrases]'}")
-            try: mpk[strused]
-            except:
-                ebase.description = "*No data.*"
+            ebase = discord.Embed(title="Current Filterpings", color=discord.Color(self.bot.data['color']))
+            ebase.set_footer(text=f"Add with {ctx.prefix}fp cfg add [phrase] [members]")
+            mpk = self.getmpm(ctx.guild).getanddel()
+            if not mpk['filterping']:
+                ebase.description = "*No filterpingss.*"
                 return await ctx.send(embed=ebase)
             ch = "*No channel*" if (not mpk['channel']) else f"<#{mpk['channel']}>"
             ebase.description = f"Channel: {ch}\n"
-            if isfp:
-                for entry in mpk['filterping'].items(): 
-                    #print(entry)
-                    plist = []
-                    for p in entry[1]:
-                        plist.append(f"<@{p}>")
-                    ebase.description += f"{entry[0]} - {', '.join(plist)}\n"
-            else:
-                fstr = '`\n`'.join(mpk['filter'])
-                ebase.description = f"`{fstr}`"
+            for entry in mpk['filterping'].items(): 
+                plist = []
+                for p in entry[1]:
+                    plist.append(f"<@{p}>")
+                ebase.description += f"{entry[0]} - {', '.join(plist)}\n"
             await ctx.send(embed=ebase)
-    
 
-    @filter.group(aliases = ['cfg'])
-    async def config(self, ctx):
+    @filter.group(name = "config", aliases = ['cfg'])
+    async def configf(self, ctx):
         if not (ctx.invoked_subcommand):
             return await ctx.invoke(self.filter)
+    @filterping.group(name = "config", aliases = ['cfg'])
+    async def configfp(self, ctx):
+        if not (ctx.invoked_subcommand):
+            return await ctx.invoke(self.filterping)
 
-    @config.command()
-    async def add(self, ctx, phrase: str, *users: Optional[str]):
-        isfp = ctx.message.content.split()[0][len(ctx.prefix):] in ['fp', 'filterping']
-        strused = 'filterping' if isfp else 'filter'
+    @configf.command(name="add")
+    async def addf(self, ctx, *strs: str):
+        if not strs: return
         mpm = self.getmpm(ctx.guild)
         mpk = mpm.data
-        try: mpk[strused]
-        except: mpk[strused] = ({} if isfp else [])
-        
-        if isfp:
-            existed = True
-            if len(users) == 0: return
-            memb = [await commands.MemberConverter().convert(ctx, x) for x in users]
-            try: mpk['filterping'][phrase]
-            except: 
-                existed = False
-                mpk['filterping'][phrase] = []
-
-            for m in list(memb):
-                if not m.id in mpk['filterping'][phrase]: 
-                    mpk['filterping'][phrase].append(m.id)
-                else: memb.remove(m)
-            if (len(memb) == 0): return await ctx.send("Everyone on the list was getting pinged by that phrase, so nothing has changed.")
-            mpm.save()
-            if (not existed):
-                return await ctx.send(f"Added `{phrase}` to filterping!")
-            else:
-                pings = []
-                for m in memb:
-                    pings.append(m.mention)
-                return await ctx.send(f"Added {', '.join(pings)} to {phrase}!")
+        try: mpk['filter']
+        except: mpk['filter'] = []
+        strs = [(x[1:-1] if ((x[0] == x[-1] == '`') and len(x) > 2) else x) for x in strs] #incase we wanna use ``
+        added = []
+        for x in strs:
+            if x not in mpk['filter']:
+                mpk['filter'].append(x)
+                added.append(x)
+        if len(added) == 0: return await ctx.send("Those phrases were already being filtered, so nothing has changed.")
+        mpm.save()
+        added = [f"`{x}`" for x in added]
+        await ctx.send(f"Added {', '.join(added)} to filters!") 
+    @configfp.command(name="add")
+    async def addfp(self, ctx, phrase: str, *memb: MemberLookup):
+        if not memb: return
+        memb = list(memb)
+        mpm = self.getmpm(ctx.guild)
+        mpk = mpm.data
+        try: mpk['filterping']
+        except: mpk['filterping'] = {}
+        existed = True
+        try: mpk['filterping'][phrase]
+        except: 
+            existed = False
+            mpk['filterping'][phrase] = []
+        for m in list(memb):
+            if not m.id in mpk['filterping'][phrase]: 
+                mpk['filterping'][phrase].append(m.id)
+            else: memb.remove(m)
+        if (len(memb) == 0): return await ctx.send("Everyone on the list was getting pinged by that phrase, so nothing has changed.")
+        mpm.save()
+        if (not existed):
+            return await ctx.send(f"Added `{phrase}` to filterping!")
         else:
-            if (users): strs = list(users)
-            else: strs = []
-            strs.append(phrase)
-            strs = [(x[1:-1] if ((x[0] == x[-1] == '`') and len(x) > 2) else x) for x in strs] #incase we wanna use ``
-            added = []
-            for x in strs:
-                if x not in mpk['filter']:
-                    mpk['filter'].append(x)
-                    added.append(x)
-            if len(added) == 0: return await ctx.send("Those phrases were already being filtered, so nothing has changed.")
-            mpm.save()
-            added = [f"`{x}`" for x in added]
-            await ctx.send(f"Added {', '.join(added)} to filters!") 
-
-    @config.command(aliases = ['delete'])
-    async def remove(self, ctx, phrase: str, *users: Optional[str]):
-        isfp = ctx.message.content.split()[0][len(ctx.prefix):] in ['fp', 'filterping']
-        strused = 'filterping' if isfp else 'filter'
+            pings = []
+            for m in memb:
+                pings.append(m.mention)
+            return await ctx.send(f"Added {', '.join(pings)} to {phrase}!")
+    @configfp.command(name = "remove", aliases = ['delete'])
+    async def removefp(self, ctx, phrase: str, *memb: UserLookup):
+        if not memb: return
+        memb = [x.id for x in memb]
         mpm = self.getmpm(ctx.guild)
         mpk = mpm.data
-        try: mpk[strused]
+        try: 
+            if not mpk['filterping']: raise ValueError()
+        except: return await ctx.send("There's nothing to delete!")
+        count = len(memb)
+        deleted = False
+        try: mpk['filterping'][phrase]
+        except: 
+            return await ctx.send("That phrase doesn't exist, so nothing was changed.")
+
+        for m in list(memb):
+            if m in mpk['filterping'][phrase]: 
+                mpk['filterping'][phrase].remove(m)
+            else: memb.remove(m)
+        if (not count) or (len(mpk['filterping'][phrase]) == 0):
+            del(mpk['filterping'][phrase])
+            deleted = True
+                    
+        if (len(memb) == 0): return await ctx.send("No one on the list was getting pinged by that phrase, so nothing has changed.") 
+        mpm.save()
+        if (deleted):
+            await ctx.send(f"Removed `{phrase}` from filterping!")
+        else:
+            pings = []
+            for m in memb:
+                pings.append(f"<@{m}>")
+            await ctx.send(f"Removed {', '.join(pings)} from {phrase}!")  
+    @configf.command(name = "remove", aliases = ['delete'])
+    async def removef(self, ctx, *strs: str):
+        if not strs: return
+        mpm = self.getmpm(ctx.guild)
+        mpk = mpm.data
+        try: 
+            if not mpk['filter']: raise ValueError()
         except: return await ctx.send("There's nothing to delete!")
 
-        if isfp:
-            memb = []
-            for x in users:
-                try: memb.append(int(x))
-                except ValueError: 
-                    try: memb.append((await commands.UserConverter().convert(ctx, x)).id)
-                    except commands.BadArgument:
-                        await ctx.send(f"Could not parse user {x}") #gwbruhtrolled
-            count = len(memb)
-            deleted = False
+        strs = [(x[1:-1] if ((x[0] == x[-1] == '`') and len(x) > 2) else x) for x in strs] #incase we wanna use ``
+        removed = []
+        for x in strs:
+            if x in mpk['filter']:
+                mpk['filter'].remove(x)
+                removed.append(x)
+        if len(removed) == 0: return await ctx.send("None of those phrases are filtered, so nothing has changed.")
+        mpm.save()
+        removed = [f"`{x}`" for x in removed]
+        await ctx.send(f"Removed {', '.join(removed)} from filters!") 
 
-            try: mpk['filterping'][phrase]
-            except: 
-                return await ctx.send("That phrase doesn't exist, so nothing was changed.")
-
-            for m in list(memb):
-                if m in mpk['filterping'][phrase]: 
-                    mpk['filterping'][phrase].remove(m)
-                else: memb.remove(m)
-            if (not count) or (len(mpk['filterping'][phrase]) == 0):
-                del(mpk['filterping'][phrase])
-                deleted = True
-                        
-            if (len(memb) == 0): return await ctx.send("No one on the list was getting pinged by that phrase, so nothing has changed.") 
-            mpm.save()
-            if (deleted):
-                await ctx.send(f"Removed `{phrase}` from filterping!")
-            else:
-                pings = []
-                for m in memb:
-                    pings.append(f"<@{m}>")
-                await ctx.send(f"Removed {', '.join(pings)} from {phrase}!")  
-        else:
-            if (users): strs = list(users)
-            else: strs = []
-            strs.append(phrase)
-            strs = [(x[1:-1] if ((x[0] == x[-1] == '`') and len(x) > 2) else x) for x in strs] #incase we wanna use ``
-            removed = []
-            for x in strs:
-                if x in mpk['filter']:
-                    mpk['filter'].remove(x)
-                    removed.append(x)
-            if len(removed) == 0: return await ctx.send("None of those phrases are filtered, so nothing has changed.")
-            mpm.save()
-            removed = [f"`{x}`" for x in removed]
-            await ctx.send(f"Removed {', '.join(removed)} from filters!") 
-
-    @config.command(aliases = ['channel'])
+    @configfp.command(aliases = ['channel'])
     async def setchannel(self, ctx, chn: discord.TextChannel):
         mpm = self.getmpm(ctx.guild)
-        isfp = ctx.message.content.split()[0][len(ctx.prefix):] in ['fp', 'filterping']
-        if (not isfp): return await ctx.send("This only applies to filterpings.") 
         mpm.data['channel'] = chn.id
         mpm.save()
         await ctx.send(f"Set filterping channel to {chn.mention}!")
@@ -171,41 +176,34 @@ class Filters(commands.Cog):
     async def on_message(self, msg):
         if (msg.guild == None): return
         if (msg.channel.id == 356560338390351872): return #REMS SPECIAL CASE
-        mpm = self.getmpm(msg.guild)
-        mpk = mpm.data
+        mpk = self.getmpm(msg.guild).getanddel()
         hasfp = False
         hasf = False
-        try:
-            mpk['filterping']
+        
+        if mpk['filterping']:
             if (not mpk['channel']): raise Exception()
-            chn = await self.bot.fetch_channel(mpk['channel'])
-            hasfp = not msg.author.bot
-        except: pass
-        try:
-            mpk['filter']
-            hasf = not msg.author.bot
-        except: pass
+            try: chn = await self.bot.fetch_channel(mpk['channel'])
+            except: pass
+            else: hasfp = not msg.author.bot
+        
+        if mpk['filter']: hasf = not msg.author.bot
 
         flist = []
         plist = []
 
-        if hasfp:
-            for entry in mpk['filterping'].items():
-                if (type(entry) == int): continue
-                if (type(entry[1]) == int): continue
-                if re.search(entry[0], msg.content, re.IGNORECASE):
-                    flist.append(entry[0])
-                    for memb in entry[1]:
-                        forceNo = memb in [x.id for x in msg.mentions]
-                        if not forceNo:
-                            async for message in msg.channel.history(limit=10, after=datetime.utcnow() - timedelta(seconds=30)):
-                                if message.author.id == memb:
-                                    forceNo = True
-                                    break
-                        if (not forceNo) and ((not memb in plist) and memb != msg.author.id): plist.append(memb)
-            
-            if (not len(flist)) or (not len(plist)): return
-            
+        for entry in mpk['filterping'].items():
+            if re.search(entry[0], msg.content, re.IGNORECASE):
+                flist.append(entry[0])
+                for memb in entry[1]:
+                    forceNo = memb in [x.id for x in msg.mentions]
+                    if not forceNo:
+                        async for message in msg.channel.history(limit=10, after=datetime.utcnow() - timedelta(seconds=30)):
+                            if message.author.id == memb:
+                                forceNo = True
+                                break
+                    if (not forceNo) and (memb != msg.author.id) and (not memb in plist): plist.append(memb)
+        
+        if hasfp and (flist and plist):
             i = 0
             for p in plist:
                 plist[i] = f"<@{p}>"
@@ -214,10 +212,12 @@ class Filters(commands.Cog):
             e = await embeds.buildembed(embeds, msg, focus=flist)
             e.set_footer(text=f"Focused: {', '.join(flist)}")
             await chn.send(' '.join(plist), embed=e)
+
         if hasf:
             for x in mpk['filter']:
                 if re.search(x, msg.content, re.IGNORECASE):
-                    return await msg.delete()
+                    try: return await msg.delete()
+                    except discord.Forbidden: return
         
 
 def setup(bot):

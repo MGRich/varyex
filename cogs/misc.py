@@ -1,13 +1,19 @@
-import discord, dateparser, aiohttp, re, random, html, imghdr, io, os, asyncio, timeago
+import discord, re #general/misc
 from discord.ext import commands, tasks
+
 import cogs.utils.mpk as mpku
 from typing import Optional, Union, List
-from datetime import datetime, timedelta
-from asyncio import sleep
+from asyncio import sleep #auto rolecolor
 from numpy import clip
-from PIL import Image
+
+import dateparser, random, html #garfield
+from datetime import datetime, timedelta
+
+import aiohttp #garfield AND imgfilter
+
+import imghdr, io, os, asyncio #imgfilter
 from asyncio.locks import Semaphore
-from cogs.utils.converters import UserLookup
+from PIL import Image
 
 def limitdatetime(dt):
     return datetime.combine(dt.date(), datetime.min.time())
@@ -45,17 +51,13 @@ def htmltomarkup(text):
     return html.unescape(text).strip()
 
 async def getcode(url):
-    print(f"try {url}")
     try: 
         async with aiohttp.request('HEAD', url) as resp:
-            #print(resp.status)
             return resp.status
-    except:
-        #print(408)
-        return 408
+    except: return 408
 
 
-class Miscellaneous(commands.Cog):
+class Misc(commands.Cog):
     def __init__(self, bot: commands.Bot):
         # pylint: disable=no-member
         self.bot = bot
@@ -80,10 +82,10 @@ class Miscellaneous(commands.Cog):
 
         `prefix <prefix>`
         `userprefix/usrprefix <prefix>`"""
-        mpm = mpku.MPKManager("misc", ctx.guild.id)
+        mpm = mpku.getmpm("misc", ctx.guild.id)
         mpk = mpm.data
         user = False
-        users = mpku.MPKManager("users", None)
+        users = mpku.getmpm("users", None)
         mid = str(ctx.author.id)
         try:
             users.data[mid]['prefix']
@@ -271,7 +273,7 @@ class Miscellaneous(commands.Cog):
                 mpm = mpku.getmpm("misc", ctx.guild)
                 mpk = mpm.data
             else:
-                mpm = mpku.MPKManager('users', None)
+                mpm = mpku.getmpm('users', None)
                 mpk = mpm.data[str(ctx.author.id)]
             try: mpk['garfield']
             except: mpk['garfield'] = {'g': 0, 's': 0}
@@ -340,7 +342,7 @@ class Miscellaneous(commands.Cog):
         #first we check guilds cause thats easy
         for guild in self.bot.guilds:
             guild: discord.Guild
-            try: mpk = mpku.getmpm('misc', guild).data['garfield']
+            try: mpk = mpku.getmpm('misc', guild).getanddel()['garfield']
             except: continue
             if (shown & 0b01) and mpk['g']:
                 chn = guild.get_channel(mpk['g'])
@@ -350,7 +352,7 @@ class Miscellaneous(commands.Cog):
                 chn = guild.get_channel(mpk['s'])
                 if chn:
                     await chn.send(embed=sembed)
-        mpkr = mpku.MPKManager("users", None).data
+        mpkr = mpku.getmpm("users", None).getanddel()
         for uid in mpkr:
             try: mpk = mpkr[uid]['garfield']
             except: continue
@@ -449,42 +451,6 @@ class Miscellaneous(commands.Cog):
             os.remove(f"{ctx.message.id}{x}.png")
         await ctx.send(f"Finished {done} images with {len(invalid)} invalid images.")
 
-    @commands.command(aliases = ["uinfo"])
-    async def userinfo(self, ctx, user: Optional[UserLookup]):
-        """Get your own or someone else's user info.
-
-        `userinfo/uinfo <user>`"""
-        if not user: user = ctx.author
-        user: discord.User
-        e = discord.Embed(title=str(user))
-        e.set_thumbnail(url=str(user.avatar_url))
-        isguild = bool(ctx.guild)
-        bm = ""
-        isbot = user.bot
-        if isguild:
-            m: discord.Member = ctx.guild.get_member(user.id)
-            isguild = bool(m)
-            if m:
-                e.color = m.color if m.color != discord.Color.default() else e.color
-                gl = [f" - *{m.nick}*" if m.nick else "", f"**{'Added' if isbot else 'Joined'} at**: {m.joined_at.strftime('%m/%d/%y %I:%M %p')} UTC ({timeago.format(m.joined_at)})\n"]
-            try: 
-                l = [x for x in (await ctx.guild.bans()) if x.user.id == user.id]
-                if l and (ctx.author.permissions_in(ctx.channel).ban_members):
-                    be = l[0]
-                    if be.reason:
-                        bm = f" for reason `{be.reason}`"
-                    bm = f" **(is banned{bm})**"
-            except discord.Forbidden: pass
-        def glp(index):
-            nonlocal gl, isguild
-            return (gl[index] if isguild else "")
-        e.description = f"""{user.mention}{glp(0)}{bm}\n**Created at**: {user.created_at.strftime('%m/%d/%y %I:%M %p')} UTC ({timeago.format(user.created_at)})\n{glp(1)}"""
-        if isguild and m.roles[1:]:
-            rev = m.roles[1:]
-            rev.reverse()
-            e.add_field(name=f"Roles ({len(m.roles[1:])})", value=' '.join([x.mention for x in rev]))
-        e.set_footer(text=f"ID: {user.id}")
-        await ctx.send(embed=e)
 
 class Help(commands.Cog):
     def __init__(self, bot):
@@ -533,5 +499,5 @@ class Help(commands.Cog):
 
 
 def setup(bot):
-    bot.add_cog(Miscellaneous(bot))
+    bot.add_cog(Misc(bot))
     bot.add_cog(Help(bot))
