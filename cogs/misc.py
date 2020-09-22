@@ -488,11 +488,11 @@ class Help(commands.Cog):
                     embed.add_field(name=e.title, value=e.description, inline=True)
             embed.set_footer(text = f"Use {ctx.prefix}help [command] for more info on a command.")
             return await ctx.send(embed=embed)
-        for x in list(self.bot.cogs):
-            if x.lower() == c.lower():
-                return await ctx.send(embed=self.parse(x, None, prefix=ctx.prefix))
         embed = self.parse(None, c.lower())
         if not embed:
+            for x in list(self.bot.cogs):
+                if x.lower() == c.lower():
+                    return await ctx.send(embed=self.parse(x, None, prefix=ctx.prefix))
             await ctx.send("That command doesn't exist!")
             return await ctx.invoke(self.help)
         return await ctx.send(embed=embed)
