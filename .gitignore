@@ -7,3 +7,4 @@ funny.py
 cogs/*/
 !cogs/utils/
 !cogs/*.py
+.env
