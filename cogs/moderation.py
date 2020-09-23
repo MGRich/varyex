@@ -56,7 +56,7 @@ class Moderation(commands.Cog):
             if member == ctx.message.author: continue
             try:
                 await ctx.guild.ban(member, reason=(f'{reason} ' if reason else '') + f"(Banned by {ctx.author})", delete_message_days=0)
-                t = f"You have been banned in {ctx.guild} by {ctx.author.mention}"
+                t = f"You have been banned in {ctx.guild}"
                 if (reason != ""): t += f" for {reason}{'.' if not reason[-1] in punctuation else ''}"
                 else: t += '.'
                 banlist.append(member.mention)
