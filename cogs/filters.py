@@ -175,7 +175,6 @@ class Filters(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, msg):
         if (msg.guild == None): return
-        if (msg.channel.id == 356560338390351872): return #REMS SPECIAL CASE
         mpk = self.getmpm(msg.guild).getanddel()
         hasfp = False
         hasf = False
@@ -189,7 +188,7 @@ class Filters(commands.Cog):
         if mpk['filter']: hasf = not msg.author.bot
 
         flist = []
-        plist = []
+        plist = set()
 
         for entry in mpk['filterping'].items():
             if re.search(entry[0], msg.content, re.IGNORECASE):
@@ -197,19 +196,25 @@ class Filters(commands.Cog):
                 for memb in entry[1]:
                     forceNo = memb in [x.id for x in msg.mentions]
                     if not forceNo:
-                        async for message in msg.channel.history(limit=10, after=datetime.utcnow() - timedelta(seconds=30)):
+                        async for message in msg.channel.history(limit=15, after=datetime.utcnow() - timedelta(seconds=30)):
                             if message.author.id == memb:
                                 forceNo = True
                                 break
-                    if (not forceNo) and (memb != msg.author.id) and (not memb in plist): plist.append(memb)
+                    if (not forceNo) and (memb != msg.author.id): plist.add(f"<@{memb}>")
         
-        if hasfp and (flist and plist):
-            i = 0
-            for p in plist:
-                plist[i] = f"<@{p}>"
-                i += 1
+        if hasfp and plist:
+            hlist = []
+            for x in sorted(flist, key=len):
+                smaller = False
+                for z in flist:
+                    if x == z: continue
+                    if x in z:
+                        smaller = True
+                        break
+                if not smaller: hlist.append(x)
+                pass
 
-            e = await embeds.buildembed(embeds, msg, focus=flist)
+            e = await embeds.buildembed(embeds, msg, focus=hlist)
             e.set_footer(text=f"Focused: {', '.join(flist)}")
             await chn.send(' '.join(plist), embed=e)
 

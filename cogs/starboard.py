@@ -4,24 +4,15 @@ from discord.ext import commands
 import cogs.utils.mpk as mpku
 from cogs.utils.menus import Paginator
 from cogs.utils.embeds import embeds
+from cogs.utils.other import getord
 
 from typing import Optional
 from datetime import datetime, timedelta
 from timeit import default_timer
 from asyncio import sleep
 
-def getord(num):
-    st = "th"
-    if ((num % 100) > 10 and (num % 100) < 15): return str(num) + st
-    n = num % 10
-    if   (n == 1): st = st.replace("th", "st")
-    elif (n == 2): st = st.replace("th", "nd")
-    elif (n == 3): st = st.replace("th", "rd")
-    return str(num) + st
-
 class Starboard(commands.Cog):
     def __init__(self, bot: commands.Bot):
-        # pylint: disable=no-member
         self.bot = bot
 
     async def handlereact(self, payl: discord.RawReactionActionEvent, typ):
@@ -79,16 +70,16 @@ class Starboard(commands.Cog):
         if payl.user_id == msg.author.id: return 
         print("COUNT " + str(default_timer() - start))
         start = default_timer()
-        if aid not in mpk['leaderboard']: mpk['leaderboard'][aid] = 0
-        if mid not in mpk['messages']:
+        try: mpk['leaderboard'][aid] 
+        except: mpk['leaderboard'][aid] = 0
+        try: msgdata = mpk['messages'][mid]
+        except:
             mpk['messages'][mid] = {}
             msgdata = mpk['messages'][mid]
             msgdata['author']  = msg.author.id
             msgdata['chn']     = cid
             msgdata['sbid']    = 0
             mpk['leaderboard'][aid] += count - typ
-        
-        msgdata = mpk['messages'][mid]
         spstate = ((count >= mpk['amount']) << 1) | msg.pinned
         mpk['leaderboard'][aid] += typ
         msgdata['count'] = count

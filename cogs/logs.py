@@ -1,4 +1,4 @@
-import discord, math, re, difflib
+import discord, re, difflib
 from discord.ext import commands, tasks, menus
 from discord import AuditLogAction
 
@@ -16,11 +16,15 @@ class LogMenu(menus.Menu):
         super().__init__(timeout = 30.0, delete_message_after=False, clear_reactions_after=True)
         self.mpk = mpku.getmpm("moderation", gid)
         self.page = 0
-        self.max = math.ceil(float(len(bitlist)) / 5)
+        self.max = len(bitlist) // 5
         self.color = discord.Color(datadict['color'])
         self.prefix = prefix
         self.shown = 5
         self.message = None
+        for x in ["\U0001F53C", "\U0001F53D"]:
+            self.add_button(menus.Button(x, self.movepage))
+        for x in range(1, 6):
+            self.add_button(menus.Button(str(x) + "\uFE0F\u20E3", self.pick))
 
     async def editmessage(self):
         trimmedlist = bitlist[(self.page * 5):(self.page * 5 + 5)]
@@ -28,26 +32,23 @@ class LogMenu(menus.Menu):
         embed = discord.Embed(title = "Log Config", color=self.color, description = "")
         for i in range(len(bitlist)):
             unic = '\u2705' if (self.mpk.data['log']['flags'] >> i) & 1 else '\u26D4'
-            num = ""
+            ch = -1
             if self.page * 5 <= i <= self.page * 5 + 4: 
                 ch = i - self.page * 5
-                if   ch == 0: num = "\u0031"
-                elif ch == 1: num = "\u0032"
-                elif ch == 2: num = "\u0033"
-                elif ch == 3: num = "\u0034"
-                elif ch == 4: num = "\u0035"
-            if not num: num = "\U0001F7E6 "
-            else: num += "\uFE0F\u20e3 "
+            if ch == -1: num = "\U0001F7E6 "
+            else: num = f"{str(ch + 1)}\uFE0F\u20e3 "
             embed.description += f"{num}{bitlist[i]}: {unic}\n"
         embed.set_footer(text="Use the reactions to toggle the flags.")
         return await self.message.edit(content = "", embed=embed)
 
     async def prompt(self, ctx):
         await self.start(ctx)
+        
     async def send_initial_message(self, ctx, channel):
         ret = self.message = await channel.send("Please wait..")
         await self.editmessage()
         return ret
+
     async def finalize(self):
         embed = discord.Embed(title = "Log Config - Saved", color=self.color, description = "")
         for i in range(len(bitlist)):
@@ -56,61 +57,30 @@ class LogMenu(menus.Menu):
         await self.message.edit(embed=embed)
         self.mpk.save()
 
-    @menus.button("\U0001F53C") #up
-    async def leftpage(self, payload):
+    async def movepage(self, payload):
         if not payload.member: return
-        self.page = max(self.page - 1, 0)
+        await self.message.remove_reaction(payload.emoji, payload.member)
+        if (payload.emoji.name == "\U0001F53C"):
+            self.page = max(self.page - 1, 0)
+        else:
+            self.page = min(self.page + 1, self.max)
+        print(self.max)
+        print(self.page)
         await self.editmessage()
-        await self.message.remove_reaction("\U0001F53C", payload.member)
-    @menus.button("\U0001F53D") #down
-    async def rightpage(self, payload):
-        if not payload.member: return
-        self.page = min(self.page + 1, self.max)
-        await self.editmessage()
-        await self.message.remove_reaction("\U0001F53D", payload.member)
+    
     @menus.button("\u23F9") #stop
     async def stopemote(self, _payload):
         self.stop()
 
-    @menus.button("\u0031\uFE0F\u20e3") #1
-    async def bit1(self, payload):
+    async def pick(self, payload: discord.RawReactionActionEvent):
         if not payload.member: return
-        if self.shown >= 1:
-            self.mpk.data['log']['flags'] ^= 1 << (self.page * 5 + 0)
-            await self.editmessage()    
-        await self.message.remove_reaction("\u0031\uFE0F\u20e3", payload.member)
-    @menus.button("\u0032\uFE0F\u20e3") #2
-    async def bit2(self, payload):
-        if not payload.member: return
-        if self.shown >= 2:
-            self.mpk.data['log']['flags'] ^= 1 << (self.page * 5 + 1)
-            await self.editmessage()
-        await self.message.remove_reaction("\u0032\uFE0F\u20e3", payload.member)
-    @menus.button("\u0033\uFE0F\u20e3") 
-    async def bit3(self, payload):
-        if not payload.member: return
-        if self.shown >= 3:
-            self.mpk.data['log']['flags'] ^= 1 << (self.page * 5 + 2)
-            await self.editmessage()
-        await self.message.remove_reaction("\u0033\uFE0F\u20e3", payload.member)
-    @menus.button("\u0034\uFE0F\u20e3") 
-    async def bit4(self, payload):
-        if not payload.member: return
-        if self.shown >= 4:
-            self.mpk.data['log']['flags'] ^= 1 << (self.page * 5 + 3)
-            await self.editmessage()
-        await self.message.remove_reaction("\u0034\uFE0F\u20e3", payload.member)
-    @menus.button("\u0035\uFE0F\u20e3") 
-    async def bit5(self, payload):
-        if not payload.member: return
-        if self.shown >= 5:
-            self.mpk.data['log']['flags'] ^= 1 << (self.page * 5 + 4)
-            await self.editmessage()
-        await self.message.remove_reaction("\u0035\uFE0F\u20e3", payload.member)
+        await self.message.remove_reaction(payload.emoji, payload.member)
+        picked = [str(x) + "\uFE0F\u20E3" for x in range(1, 6)].index(payload.emoji.name)
+        if self.shown >= picked + 1:
+            self.mpk.data['log']['flags'] ^= 1 << (self.page * 5 + picked)
+            await self.editmessage()  
 
 class Logging(commands.Cog):
-
-
     def __init__(self, bot: discord.Client):
         # pylint: disable=no-member
         self.bot = bot
@@ -155,16 +125,14 @@ class Logging(commands.Cog):
             guild = self.bot.get_guild(gid)
             if not guild: return None
         elif (type(gid) == discord.Guild): guild = gid
-        try: 
-            if not holdoff: 
-                self.invites[guild.id] = await guild.invites()
-        except discord.Forbidden: pass
+        if not holdoff: 
+            try: self.invites[guild.id] = await guild.invites()
+            except discord.Forbidden: pass
         mpk = self.getmpm(guild).getanddel()
         try: mpk['log']['flags']
         except: return None
         if (not self.getbit(mpk['log']['flags'], pos)):
             return None
-        #if full: return self.getmpm(guild)
         return (guild.get_channel(mpk['log']['channel']) if mpk['log']['channel'] != 0 else None)
     
     def makebase(self, member, timestamp=None, colortype = 2) -> discord.Embed:

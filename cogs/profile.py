@@ -3,23 +3,15 @@ from discord.ext import commands, tasks, menus
 
 from cogs.utils.converters import UserLookup
 from cogs.utils.menus import Confirm, Choice
+from cogs.utils.other import getord
 
-from typing import Union, Optional, List
+from typing import Union, Optional
 from datetime import datetime
 import timeago
 import cogs.utils.mpk as mpku
 import pytz
 import dateparser
 from copy import copy
-
-def getord(num):
-    st = "th"
-    if ((num % 100) > 10 and (num % 100) < 15): return str(num) + st
-    n = num % 10
-    if   (n == 1): st = st.replace("th", "st")
-    elif (n == 2): st = st.replace("th", "nd")
-    elif (n == 3): st = st.replace("th", "rd")
-    return str(num) + st
 
 fields = ['name', 'realname', 'pronoun', 'birthday', 'bio', 'location', 'tz']
 isdst = lambda tz: bool(datetime.now(tz).dst()) #https://stackoverflow.com/a/19968515
@@ -89,11 +81,11 @@ class TZMenu(menus.Menu):
         try: await self.message.remove_reaction(payload.emoji, self.user)
         except: pass
         c = ""
-        max = -(-len(self.list) // 5)
+        pmax = len(self.list) // 5 
         if payload.emoji.name == '\u25C0':
-            self.page -= 1 if self.page > 0 else 0
+            self.page = max(self.page - 1, 0)
         elif payload.emoji.name == '\u25B6':
-            self.page += 1 if self.page + 1 < max else 0
+            self.page = min (self.page + 1, pmax)
         elif payload.emoji.name == '\u21A9':
             self.current = self.base
             del self.deepl[-1]
@@ -101,7 +93,7 @@ class TZMenu(menus.Menu):
                 self.current = self.current[x]
             self.page = 0
             self.sortlist()
-            max = -(-len(self.list) // 5)
+            pmax = len(self.list) // 5
         try:
             if self.deepl: await self.add_button(menus.Button('\u21A9', self.handler), react=True)
             else: await self.remove_button('\u21A9', react=True)
@@ -122,7 +114,7 @@ class TZMenu(menus.Menu):
         ins = ""
         if self.deepl:
             ins = f" (in {'/'.join(self.deepl)})"
-        e.set_footer(text=f"Page {self.page + 1}/{max}{ins}")
+        e.set_footer(text=f"Page {self.page + 1}/{pmax}{ins}")
         e.timestamp = datetime.utcnow()
         await self.message.edit(content="", embed=e)
 
@@ -405,7 +397,7 @@ class Profile(commands.Cog):
                 await ctx.send("Cancelled bio setting.")
                 break
             if (len(ret.content) > 400): 
-                await (await ctx.send("Please keep it under 400 characters.")).delete(delay=5)
+                await (await ctx.send(f"Please keep it under 400 characters. (that was {len(ret.content)} characters)")).delete(delay=5)
                 continue
             mpk['bio'] = ret.content
             mpm.save()
