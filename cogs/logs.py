@@ -70,6 +70,7 @@ class LogMenu(menus.Menu):
     
     @menus.button("\u23F9") #stop
     async def stopemote(self, _payload):
+        await self.finalize()
         self.stop()
 
     async def pick(self, payload: discord.RawReactionActionEvent):
