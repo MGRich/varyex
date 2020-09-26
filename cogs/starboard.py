@@ -11,6 +11,9 @@ from datetime import datetime, timedelta
 from timeit import default_timer
 from asyncio import sleep
 
+import logging
+log = logging.getLogger('bot')
+
 class Starboard(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -33,11 +36,11 @@ class Starboard(commands.Cog):
         except: sbmsg = None
 
         rlist = []
-        print("BEGIN " + str(default_timer() - start))
+        log.debug("BEGIN " + str(default_timer() - start))
         start = default_timer()
         if (msg.channel == chl) and msg.author.id == self.bot.user.id and msg.embeds and (msg.embeds[0].footer != discord.Embed.Empty):
             aid = msg.embeds[0].footer.text.split()[-1]
-            print(aid)
+            log.debug(aid)
             if aid not in mpk['messages']: return
             cid = mpk['messages'][aid]['chn']
             c = self.bot.get_channel(cid)
@@ -47,7 +50,7 @@ class Starboard(commands.Cog):
             try: msg = await c.fetch_message(int(aid))
             except discord.NotFound: return 
         elif sbmsg: rlist += sbmsg.reactions
-        print("SBMSG " + str(default_timer() - start))
+        log.debug("SBMSG " + str(default_timer() - start))
         start = default_timer()
         mid = str(msg.id)
         aid = str(msg.author.id)
@@ -68,7 +71,7 @@ class Starboard(commands.Cog):
                         count += 1
                         ulist.append(u.id)
         if payl.user_id == msg.author.id: return 
-        print("COUNT " + str(default_timer() - start))
+        log.debug("COUNT " + str(default_timer() - start))
         start = default_timer()
         try: mpk['leaderboard'][aid] 
         except: mpk['leaderboard'][aid] = 0
@@ -86,11 +89,11 @@ class Starboard(commands.Cog):
         if typ:
             try: await self.bot.get_cog('Logging').on_sbreact(msg.guild.get_member(payl.user_id), msg, typ == 1)
             except AttributeError: pass
-        print("MISC  " + str(default_timer() - start))
+        log.debug("MISC  " + str(default_timer() - start))
         start = default_timer()
         mpm.save(False)
         e = await embeds.buildembed(embeds, msg, stardata=[count, spstate, mpk], compare=sbmsg.embeds[0] if sbmsg else None)
-        print("EMBED " + str(default_timer() - start))
+        log.debug("EMBED " + str(default_timer() - start))
         if sbmsg:
             if not spstate:
                 try: await sbmsg.delete()
@@ -109,10 +112,9 @@ class Starboard(commands.Cog):
             
     @commands.Cog.listener()
     async def on_guild_channel_pins_update(self, chn: discord.TextChannel, pin: Optional[datetime]):
-        pins = (await chn.pins())
-        if not pin or not pins or ((datetime.utcnow() - pin) > timedelta(seconds=10)): return
+        if not pin or not (pins := (await chn.pins())) or ((datetime.utcnow() - pin) > timedelta(seconds=10)): return
         msg: discord.Message = pins[0]
-        print(msg)
+        log.debug(msg)
         fakepay = discord.RawReactionActionEvent({'message_id': msg.id, 'channel_id': chn.id, 'user_id': 0, 'guild_id': 1}, None, "")
         await self.handlereact(fakepay, 0)
 
@@ -120,13 +122,13 @@ class Starboard(commands.Cog):
     async def on_raw_reaction_remove(self, payl):
         start = default_timer()
         await self.handlereact(payl, -1)
-        print(default_timer() - start)
+        log.debug(default_timer() - start)
     
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payl):
         start = default_timer()
         await self.handlereact(payl, 1)
-        print(default_timer() - start)
+        log.debug(default_timer() - start)
 
     @commands.group(aliases = ["sb"])
     async def starboard(self, ctx):
@@ -175,11 +177,10 @@ class Starboard(commands.Cog):
             msg = mpk['messages'][x]
             try: del msg['spstate']
             except: pass
-            aid = str(msg['author'])
-            if aid not in mpk['leaderboard']: mpk['leaderboard'][aid] = 0
+            if (aid := str(msg['author'])) not in mpk['leaderboard']: mpk['leaderboard'][aid] = 0
             mpk['leaderboard'][aid] += msg['count']
         mpm.save()
-        print(f"refreshed leaderboard for {gid}")
+        log.debug(f"refreshed leaderboard for {gid}")
 
     @starboard.command(aliases = ["lb"])
     async def leaderboard(self, ctx):

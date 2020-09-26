@@ -44,7 +44,7 @@ class MPKManager:
                 self.data = None
 
 def testgiven(mpk, checks) -> bool:
-    if type(mpk) == MPKManager:
+    if isinstance(mpk, MPKManager):
         mpk = mpk.data
     for x in checks:
         try: mpk[x]
@@ -52,7 +52,7 @@ def testgiven(mpk, checks) -> bool:
     return True 
 
 def getmpm(typ, gid, runchecks: list = None, runtmp: list = None) -> MPKManager:
-    if type(gid) == discord.Guild: gid = gid.id
+    if isinstance(gid, discord.Guild): gid = gid.id
     dictstr = f"{typ}/{gid}"
     if (dictstr in opened):
         opened[dictstr][1] += 1

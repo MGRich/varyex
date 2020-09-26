@@ -13,8 +13,11 @@ import pytz
 import dateparser
 from copy import copy
 
+import logging
+log = logging.getLogger('bot')
+
 fields = ['name', 'realname', 'pronoun', 'birthday', 'bio', 'location', 'tz']
-isdst = lambda tz: bool(datetime.now(tz).dst()) #https://stackoverflow.com/a/19968515
+def isdst(tz): bool(datetime.now(tz).dst()) #https://stackoverflow.com/a/19968515
 
 class TZMenu(menus.Menu):
     #this is gonna be the weirdest, most disgusting 
@@ -23,7 +26,7 @@ class TZMenu(menus.Menu):
     def __init__(self, tzd, c):
         super().__init__()
         self.tzd = tzd
-        for x in ['\u25C0', '\u25B6']:
+        for x in {'\u25C0', '\u25B6'}:
             self.add_button(menus.Button(x, self.handler))
         for x in range(1, 6):
             self.add_button(menus.Button(str(x) + "\uFE0F\u20E3", self.pick))
@@ -85,7 +88,7 @@ class TZMenu(menus.Menu):
         if payload.emoji.name == '\u25C0':
             self.page = max(self.page - 1, 0)
         elif payload.emoji.name == '\u25B6':
-            self.page = min (self.page + 1, pmax)
+            self.page = min(self.page + 1, pmax)
         elif payload.emoji.name == '\u21A9':
             self.current = self.base
             del self.deepl[-1]
@@ -246,8 +249,8 @@ class Profile(commands.Cog):
             now = datetime.now(tz)
             if not hasy: dt = dt.replace(year=now.year)
             else: curr += f" ({timeago.format(dt, now).replace('ago', 'old')})"
-            print(dt)
-            print(now)
+            log.debug(dt)
+            log.debug(now)
             if now.date() == dt.date(): curr += f" **(It's {pnb} birthday today! \U0001F389)**"
             pval += f"{date}{curr}\n"
         if (getfromprofile("location")):
@@ -296,7 +299,7 @@ class Profile(commands.Cog):
         embed.description = ''
         for x in fields:
             embed.description += f"`{x}`: "
-            if x in ('name', 'realname', 'bio', 'tz', 'location'):
+            if x in {'name', 'realname', 'bio', 'tz', 'location'}:
                 embed.description += f"{getfromprofile(x)}\n"
             else:
                 if x == 'birthday':

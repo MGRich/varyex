@@ -148,7 +148,9 @@ disable=print-statement,
         global-statement,
         redefined-outer-name,
         exec-used,
-        broad-except
+        broad-except,
+        logging-fstring-interpolation,
+        logging-not-lazy
 
 
 # Enable the message, report, category or checker with the given id(s). You can

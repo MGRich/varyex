@@ -17,14 +17,14 @@ class MPKManager:
         with open(self.path, "wb") as f: msgpack.dump(d, f)
 
 def testgiven(mpk, checks) -> bool:
-    if type(mpk) == MPKManager:
+    if isinstance(mpk, MPKManager):
         mpk = mpk.data
     for x in checks:
         if x not in mpk: return False
     return True 
 
 def getmpm(typ, gid, runchecks: list = None, runtmp: list = None) -> MPKManager:
-    if type(gid) == discord.Guild: gid = gid.id
+    if isinstance(gid, discord.Guild): gid = gid.id
     mpm = MPKManager(typ, gid)
     if runchecks:
         file = mpm.data

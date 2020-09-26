@@ -15,6 +15,9 @@ import imghdr, io, os, asyncio #imgfilter
 from asyncio.locks import Semaphore
 from PIL import Image
 
+import logging
+log = logging.getLogger('bot')
+
 def limitdatetime(dt):
     return datetime.combine(dt.date(), datetime.min.time())
 
@@ -47,7 +50,7 @@ def htmltomarkup(text):
     text = re.sub(r"<iframe.*?>.*<\/iframe>", "[iframe]", text)
     #lets try and move external markup to the outside
     text = re.sub(r"\[((\*|_)*)([^\1\]]*)\1\](\([^\)]*\))", "\\1[\\3]\\4\\1", text)
-    #print(text)
+    #log.debug(text)
     return html.unescape(text).strip()
 
 async def getcode(url):
@@ -98,8 +101,8 @@ class Misc(commands.Cog):
                 return await ctx.send(f"My main prefix here is `{self.bot.command_prefix(self.bot, ctx.message)[0]}`.")
             prefixes = self.bot.command_prefix(self.bot, ctx.message)
             return await ctx.send(f"Your personal prefix is `{prefixes[0]}` and my main prefix here is `{prefixes[1]}`.")
-        user = (ctx.invoked_with in ['usrprefix', 'userprefix']) or (not mpm)
-        rem = prefix in ["reset", "off"]
+        user = (ctx.invoked_with in {'usrprefix', 'userprefix'}) or (not mpm)
+        rem = prefix in {"reset", "off"}
         if user:
             try: users.data[mid]
             except: users.data[mid] = {}
@@ -174,19 +177,19 @@ class Misc(commands.Cog):
                 if (await getcode(url)) == 200: return (url, limitdatetime(date))
                 #url = f"http://strips.garfield.com/iimages1200/{date.year}/ga{date.strftime('%y%m%d')}.gif"
                 #if (await getcode(url)) == 200: return (url, limitdatetime(date)) #currently frozen
-                for fn in ['gif', 'jpg', 'png']:
+                for fn in {'gif', 'jpg', 'png'}:
                     url = f"http://picayune.uclick.com/comics/ga/{date.year}/ga{date.strftime('%y%m%d')}.{fn}"
                     if (await getcode(url)) == 200: return (url, limitdatetime(date))
                 date -= timedelta(days=1)
                 attempts += 1
         else:
             #this is the day it started being consistent (i hope)
-            if type(date) != int:
+            if not isinstance(date, int):
                 stripnum = (date - datetime(2010, 1, 25)).days + 251
             else: stripnum = date
             maxnum = (datetime.utcnow() - datetime(2010, 1, 25)).days + 251
             while attempts <= 10:
-                for x in ['png', 'gif', 'jpg']:
+                for x in {'png', 'gif', 'jpg'}:
                     url = f"https://www.mezzacotta.net/garfield/comics/{stripnum:04}.{x}"
                     if (await getcode(url)) == 200: return (url, limitdatetime(datetime.utcnow()) - timedelta(days=(maxnum - stripnum)))
                 stripnum -= 1
@@ -239,7 +242,7 @@ class Misc(commands.Cog):
                     ogstrips = ogstrips[:-2] + "*"
                 if len(authordesc) > (2048 - len(ogstrips)):
                     toadd = "*[visit SROMG page for rest]*"
-                    authordesc = ''.join([(x + ".") for x in (authordesc[:(2048 - len(ogstrips) - len(toadd)) - 2].split('.'))[:-1]])
+                    authordesc = ''.join(tuple((x + ".") for x in (authordesc[:(2048 - len(ogstrips) - len(toadd)) - 2].split('.'))[:-1]))
                 embed.description = authordesc + (("\n" + toadd) if toadd else "") + "\n" + ogstrips
                 embed.set_footer(text=f"Strip #{int(num)} | API by LiquidZulu")
         else:
@@ -256,7 +259,7 @@ class Misc(commands.Cog):
             url, date = await self.calcstripfromdate(datetime.utcnow() + timedelta(days=1), s)
             await m.channel.send(embed=await self.formatembed(url, s, False, date))    
             
-    @commands.command(aliases=['gstrip', 'garf', 'sromg'])
+    @commands.command(aliases=('gstrip', 'garf', 'sromg'))
     async def garfield(self, ctx: commands.Context, *, date: Optional[str]):
         """Shows a Garfield or SROMG strip. You can also subscribe to daily strips (including DMs).
         Subscribing to a **channel** (not DMs) requires you to have **manage channel** for that channel.
@@ -318,12 +321,12 @@ class Misc(commands.Cog):
 
     @tasks.loop(minutes=5, reconnect=True)
     async def garfloop(self):
-        print("gstart")
+        log.debug("gstart")
         gurl, gdate = await self.calcstripfromdate(datetime.utcnow() + timedelta(days=1), False)
         surl, _sdate = await self.calcstripfromdate(datetime.utcnow() + timedelta(days=1), True)
         gembed = sembed = None
         if self.firstrun:
-            if (surl == -1) or (gurl == -1): return
+            if -1 not in {surl, gurl}: return
             self.lastdate = gdate
             self.lastsromg = int(surl.split('/')[-1][:-4])
             self.firstrun = False
@@ -334,12 +337,11 @@ class Misc(commands.Cog):
             gembed = await self.formatembed(gurl, False, True, gdate)
             self.lastdate = gdate
         if (surl != -1):
-            snum = int(surl.split('/')[-1][:-4])
-            if snum > self.lastsromg:
+            if (snum := int(surl.split('/')[-1][:-4])) > self.lastsromg:
                 shown |= 2
                 sembed = await self.formatembed(surl, True, True)
                 self.lastsromg = snum
-        print(shown)
+        log.debug(shown)
         #if not shown: return
         #first we check guilds cause thats easy
         for guild in self.bot.guilds:
@@ -389,7 +391,7 @@ class Misc(commands.Cog):
         tasks = []
         loop = asyncio.get_event_loop()
         async def dl(link):
-            print(link)
+            log.debug(link)
             async with aiohttp.request('GET', link) as resp:
                 read = await resp.read()
                 if imghdr.what("", h=read) == "gif": invalid.append(link)
@@ -427,7 +429,7 @@ class Misc(commands.Cog):
                 #first we need to turn into 565
                 for y in range(img.height):
                     for x in range(img.width):
-                        #print(map[x, y])
+                        #log.debug(map[x, y])
                         if (len(map[x, y]) == 4):
                             R, G, B, A = map[x, y]
                         else:

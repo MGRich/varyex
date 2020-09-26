@@ -10,7 +10,7 @@ class Confirm(menus.Menu):
         self.result = None
 
     async def send_initial_message(self, ctx, channel):
-        if (type(self.msg) == str):
+        if (isinstance(self.msg, str)):
             return await channel.send(self.msg)
         return await channel.send(embed=self.msg)
 
@@ -38,7 +38,7 @@ class Choice(menus.Menu):
             self.add_button(menus.Button(x, self.onpick))
 
     async def send_initial_message(self, ctx, channel):
-        if (type(self.msg) == str):
+        if (isinstance(self.msg, str)):
             return await channel.send(self.msg)
         return await channel.send(embed=self.msg)        
 

@@ -8,6 +8,9 @@ import cogs.utils.mpk as mpku
 from typing import Union, List, Optional
 from datetime import datetime, timedelta
 
+import logging
+log = logging.getLogger('bot')
+
 bitlist = ["Message Delete", "Message Edit", "Channel Edits", "Member Joining/Leaving", 
     "Member Updates", "Server Updates", "Role Updates", "Emoji Updates", "Voice Updates",
     "Bans", "Warnings", "Bots can trigger some logs", "Starboard Logging"]
@@ -21,7 +24,7 @@ class LogMenu(menus.Menu):
         self.prefix = prefix
         self.shown = 5
         self.message = None
-        for x in ["\U0001F53C", "\U0001F53D"]:
+        for x in {"\U0001F53C", "\U0001F53D"}:
             self.add_button(menus.Button(x, self.movepage))
         for x in range(1, 6):
             self.add_button(menus.Button(str(x) + "\uFE0F\u20E3", self.pick))
@@ -64,8 +67,8 @@ class LogMenu(menus.Menu):
             self.page = max(self.page - 1, 0)
         else:
             self.page = min(self.page + 1, self.max)
-        print(self.max)
-        print(self.page)
+        log.debug(self.max)
+        log.debug(self.page)
         await self.editmessage()
     
     @menus.button("\u23F9") #stop
@@ -76,8 +79,7 @@ class LogMenu(menus.Menu):
     async def pick(self, payload: discord.RawReactionActionEvent):
         if not payload.member: return
         await self.message.remove_reaction(payload.emoji, payload.member)
-        picked = [str(x) + "\uFE0F\u20E3" for x in range(1, 6)].index(payload.emoji.name)
-        if self.shown >= picked + 1:
+        if self.shown >= (picked := [str(x) + "\uFE0F\u20E3" for x in range(1, 6)].index(payload.emoji.name)) + 1:
             self.mpk.data['log']['flags'] ^= 1 << (self.page * 5 + picked)
             await self.editmessage()  
 
@@ -91,11 +93,11 @@ class Logging(commands.Cog):
 
     @tasks.loop(count=1) #hacky but do not care
     async def setupinv(self):
-        print("fetching invites")
+        log.debug("fetching invites")
         for guild in self.bot.guilds:
             try: self.invites[guild.id] = await guild.invites()
             except discord.Forbidden: pass
-        print("done")
+        log.debug("done")
 
 
     ######FUNCTIONS######
@@ -122,10 +124,10 @@ class Logging(commands.Cog):
 
     async def checkbit(self, pos, gid, holdoff = False) -> Union[discord.TextChannel, mpku.MPKManager]:
         if not gid: return None
-        if (type(gid) == int):
+        if (isinstance(gid, int)):
             guild = self.bot.get_guild(gid)
             if not guild: return None
-        elif (type(gid) == discord.Guild): guild = gid
+        elif (isinstance(gid, discord.Guild)): guild = gid
         if not holdoff: 
             try: self.invites[guild.id] = await guild.invites()
             except discord.Forbidden: pass
@@ -138,10 +140,10 @@ class Logging(commands.Cog):
     
     def makebase(self, member, timestamp=None, colortype = 2) -> discord.Embed:
         if not timestamp: timestamp = datetime.utcnow()
-        if (type(member) == discord.Member):
+        if (isinstance(member, discord.Member)):
             embed = discord.Embed(color=(discord.Color(self.bot.data['color']) if member.color == discord.Color.default() else member.color))
             embed.set_author(name=member.display_name, icon_url=member.avatar_url)
-        elif (type(member) == discord.Guild):
+        elif (isinstance(member, discord.Guild)):
             embed = discord.Embed(color=discord.Color(self.bot.data['color']))
             embed.set_author(name=f"{member}", icon_url=str(member.icon_url))
         else:
@@ -151,7 +153,7 @@ class Logging(commands.Cog):
             if (colortype): embed.color = discord.Color(0x59b539)
             else: embed.color = discord.Color(0xdd2e44)
         embed.timestamp = timestamp
-        if (type(member) != discord.Guild):
+        if not isinstance(member, discord.Guild):
             embed.set_footer(text=f"User ID: {member.id}")
 
         return embed
@@ -159,11 +161,11 @@ class Logging(commands.Cog):
     async def getaudit(self, act: Union[AuditLogAction, List[AuditLogAction]], guild: discord.Guild, limit=3, target=None, uselist=False, after=None) -> Union[discord.AuditLogEntry, List[discord.AuditLogEntry]]:
         if (uselist): result = []
         actions = [act]
-        if type(act) == list:
+        if isinstance(act, list):
             actions = act
         for action in actions:
             async for log in guild.audit_logs(limit=limit, action=action):
-                if (((log.target == target) if (type(target) != int) else (log.target.id == target)) if target else True):
+                if (((log.target == target) if (not isinstance(target, int)) else (log.target.id == target)) if target else True):
                     if (after):
                         if (log.created_at < datetime.utcnow() - timedelta(seconds=5)): continue
                     if (uselist): result.append(log) 
@@ -180,7 +182,7 @@ class Logging(commands.Cog):
 
     def changedicttostr(self, dict, create=False, masklst=None):
         result = ""           
-        if not masklst: masklst = [] 
+        if not masklst: masklst = set()
         for val in dict:
             if val in masklst: continue
             if (create != 2) and (dict[val][0] == dict[val][1]): continue
@@ -189,7 +191,7 @@ class Logging(commands.Cog):
                 prestr = f"`{dict[val][0]}` *{self.arrow}* "
             after = 1 if create != 2 else 0
             valstr = dict[val][after]
-            if type(dict[val][after]) == discord.colour.Colour:
+            if isinstance(dict[val][after], discord.colour.Colour):
                 if dict[val][after] == discord.Color.default():
                     valstr = "(default color)"
             result += f"> **{val.replace('_', ' ').title()}**: {prestr}`{valstr}`\n"
@@ -212,17 +214,16 @@ class Logging(commands.Cog):
         return ret + "\n```"
     
     def capitalize(self, stri, cap):
-        if (type(cap) == str):
+        if (isinstance(cap, str)):
             return re.sub(fr"{cap}(.*:)", fr"{cap.upper()}\1", stri,  flags=re.IGNORECASE)
-        else:
-            result = stri
-            for x in cap:
-                result = re.sub(fr"{x}(.*:)", fr"{x.upper()}\1", result,  flags=re.IGNORECASE)
-            return result
+        result = stri
+        for x in cap:
+            result = re.sub(fr"{x}(.*:)", fr"{x.upper()}\1", result,  flags=re.IGNORECASE)
+        return result
 
     ######COMMANDS#######
 
-    @commands.group(aliases=['logs'])
+    @commands.group(aliases=('logs',))
     @commands.has_permissions(manage_guild=True)
     async def log(self, ctx):
         """Sets up logging.
@@ -309,8 +310,8 @@ class Logging(commands.Cog):
         first = min(ttlist)
         last = max(ttlist)
 
-        print(first)
-        print(last)
+        log.debug(first)
+        log.debug(last)
 
         embed.timestamp = first
 
@@ -417,8 +418,8 @@ class Logging(commands.Cog):
         if not chn: return
         log = await self.getaudit(AuditLogAction.channel_create, channel.guild, after=True)
         embed = self.makebase(log.user, log.created_at)
-        isVoice = type(channel) == discord.VoiceChannel
-        isCategory = type(channel) == discord.CategoryChannel
+        isVoice = isinstance(channel, discord.VoiceChannel)
+        isCategory = isinstance(channel, discord.CategoryChannel)
         embed.title = f"Channel Created ({'Voice' if isVoice else 'Text'})"
         if isCategory:
             embed.title = "Category Created"
@@ -453,8 +454,8 @@ class Logging(commands.Cog):
         if not chn: return
         log = await self.getaudit(AuditLogAction.channel_delete, channel.guild, after=True)
         embed = self.makebase(log.user, log.created_at)
-        isVoice = type(channel) == discord.VoiceChannel
-        isCategory = type(channel) == discord.CategoryChannel
+        isVoice = isinstance(channel, discord.VoiceChannel)
+        isCategory = isinstance(channel, discord.CategoryChannel)
         embed.title = f"Channel Deleted ({'Voice' if isVoice else 'Text'})"
         if isCategory:
             embed.title = "Category Deleted"
@@ -499,8 +500,8 @@ class Logging(commands.Cog):
     async def on_guild_channel_update(self, before, after):
         chn = await self.checkbit(3, after.guild)
         if not chn: return
-        isVoice = type(after) == discord.VoiceChannel
-        isCategory = type(after) == discord.CategoryChannel
+        isVoice = isinstance(after, discord.VoiceChannel)
+        isCategory = isinstance(after, discord.CategoryChannel)
         dic = {
             'name': [before.name, after.name], 
             'position': [before.position, after.position], 
@@ -599,7 +600,7 @@ class Logging(commands.Cog):
         if (log): return
         log = await self.getaudit(AuditLogAction.kick, member.guild, target=member.id, after=True)
         if (log):
-            print(log.user)
+            log.debug(log.user)
             embed.title = "Member Kick"
             embed.description = f"User **{member.mention}** was kicked!\n> **{'(No reason)' if not log.reason else log.reason}** - *{log.user.mention}*"
         else:
@@ -675,7 +676,7 @@ class Logging(commands.Cog):
         embed = self.makebase(log.user, log.created_at)
         embed.title = "Role Created"
         embed.description =  role.mention + "\n"
-        embed.description += self.changedicttostr(self.changestodict(log.changes), create=True, masklst=['colour', 'permissions'])
+        embed.description += self.changedicttostr(self.changestodict(log.changes), create=True, masklst={'colour', 'permissions', 'permissions_new'})
         embed.set_footer(text=f"Role ID: {role.id} | {embed.footer.text}")
         embed.add_field(name="Permissions", value=self.permstostr(role.permissions))
         await chn.send(embed=embed)
@@ -687,7 +688,7 @@ class Logging(commands.Cog):
         log = await self.getaudit(AuditLogAction.role_delete, role.guild, after=True)
         embed = self.makebase(log.user, log.created_at)
         embed.title = "Role Deletion"
-        embed.description = self.changedicttostr(self.changestodict(log.changes), create=2, masklst=['colour', 'permissions'])
+        embed.description = self.changedicttostr(self.changestodict(log.changes), create=2, masklst={'colour', 'permissions', 'permissions_new'})
         if role.color != discord.Color.default():
             embed.color = role.color
         embed.set_footer(text=f"Role ID: {role.id} | {embed.footer.text}")
@@ -704,7 +705,7 @@ class Logging(commands.Cog):
         embed.title = "Role Updated"
         dic = self.changestodict(log.changes)
         embed.description =  after.mention + "\n"
-        embed.description += self.changedicttostr(dic, masklst=['colour', 'permissions'])
+        embed.description += self.changedicttostr(dic, masklst={'colour', 'permissions', 'permissions_new'})
         if after.color != discord.Color.default():
             embed.color = after.color
         embed.set_footer(text=f"Role ID: {after.id} | {embed.footer.text}")

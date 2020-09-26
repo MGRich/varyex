@@ -1,11 +1,8 @@
 {
-    "token": "NjE5MDA5NjIyNTkzODk2NDc4.XXCA6w.CJl6xp8oMQWjAjGEoF6E-nNFwvo",
     "owner": 214550163841220609,
     "prefix": ["v!"],
     "stable": true,
-    "version": "1.3b",
+    "version": "1.3",
     "color": 8663508,
-    "status": "NEW: v!profile | [ch]",
-    "key": "4dd7514ed2f37841f5123d13d542ed5e488d9ac2",
-    "gist": "e1aa9363767c4c40ceac2da19a35a700"
+    "status": "NEW: v!profile | [ch]"
 }

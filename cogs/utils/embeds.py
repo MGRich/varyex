@@ -19,12 +19,12 @@ class embeds:
         embed.set_author(name=msg.author.display_name, icon_url=msg.author.avatar_url)
         embed.timestamp = msg.created_at
         desc = msg.content
-        if msg.embeds and re.fullmatch(r"https?:\/\/[^ ]*", desc) and (msg.embeds[0].type in ['image', 'gifv']): desc = ""
+        if msg.embeds and re.fullmatch(r"https?:\/\/[^ ]*", desc) and (msg.embeds[0].type in {'image', 'gifv'}): desc = ""
 
         done = False
         for attachment in msg.attachments:
             try: 
-                if (not list(os.path.splitext(attachment.filename))[1].lower() in [".png", ".wempm", ".gif", ".jpg", ".jpeg", ".webp"]) or done: raise Exception()
+                if (not list(os.path.splitext(attachment.filename))[1].lower() in {".png", ".webm", ".gif", ".jpg", ".jpeg", ".webp"}) or done: raise Exception()
                 if (not attachmode): raise Exception()
                 if (attachmode & 1): embed.set_image(url=attachment.proxy_url)
                 else: embed.set_image(url=attachment.url)
@@ -56,7 +56,7 @@ class embeds:
         if compare:
             if (compare.description == embed.description) and (compare.author == embed.author):
                 ftxt.append(f" | ID: {msg.id}")
-                if (spstate & 0b10) and type(jsn['emoji']) == int: compare.set_footer(text=''.join(ftxt), icon_url=f"https://cdn.discordapp.com/emojis/{jsn['emoji']}.png")
+                if (spstate & 0b10) and isinstance(jsn['emoji'], int): compare.set_footer(text=''.join(ftxt), icon_url=f"https://cdn.discordapp.com/emojis/{jsn['emoji']}.png")
                 else: compare.set_footer(text = ''.join(ftxt))
                 return compare #we literally do not have to do anything
 
@@ -159,7 +159,7 @@ class embeds:
         #finalize
         ftxt.append(f" | ID: {msg.id}")
         if (stardata):
-            if (spstate & 0b10) and type(jsn['emoji']) == int: # and (jsn['emoji'] >= 0xFFFFFFFF)): # \UFFFFFFFF isn valid but covering bases anyway
+            if (spstate & 0b10) and isinstance(jsn['emoji'], int): # and (jsn['emoji'] >= 0xFFFFFFFF)): # \UFFFFFFFF isn valid but covering bases anyway
                 embed.set_footer(text=''.join(ftxt), icon_url=f"https://cdn.discordapp.com/emojis/{jsn['emoji']}.png")
             else:
                 embed.set_footer(text = ''.join(ftxt))

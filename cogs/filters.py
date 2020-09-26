@@ -194,7 +194,7 @@ class Filters(commands.Cog):
             if re.search(entry[0], msg.content, re.IGNORECASE):
                 flist.append(entry[0])
                 for memb in entry[1]:
-                    forceNo = memb in [x.id for x in msg.mentions]
+                    forceNo = memb in {x.id for x in msg.mentions}
                     if not forceNo:
                         async for message in msg.channel.history(limit=15, after=datetime.utcnow() - timedelta(seconds=30)):
                             if message.author.id == memb:
@@ -212,7 +212,6 @@ class Filters(commands.Cog):
                         smaller = True
                         break
                 if not smaller: hlist.append(x)
-                pass
 
             e = await embeds.buildembed(embeds, msg, focus=hlist)
             e.set_footer(text=f"Focused: {', '.join(flist)}")

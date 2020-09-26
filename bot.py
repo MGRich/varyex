@@ -1,20 +1,36 @@
-import discord, traceback, json, os, sys, subprocess, textwrap, contextlib, base64, lzma, msgpack, github
+import discord, traceback, json, os, sys, subprocess, textwrap, contextlib, base64, lzma, msgpack, github, difflib
 from discord.ext import commands, tasks
 from io import StringIO
 import cogs.utils.mpk as mpku
 from pathlib import Path
 from cogs.utils.menus import Confirm
 
+from dotenv import load_dotenv
+load_dotenv()
+
 stable = False
 if (len(sys.argv) > 1 and sys.argv[1] == "stable"): data = json.load(open("stable.json"))
 else: data = json.load(open("info.json"))
 
 stable = data['stable']
-#stable = True
 usrout = StringIO()
 if stable:
     sys.stderr = usrout 
-regout = sys.stdout
+
+t = os.getenv('STOKEN' if stable else 'DTOKEN')
+
+import logging
+dlog = logging.getLogger('discord')
+glog = logging.getLogger('bot')
+dlog.setLevel('WARN')
+glog.setLevel('WARNING')
+for x, y in zip(dlog.handlers, glog.handlers):
+    dlog.removeHandler(x)
+    glog.removeHandler(y)
+handler = logging.StreamHandler(usrout)
+handler.setFormatter(logging.Formatter("[%(name)s - %(levelname)s] [%(filename)s/%(lineno)d] %(message)s"))
+dlog.addHandler(handler)
+glog.addHandler(handler)
 
 def prefix(_bot, message):
     prf = data['prefix'].copy()
@@ -66,23 +82,23 @@ async def on_ready():
             msg = "```diff\n"
             for cog in cgs:
                 try:
-                    print(f"attempt to load {cog}") 
+                    glog.debug(f"attempt to load {cog}") 
                     added = True
                     try: bot.load_extension(cog)
                     except commands.ExtensionAlreadyLoaded:
                         added = False
                         msg += f"~{cog}\n"
                     if (added): msg += f"+{cog}\n"
-                    print(f"loaded {cog}")
+                    glog.debug(f"loaded {cog}")
                 except:
                     try: bot.unload_extension(cog)
                     except: pass
                     msg += f"-{cog} !!\n"
-                    print("\n-----START {}".format(cog))
+                    print("\n-----START {}".format(cog), file=sys.stderr)
                     traceback.print_exc()
-                    print("-----END   {}".format(cog))
+                    print("-----END   {}".format(cog), file=sys.stderr)
             await user.send(msg + "```")
-    try: redirloop.start()
+    try: mainloop.start()
     except: pass
 
 errored = []
@@ -116,16 +132,15 @@ async def on_command_error(ctx: commands.Context, error):
     embed = discord.Embed(title=f"Error in {ctx.command}")
     st = '\n'.join(traceback.format_exception(type(error), error, error.__traceback__))
     embed.description = f"```py\n{st}\n```"
-    embed.description += f"\nServer ID: `{ctx.guild.id}`\nUser ID: `{ctx.author.id}`\nMessage ID: `{ctx.message.id}``"
+    embed.description += f"\nServer ID: `{ctx.guild.id}`\nUser ID: `{ctx.author.id}`\nMessage ID: `{ctx.message.id}`"
     try: return await bot.owner.send(embed=embed)
     except: pass
 
-redirect = False
 iteration = 0
 count = 181
 hourcounter = 3600 - 30
 @tasks.loop(seconds=1, reconnect=True)
-async def redirloop(): #also the global loop
+async def mainloop():
     ####EDIT LOOP
     global errored
     for i in range(len(errored)):
@@ -144,8 +159,8 @@ async def redirloop(): #also the global loop
         if iteration == 0: st = f"{len(bot.guilds)} servers"
         elif iteration == 1:
             c = 0
-            for x in [x.members for x in bot.guilds]:
-                c += len(x) 
+            for y in tuple(x.members for x in bot.guilds):
+                c += len(y) 
             st = f"{c} members"
         elif iteration == 2: st = f"v{data['version']}"
         await bot.change_presence(activity=discord.Activity(name=f"{data['status'].replace('[ch]', st)}", type=0))
@@ -156,24 +171,26 @@ async def redirloop(): #also the global loop
         if hourcounter >= 3600:
             fd = {}
             for p in Path("config").rglob('*.mpk'):
-                n = p.parent.name
-                if not n in fd: fd[n] = {}
+                if not (n := p.parent.name) in fd: fd[n] = {}
                 fd[n][p.stem] = open(p.resolve(), "rb").read()
             f = {'varyexbackup': github.InputFileContent(content=base64.a85encode(lzma.compress(msgpack.packb(fd), format=lzma.FORMAT_ALONE)).decode('ascii'))}
-            github.Github(data['key']).get_gist(data['gist']).edit(files=f)
-            print("backed up configs")
+            github.Github(os.getenv('KEY')).get_gist(os.getenv('GIST')).edit(files=f)
+            glog.debug("backed up configs")
             hourcounter = 0
     ####REDIRECT
-    global redirect, usrout
-    s = usrout.getvalue()
-    if not s: return
-    await bot.owner.send(f"```\n{usrout.getvalue()}```")
+    global usrout
+    if not (s := usrout.getvalue()): return
     usrout.close()
     usrout = StringIO()
+    for x, y in zip(dlog.handlers, glog.handlers):
+        dlog.removeHandler(x)
+        glog.removeHandler(y)
+    handler.setStream(usrout)
+    dlog.addHandler(handler)
+    glog.addHandler(handler)
+    await bot.owner.send(f"```\n{s}```")
     if stable:
         sys.stderr = usrout
-    if redirect:
-        sys.stdout = usrout
 
 upd = False
 @bot.command(aliases = ['get'])
@@ -181,8 +198,8 @@ upd = False
 async def retrieve(ctx):
     global upd
     c = Confirm("you sure? thisll backup config folder and run update")
-    a = await c.prompt(ctx)
-    if not a: return
+    if not (await c.prompt(ctx)): return
+    await ctx.send("restarting")
     await bot.logout()
     try: Path("config").rename("configold")
     except: pass
@@ -192,13 +209,13 @@ async def retrieve(ctx):
     if ('config' in result):
         for x in result['config']:
             open(f"config/{x}.mpk", "wb").write(result['config'][x])
-            print(f"config/{x}.mpk")
+            glog.debug(f"config/{x}.mpk")
         del result['config']
     for x in result:
         for y in result[x]:
             Path(f"config/{x}").mkdir(exist_ok=True)
             open(f"config/{x}/{y}.mpk", "wb").write(result[x][y])
-            print(f"config/{x}/{y}.mpk")
+            glog.debug(f"config/{x}/{y}.mpk")
     upd = True
 
 
@@ -206,41 +223,38 @@ async def retrieve(ctx):
 @bot.event
 async def on_message_edit(before, after):
     global errored
-    if (before.content != after.content) and (after.id in [x[0] for x in errored]):
+    if (before.content != after.content) and (after.id in {x[0] for x in errored}):
         await bot.process_commands(after)
         errored = [x for x in errored if x[0] != after.id]
 
 @bot.command(hidden=True)
 @commands.is_owner()
-async def redir(_ctx):
-    global redirect, regout, usrout, stable
-    if redirect:
-        sys.stdout = regout
-        redirect = False
-    else:
-        sys.stdout = usrout
-        redirect = True
+async def redir(ctx, level):
+    #pylint: disable=protected-access
+    level = difflib.get_close_matches(level.upper(), list(logging._nameToLevel))[0]
+    glog.setLevel(level)
+    await ctx.send(f"set level to {level}")
 
-@bot.command(hidden=True, aliases=['r', 'rl'])
+@bot.command(hidden=True, aliases=('r', 'rl'))
 @commands.is_owner()
 async def reload(ctx, *cogs):
-    cogs = list(cogs)
-    cgs = []
+    cogs = set(cogs)
+    cgs = set()
     msg = "```diff\n"
     for x in os.listdir("cogs"):
         if os.path.isfile("cogs/" + x):
-            cgs.append("cogs.{}".format(x[:-3]))
+            cgs.add("cogs.{}".format(x[:-3]))
     mcgs = cgs
     for cg in cogs:
         if "cogs." + cg not in cgs:
             cogs.remove(cg)
-    if len(cogs) != 0:
-        for x, y in enumerate(cogs):
-            cogs[x] = "cogs." + y
-        mcgs = cogs
+    if cogs:
+        mcgs = set()
+        for x in cogs:
+            mcgs.add("cogs." + x)
     for cog in mcgs:
         try:
-            print(f"attempt to load {cog}")
+            glog.debug(f"attempt to load {cog}")
             added = False
             try: bot.unload_extension(cog)
             except commands.ExtensionNotLoaded: 
@@ -248,14 +262,14 @@ async def reload(ctx, *cogs):
             bot.load_extension(cog)
             if (added): msg += f"+{cog}\n"
             else: msg += f"~{cog}\n"
-            print(f"loaded {cog}")
+            glog.debug(f"loaded {cog}")
         except:
             try: bot.unload_extension(cog)
             except: pass
             msg += f"-{cog} !!\n"
-            print("\n-----START {}".format(cog))
+            print("\n-----START {}".format(cog), file=sys.stderr)
             traceback.print_exc()
-            print("-----END   {}".format(cog))
+            print("-----END   {}".format(cog), file=sys.stderr)
     await ctx.send(msg + "```")
 
 @bot.command(hidden=True)
@@ -277,21 +291,21 @@ async def unload(ctx, *cogs):
         mcgs = cogs
     for cog in mcgs:
         try:
-            print(f"attempt to unload {cog}")
+            glog.debug(f"attempt to unload {cog}")
             removed = True
             try: bot.unload_extension(cog)
             except commands.ExtensionNotLoaded: 
                 msg += f"~{cog}\n"
                 removed = False
             if (removed): msg += f"-{cog}\n"
-            print(f"unloaded {cog}")
+            glog.debug(f"unloaded {cog}")
         except:
             try: bot.unload_extension(cog)
             except: pass
             msg += f"-{cog} !!\n"
-            print("\n-----START {}".format(cog))
+            print("\n-----START {}".format(cog), file=sys.stderr)
             traceback.print_exc()
-            print("-----END   {}".format(cog))
+            print("-----END   {}".format(cog), file=sys.stderr)
     await ctx.send(msg + "```")
 
 @bot.command(hidden=True)
@@ -313,21 +327,21 @@ async def load(ctx, *cogs):
         mcgs = cogs
     for cog in mcgs:
         try:
-            print(f"attempt to load {cog}") 
+            glog.debug(f"attempt to load {cog}") 
             added = True
             try: bot.load_extension(cog)
             except commands.ExtensionAlreadyLoaded:
                 added = False
                 msg += f"~{cog}\n"
             if (added): msg += f"+{cog}\n"
-            print(f"loaded {cog}")
+            glog.debug(f"loaded {cog}")
         except:
             try: bot.unload_extension(cog)
             except: pass
             msg += f"-{cog} !!\n"
-            print("\n-----START {}".format(cog))
+            print("\n-----START {}".format(cog), file=sys.stderr)
             traceback.print_exc()
-            print("-----END   {}".format(cog))
+            print("-----END   {}".format(cog), file=sys.stderr)
     await ctx.send(msg + "```")
 
 lastresult = None
@@ -379,15 +393,13 @@ async def nomore(_ctx):
 
 @bot.command()
 @commands.is_owner()
-async def update(_ctx):
+async def update(ctx):
     global upd
     upd = True
+    await ctx.send("updating")
     await bot.logout()
-    print("we still work!")
 
-bot.run(data['token'], bot=True, reconnect=True)
+bot.run(t, bot=True, reconnect=True)
 
 if (upd): 
-    print("RUNNING UPDATER")
     pid = subprocess.Popen([sys.executable, "updater.py"] + sys.argv[1:], creationflags=0x8).pid
-    print("it has run")
