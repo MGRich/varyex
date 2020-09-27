@@ -23,7 +23,7 @@ import logging
 dlog = logging.getLogger('discord')
 glog = logging.getLogger('bot')
 dlog.setLevel('WARN')
-glog.setLevel('WARNING')
+glog.setLevel('ERROR')
 for x, y in zip(dlog.handlers, glog.handlers):
     dlog.removeHandler(x)
     glog.removeHandler(y)
