@@ -158,7 +158,9 @@ class Starboard(commands.Cog):
                 try: return base[st]
                 except: return "*Not set*"
             embed = discord.Embed(title="Starboard Config", color=discord.Color(self.bot.data['color']))
-            embed.description = f"**Minimum:** `{fetch('amount')}`\n**Star:** {fetch('emoji')}\n**Leaderboard:** `{'enabled' if base['leaderboard']['enabled'] else 'disabled'}`\n**Channel:** <#{fetch('channel')}>\n"
+            try: lb = 'enabled' if base['leaderboard']['enabled'] else 'disabled'
+            except KeyError: lb = 'disabled'
+            embed.description = f"**Minimum:** `{fetch('amount')}`\n**Star:** {fetch('emoji')}\n**Leaderboard:** `{lb}`\n**Channel:** <#{fetch('channel')}>\n"
             if mpku.testgiven(base, ['blacklist']) and base['blacklist']:
                 embed.description += "**Blacklist:**\n"
                 for x in base['blacklist']:
