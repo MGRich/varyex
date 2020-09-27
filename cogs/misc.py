@@ -326,7 +326,7 @@ class Misc(commands.Cog):
         surl, _sdate = await self.calcstripfromdate(datetime.utcnow() + timedelta(days=1), True)
         gembed = sembed = None
         if self.firstrun:
-            if -1 not in {surl, gurl}: return
+            if -1 in {surl, gurl}: return
             self.lastdate = gdate
             self.lastsromg = int(surl.split('/')[-1][:-4])
             self.firstrun = False
