@@ -22,8 +22,8 @@ t = os.getenv('STOKEN' if stable else 'DTOKEN')
 import logging
 dlog = logging.getLogger('discord')
 glog = logging.getLogger('bot')
-dlog.setLevel('WARN')
-glog.setLevel('ERROR')
+dlog.setLevel('ERROR')
+glog.setLevel('WARN')
 for x, y in zip(dlog.handlers, glog.handlers):
     dlog.removeHandler(x)
     glog.removeHandler(y)

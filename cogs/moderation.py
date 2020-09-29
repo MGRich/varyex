@@ -414,6 +414,7 @@ class Moderation(commands.Cog):
         await ctx.send(embed=embed)
 
     @config.command(name="add", aliases = ['addaction', 'a'])
+    @commands.has_permissions(manage_guild=True, ban_members=True) 
     async def aaction(self, ctx, name, typ: Optional[str]):
         if name == "mute": typ = 'gr'
         elif name == "verbal": typ = None
@@ -515,6 +516,7 @@ class Moderation(commands.Cog):
         await ctx.send("Done!")
 
     @config.command(aliases=('removeaction', 'remove', 'r'))
+    @commands.has_permissions(manage_guild=True, ban_members=True) 
     async def rmaction(self, ctx, action):
         mpm = mpku.getmpm('moderation', ctx.guild, ['actions', 'offences'], [{}, []])
         mpk = mpm.data
@@ -526,6 +528,7 @@ class Moderation(commands.Cog):
         await ctx.send(f"Deleted action `{action}`.")
     
     @config.command(aliases=('track',))
+    @commands.has_permissions(manage_guild=True, ban_members=True) 
     async def settrack(self, ctx):
         if ctx.invoked_with == "track": return await ctx.invoke(self.config, None)
         mpm = mpku.getmpm('moderation', ctx.guild, ['actions', 'offences'], [{}, []])
