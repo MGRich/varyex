@@ -218,6 +218,7 @@ class Profile(commands.Cog):
         if not last:
             pval += "*Not set*\n"
         else:
+            ps = ""
             if (last['custom']): ps = last['value']
             else:
                 if   (last['value'] == 0): 
