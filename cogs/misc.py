@@ -401,10 +401,10 @@ class Misc(commands.Cog):
                         images.append(im)
                     except: invalid.append(link)
             #except: invalid.append(link)
-        if not images: return await ctx.send("None of the images given are valid.")
         for x in total:
             tasks.append(loop.create_task(dl(x)))
         await asyncio.wait(tasks)
+        if not images: return await ctx.send("None of the images given are valid.")
         tasks = []
         done = 0
         msg = await ctx.send("Converting, please wait...")
