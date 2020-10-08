@@ -52,8 +52,9 @@ cgs = []
 for x in os.listdir("cogs"):
     if os.path.isfile("cogs/" + x):
         cgs.append(f"cogs.{x[:-3]}")
-
-bot = commands.Bot(command_prefix=prefix, owner_id=data['owner'])
+intents = discord.Intents.default()
+intents.members = True 
+bot = commands.Bot(command_prefix=prefix, owner_id=data['owner'], intents=intents)
 bot.__dict__['data'] = data
 commands.Bot.data = property(lambda x: x.__dict__['data'])
 bot.remove_command('help')
