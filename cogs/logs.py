@@ -11,9 +11,9 @@ from datetime import datetime, timedelta
 import logging
 log = logging.getLogger('bot')
 
-bitlist = ["Message Delete", "Message Edit", "Channel Edits", "Member Joining/Leaving", 
+bitlist = ("Message Delete", "Message Edit", "Channel Edits", "Member Joining/Leaving", 
     "Member Updates", "Server Updates", "Role Updates", "Emoji Updates", "Voice Updates",
-    "Bans", "Warnings", "Bots can trigger some logs", "Starboard Logging"]
+    "Bans", "Warnings", "Bots can trigger some logs", "Starboard Logging")
 class LogMenu(menus.Menu):
     def __init__(self, gid, datadict, prefix):
         super().__init__(timeout = 30.0, delete_message_after=False, clear_reactions_after=True)
@@ -52,7 +52,7 @@ class LogMenu(menus.Menu):
         await self.editmessage()
         return ret
 
-    async def finalize(self):
+    async def finalize(self, _t):
         embed = discord.Embed(title = "Log Config - Saved", color=self.color, description = "")
         for i in range(len(bitlist)):
             unic = '\u2705' if (self.mpk.data['log']['flags'] >> i) & 1 else '\u26D4'
@@ -73,7 +73,7 @@ class LogMenu(menus.Menu):
     
     @menus.button("\u23F9") #stop
     async def stopemote(self, _payload):
-        await self.finalize()
+        await self.finalize(False)
         self.stop()
 
     async def pick(self, payload: discord.RawReactionActionEvent):
@@ -138,17 +138,29 @@ class Logging(commands.Cog):
             return None
         return (guild.get_channel(mpk['log']['channel']) if mpk['log']['channel'] != 0 else None)
     
+    async def send(self, chn: discord.TextChannel, e: discord.Embed):
+        from discord.embeds import EmptyEmbed
+        try: m = chn.last_message or (await chn.fetch_message(chn.last_message_id))
+        except: return await chn.send(embed=e)
+        if m.author.id != self.bot.user.id: return await chn.send(embed=e)
+        #now lets chip off
+        c = m.embeds[0]
+        if (c.author.name == e.author.name) and (c.author.icon_url == e.icon_url): e.remove_author()
+        if (c.title == e.title): e.title = EmptyEmbed
+        await chn.send(embed=e)
+
+         
     def makebase(self, member, timestamp=None, colortype = 2) -> discord.Embed:
         if not timestamp: timestamp = datetime.utcnow()
         if (isinstance(member, discord.Member)):
             embed = discord.Embed(color=(discord.Color(self.bot.data['color']) if member.color == discord.Color.default() else member.color))
-            embed.set_author(name=member.display_name, icon_url=member.avatar_url)
+            embed.set_author(name=f"{member.display_name} ({str(member)})", icon_url=member.avatar_url)
         elif (isinstance(member, discord.Guild)):
             embed = discord.Embed(color=discord.Color(self.bot.data['color']))
-            embed.set_author(name=f"{member}", icon_url=str(member.icon_url))
+            embed.set_author(name=str(member), icon_url=str(member.icon_url))
         else:
             embed = discord.Embed(color=discord.Color(self.bot.data['color']))
-            embed.set_author(name=f"{member}", icon_url=member.avatar_url)
+            embed.set_author(name=str(member), icon_url=member.avatar_url)
         if (colortype != 2):
             if (colortype): embed.color = discord.Color(0x59b539)
             else: embed.color = discord.Color(0xdd2e44)
@@ -277,7 +289,7 @@ class Logging(commands.Cog):
             embed.description += f"\n> **Deleted by** {log.user.mention}"
         embed.set_footer(text=f"Message ID: {message.id} | User ID: {message.author.id}")
 
-        await chn.send(embed=embed)
+        await self.send(chn, embed)
 
     @commands.Cog.listener()
     async def on_bulk_message_delete(self, messages: List[discord.Message]):
@@ -319,7 +331,7 @@ class Logging(commands.Cog):
             first = (await messages[0].channel.history(limit=1, before=first).flatten())[0]
             if (first): embed.description += f"\n[(message before these)]({first.jump_url})"
         except: pass
-        await chn.send(embed=embed)
+        await self.send(chn, embed)
 
     
     @commands.Cog.listener()
@@ -346,7 +358,7 @@ class Logging(commands.Cog):
         if (past):
             embed.description += f"\n[(jump to message before this)]({past.jump_url})"
         
-        await chn.send(embed=embed)
+        await self.send(chn, embed)
     @commands.Cog.listener()
     async def on_raw_bulk_message_delete(self, payload: discord.RawBulkMessageDeleteEvent):
         guild = self.bot.get_guild(payload.guild_id)
@@ -374,7 +386,7 @@ class Logging(commands.Cog):
             first = (await ch.history(limit=1, before=first).flatten())[0]
             if (first): embed.description += f"\n[(message before these)]({first.jump_url})"
         except: pass
-        await chn.send(embed=embed)
+        await self.send(chn, embed)
 
 
     @commands.Cog.listener()
@@ -393,7 +405,7 @@ class Logging(commands.Cog):
         str = str.replace("? ", "  ")
         if len(str) == 0: return 
         embed.description = f"[(jump to message)]({after.jump_url})\n```diff\n{str}```"
-        await chn.send(embed=embed)
+        await self.send(chn, embed)
 
     @commands.Cog.listener()
     async def on_raw_message_edit(self, payload):
@@ -410,7 +422,7 @@ class Logging(commands.Cog):
         embed = self.makebase(msg.author)
         embed.title = "Message Edit"
         embed.description = f"Message edited in <#{payload.channel_id}>\n[(jump to message)]({msg.jump_url})"
-        await chn.send(embed=embed)
+        await self.send(chn, embed)
 
     @commands.Cog.listener()
     async def on_guild_channel_create(self, channel: discord.TextChannel):
@@ -446,7 +458,7 @@ class Logging(commands.Cog):
                 if x.startswith('~'):
                     txt.remove(x)
             embed.add_field(name="Permissions", value='\n'.join(txt).strip())
-        await chn.send(embed=embed)
+        await self.send(chn, embed)
 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel):
@@ -494,7 +506,7 @@ class Logging(commands.Cog):
                 if x.startswith('~'):
                     txt.remove(x)
             embed.add_field(name="Permissions", value='\n'.join(txt).strip())
-        await chn.send(embed=embed)
+        await self.send(chn, embed)
 
     @commands.Cog.listener()
     async def on_guild_channel_update(self, before, after):
@@ -552,7 +564,7 @@ class Logging(commands.Cog):
                         txt.remove(x)
                 embed.add_field(name="Removed", value='\n'.join(txt).strip(), inline = False)
         if (embed.description == after.mention + "\n") and not len(embed.fields): return
-        await chn.send(embed=embed)
+        await self.send(chn, embed)
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
@@ -590,7 +602,7 @@ class Logging(commands.Cog):
         if (invite):
             embed.description += f"\n> **Invite code{' (maybe, most recent)' if not positive else ''}**: *{invite[0]}*\n> **Invited by**: *<@{invite[1]}>*"
         
-        await chn.send(embed=embed)
+        await self.send(chn, embed)
     @commands.Cog.listener()
     async def on_member_remove(self, member):
         chn = await self.checkbit(4, member.guild)
@@ -606,7 +618,7 @@ class Logging(commands.Cog):
         else:
             embed.title = "Member Leave"
             embed.description = f"User **{member.mention}** left."
-        await chn.send(embed=embed)
+        await self.send(chn, embed)
 
     @commands.Cog.listener()
     async def on_member_update(self, before, after):
@@ -636,7 +648,7 @@ class Logging(commands.Cog):
                 if bystr: embed.description += f" by {log.user.mention}"
         embed.title = "Member Update"
         if not embed.description: return
-        await chn.send(embed=embed)
+        await self.send(chn, embed)
 
     @commands.Cog.listener()
     async def on_user_update(self, before, after):
@@ -653,7 +665,7 @@ class Logging(commands.Cog):
             else: discstr = f"{memb.discriminator}"
             embed.description = f"**{before}** {self.arrow} **{userstr}#{discstr}**"
             embed.title = "User Update"
-            await chn.send(embed=embed)
+            await self.send(chn, embed)
             
 
     @commands.Cog.listener()
@@ -666,7 +678,7 @@ class Logging(commands.Cog):
         embed.description = self.changedicttostr(self.changestodict(log.changes))
         embed.description = self.capitalize(embed.description, "AFK")
         
-        await chn.send(embed=embed)
+        await self.send(chn, embed)
     
     @commands.Cog.listener()
     async def on_guild_role_create(self, role):
@@ -679,7 +691,7 @@ class Logging(commands.Cog):
         embed.description += self.changedicttostr(self.changestodict(log.changes), create=True, masklst={'colour', 'permissions', 'permissions_new'})
         embed.set_footer(text=f"Role ID: {role.id} | {embed.footer.text}")
         embed.add_field(name="Permissions", value=self.permstostr(role.permissions))
-        await chn.send(embed=embed)
+        await self.send(chn, embed)
 
     @commands.Cog.listener()
     async def on_guild_role_delete(self, role):
@@ -693,7 +705,7 @@ class Logging(commands.Cog):
             embed.color = role.color
         embed.set_footer(text=f"Role ID: {role.id} | {embed.footer.text}")
         embed.add_field(name="Permissions", value=self.permstostr(role.permissions))
-        await chn.send(embed=embed)
+        await self.send(chn, embed)
 
     @commands.Cog.listener()
     async def on_guild_role_update(self, before, after):
@@ -711,7 +723,7 @@ class Logging(commands.Cog):
         embed.set_footer(text=f"Role ID: {after.id} | {embed.footer.text}")
         if (before.permissions != after.permissions):
             embed.add_field(name="Permissions", value=self.permstostr(after.permissions, before.permissions))
-        await chn.send(embed=embed)
+        await self.send(chn, embed)
 
     @commands.Cog.listener() 
     async def on_guild_emojis_update(self, guild, before, after):
@@ -733,7 +745,7 @@ class Logging(commands.Cog):
             embed = self.makebase(log.user, colortype=(log.action == AuditLogAction.emoji_create))
             embed.description = f"Emoji `{emoji.name}` {'added' if log.action == AuditLogAction.emoji_create else 'removed'}"
         embed.set_thumbnail(url=str(emoji.url))
-        await chn.send(embed=embed)
+        await self.send(chn, embed)
     
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
@@ -748,17 +760,17 @@ class Logging(commands.Cog):
             if before.channel.category:
                 catstr += f" in category `{before.channel.category.name}`"            
             embed.description = f"{member.mention} left channel `{before.channel.name}`{catstr}"
-            return await chn.send(embed=embed)    
+            return await self.send(chn, embed)    
         if not before.channel:
             embed.description = f"{member.mention} joined channel `{after.channel.name}`{catstr}"
-            return await chn.send(embed=embed)
+            return await self.send(chn, embed)
         proplist = [x for x in dir(after) if not x.startswith('_')]
         diffdict = {}
         for x in proplist:
             diffdict[x] = [getattr(before, x, None), getattr(after, x, None)]
         embed.description = self.capitalize(self.changedicttostr(diffdict).replace("Deaf", "Deafen"), 'AFK')
         embed.description += f"> **In channel:** `{after.channel.name}`{catstr}"
-        await chn.send(embed=embed)
+        await self.send(chn, embed)
 
     @commands.Cog.listener()
     async def on_member_ban(self, guild, user):
@@ -768,7 +780,7 @@ class Logging(commands.Cog):
         log = await self.getaudit(AuditLogAction.ban, guild, target=user.id, after=True)
         embed.title = "Member Banned"
         embed.description = f"User **{user.mention}** was banned!\n> **{'(No reason)' if not log.reason else log.reason}** - *{log.user.mention}*"
-        await chn.send(embed=embed)
+        await self.send(chn, embed)
 
     @commands.Cog.listener()
     async def on_member_unban(self, guild, user):
@@ -778,7 +790,7 @@ class Logging(commands.Cog):
         log = await self.getaudit(AuditLogAction.unban, guild, target=user.id, after=True)
         embed.title = "Member Unbanned"
         embed.description = f"User **{user}** was unbanned!\n> **{'(No reason)' if not log.reason else log.reason}** - *{log.user.mention}*"
-        await chn.send(embed=embed)
+        await self.send(chn, embed)
 
     async def on_warn(self, user, guild, warn, act):
         chn = await self.checkbit(11, guild)
@@ -788,7 +800,7 @@ class Logging(commands.Cog):
         warner = guild.get_member(warn['who'])
         embed.description = f"**{warn['reason']}** - *{warner.mention}*\n> **Punishment given**: *{act}*"
         
-        await chn.send(embed=embed)
+        await self.send(chn, embed)
 
     async def on_sbreact(self, user, msg, act):
         chn = await self.checkbit(13, user.guild)
@@ -797,7 +809,7 @@ class Logging(commands.Cog):
         embed.title = "Starboard React"
         embed.description = f"**{user.mention}** {'added' if act else 'removed'} a star to [this message.]({msg.jump_url})"
         
-        await chn.send(embed=embed)
+        await self.send(chn, embed)
 
 def setup(bot):
     bot.add_cog(Logging(bot))
