@@ -54,6 +54,7 @@ for x in os.listdir("cogs"):
         cgs.append(f"cogs.{x[:-3]}")
 intents = discord.Intents.default()
 intents.members = True 
+intents.presences = True
 bot = commands.Bot(command_prefix=prefix, owner_id=data['owner'], intents=intents)
 bot.__dict__['data'] = data
 commands.Bot.data = property(lambda x: x.__dict__['data'])

@@ -142,11 +142,27 @@ class Logging(commands.Cog):
         from discord.embeds import EmptyEmbed
         try: m = chn.last_message or (await chn.fetch_message(chn.last_message_id))
         except: return await chn.send(embed=e)
-        if m.author.id != self.bot.user.id: return await chn.send(embed=e)
+        if (not m.embeds) or m.author.id != self.bot.user.id: return await chn.send(embed=e)
+        #first lets travel up. if this is a chain of some kind, the author will remain
+        async for m2 in chn.history(before=m.created_at):
+            if m2.author.id != self.bot.user.id: break
+            if m2.embeds and m2.embeds[0].author != EmptyEmbed:
+                m = m2
+                break
         #now lets chip off
         c = m.embeds[0]
-        if (c.author.name == e.author.name) and (c.author.icon_url == e.author.icon_url): e.remove_author()
-        if (c.title == e.title): e.title = EmptyEmbed
+        if not ((c.title == e.title) and (c.author.name == e.author.name) and (c.author.icon_url == e.author.icon_url)): return await chn.send(embed=e)
+        e.remove_author()
+        e.title = EmptyEmbed
+        
+        if (c.description.split('\n')[0] == e.description.split('\n')[0]) and re.fullmatch(r"<#(\d*)>", e.description.split('\n')[0]):
+            e.description = '\n'.join(e.description.split('\n')[1:])
+        if EmptyEmbed not in (c.footer, e.footer):
+            r = []
+            s = tuple(c.footer.text.split(" | "))
+            for x in e.footer.text.split(" | "):
+                if x not in s: r.append(x)
+            e.set_footer(text=' | '.join(r))
         await chn.send(embed=e)
 
          
@@ -278,6 +294,7 @@ class Logging(commands.Cog):
         log = await self.getaudit(AuditLogAction.message_delete, message.guild, after=True)
         embed = await embeds.buildembed(embeds, message, link=False, attachmode=0b11)
         embed.color = discord.Color(0xDC322F)
+        embed.set_author(name=f"{message.author.display_name} ({message.author})", icon_url=message.author.avatar_url)
         embed.title = "Message Deletion"
         embed.timestamp = message.created_at
         try:
