@@ -145,7 +145,7 @@ class Logging(commands.Cog):
         if m.author.id != self.bot.user.id: return await chn.send(embed=e)
         #now lets chip off
         c = m.embeds[0]
-        if (c.author.name == e.author.name) and (c.author.icon_url == e.icon_url): e.remove_author()
+        if (c.author.name == e.author.name) and (c.author.icon_url == e.author.icon_url): e.remove_author()
         if (c.title == e.title): e.title = EmptyEmbed
         await chn.send(embed=e)
 
