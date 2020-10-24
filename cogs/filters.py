@@ -194,7 +194,7 @@ class Filters(commands.Cog):
 
         for entry in mpk['filterping'].items():
             if entry[0][0] == entry[0][-1] == '/':
-                f = re.search(entry[0], msg.content, re.IGNORECASE)
+                f = re.search(entry[0][1:-1], msg.content, re.IGNORECASE)
             else:
                 f = entry[0].lower() in msg.content.lower() 
             if f:
@@ -226,7 +226,7 @@ class Filters(commands.Cog):
         if hasf:
             for x in mpk['filter']:
                 if x[0] == x[-1] == '/':
-                    f = re.search(x, msg.content, re.IGNORECASE)
+                    f = re.search(x[1:-1], msg.content, re.IGNORECASE)
                 else:
                     f = x.lower() in msg.content.lower() 
                 if f:
