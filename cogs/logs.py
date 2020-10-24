@@ -7,6 +7,7 @@ import cogs.utils.mpk as mpku
 
 from typing import Union, List, Optional
 from datetime import datetime, timedelta
+from io import BytesIO
 
 import logging
 log = logging.getLogger('bot')
@@ -140,30 +141,91 @@ class Logging(commands.Cog):
     
     async def send(self, chn: discord.TextChannel, e: discord.Embed):
         from discord.embeds import EmptyEmbed
-        try: m = chn.last_message or (await chn.fetch_message(chn.last_message_id))
-        except: return await chn.send(embed=e)
-        if (not m.embeds) or m.author.id != self.bot.user.id: return await chn.send(embed=e)
+        m = None
         #first lets travel up. if this is a chain of some kind, the author will remain
-        async for m2 in chn.history(before=m.created_at):
-            if m2.author.id != self.bot.user.id: break
+        async for m2 in chn.history(after=datetime.utcnow() - timedelta(minutes=7), oldest_first=False):
+            if m2.author.id != self.bot.user.id or (not m2.embeds): break
             if m2.embeds and m2.embeds[0].author != EmptyEmbed:
                 m = m2
                 break
-        #now lets chip off
-        c = m.embeds[0]
-        if not ((c.title == e.title) and (c.author.name == e.author.name) and (c.author.icon_url == e.author.icon_url)): return await chn.send(embed=e)
-        e.remove_author()
-        e.title = EmptyEmbed
-        
-        if (c.description.split('\n')[0] == e.description.split('\n')[0]) and re.fullmatch(r"<#(\d*)>", e.description.split('\n')[0]):
-            e.description = '\n'.join(e.description.split('\n')[1:])
-        if EmptyEmbed not in (c.footer, e.footer):
-            r = []
-            s = tuple(c.footer.text.split(" | "))
-            for x in e.footer.text.split(" | "):
-                if x not in s: r.append(x)
-            e.set_footer(text=' | '.join(r))
-        await chn.send(embed=e)
+        if m:
+            #now lets chip off
+            c = m.embeds[0]
+            if (c.author.name != e.author.name): return await self.finalizesend(chn, e)
+            e.remove_author()
+            if (c.title == e.title): e.title = EmptyEmbed #do i really wanna seperate these 2?? we'll find out latere\
+            
+            if (c.description.split('\n')[0] == e.description.split('\n')[0]) and re.fullmatch(r"<#(\d*)>", e.description.split('\n')[0]):
+                e.description = '\n'.join(e.description.split('\n')[1:])
+            if EmptyEmbed not in {c.footer, e.footer}:
+                r = []
+                s = tuple(c.footer.text.split(" | "))
+                for x in e.footer.text.split(" | "):
+                    if x not in s: r.append(x)
+                e.set_footer(text=' | '.join(r))
+        await self.finalizesend(chn, e)
+
+    async def finalizesend(self, chn, e: discord.Embed):
+        e.description = e.description.strip()
+        for f in e.fields: #this is a softcopy so this should be fine?
+            if not f.value:
+                e.remove_field(e.fields.index(f))
+        try: await chn.send(embed=e)
+        except discord.HTTPException: #we must SPLIT
+            from discord.embeds import EmptyEmbed
+            splits = []
+            last = discord.Embed(color=e.color, timestamp=e.timestamp)
+            last.set_footer(text=e.footer.text)
+            for x in e.fields:
+                last.add_field(name=x.name, value=x.value, inline=x.inline)
+            e.clear_fields()
+            e.set_footer()
+            e.timestamp = EmptyEmbed
+            #we're gonna check everything and keep repeating
+            carry = ""
+            split = e.description.split('\n')
+            iternum = 0
+            while True:
+                count = 0
+                total = ""
+                for x in tuple(split):
+                    if (carry):
+                        x = carry + x
+                        carry = ""
+                    count += len(x) + 1 #+1 cause \n
+                    if count + 3 > 2048: 
+                        if not iternum:
+                            f = discord.File(BytesIO(e.description.encode('utf-8')), "embed.txt")
+                            e.description = "(Unfittable embed, check file attached in a text document or markdown viewer)"
+                            return await chn.send(embed=e, file=f)
+                        break
+                    total += x + '\n'
+                    del split[0]
+                    iternum += 1
+                if count + 2 <= 2048: 
+                    splits.append(total)
+                    break
+                #TODO: handle more than just ```
+                matches: List[re.Match] = list(re.finditer(r"(\`{3}\w*\n?)", total))
+                for y in tuple(matches):
+                    if not y.start(): continue
+                    if total[y.start() - 1] == '\\':
+                        matches.remove(y)
+                if matches and (len(matches) % 2) == 1: #if its odd then no shit we have to carry 
+                    carry = matches[-1].group(0)
+                    total += "```" #we can't be that tight right???
+                splits.append(total)
+                e.description = '\n'.join(split)
+            
+            last.description = splits[-1]
+            ebs = [e]
+            e.description = splits[0]
+            for x in splits[1:-1]:
+                ebs.append(discord.Embed(color=e.color, description=x))
+            ebs.append(last)
+            for em in ebs:
+                await chn.send(embed=em)
+
 
          
     def makebase(self, member, timestamp=None, colortype = 2) -> discord.Embed:
