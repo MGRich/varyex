@@ -20,7 +20,7 @@ class Filters(commands.Cog):
     @commands.group(aliases = ['f'])
     @commands.has_permissions(manage_messages = True)
     async def filter(self, ctx):
-        """Manage filters.
+        """Manage filters. **(!!!!)**
         You **must be able to manage messages.**
 
         `filter/f`
@@ -30,11 +30,12 @@ class Filters(commands.Cog):
             ebase = discord.Embed(title="Current Filters", color=discord.Color(self.bot.data['color']))
             mpk = self.getmpm(ctx.guild).getanddel()
             ebase.set_footer(text=f"Add with {ctx.prefix}f cfg add [phrases]")
+            ebase.description = "**Filters/filterpings were recently changed.** If any of your filters are regex, please add `/` to the start and end.\n"
             if not mpk['filter']:
-                ebase.description = "*No filters.*"
+                ebase.description += "*No filters.*"
                 return await ctx.send(embed=ebase)
             fstr = '`\n`'.join(mpk['filter'])
-            ebase.description = f"`{fstr}`"
+            ebase.description += f"`{fstr}`"
             await ctx.send(embed=ebase)
     @commands.group(aliases = ['fp'])
     @commands.has_permissions(manage_messages = True)
@@ -49,11 +50,12 @@ class Filters(commands.Cog):
             ebase = discord.Embed(title="Current Filterpings", color=discord.Color(self.bot.data['color']))
             ebase.set_footer(text=f"Add with {ctx.prefix}fp cfg add [phrase] [members]")
             mpk = self.getmpm(ctx.guild).getanddel()
+            ebase.description = "**Filters/filterpings were recently changed.** If any of your filters are regex, please add `/` to the start and end.\n"
             if not mpk['filterping']:
-                ebase.description = "*No filterpingss.*"
+                ebase.description += "*No filterpingss.*"
                 return await ctx.send(embed=ebase)
             ch = "*No channel*" if (not mpk['channel']) else f"<#{mpk['channel']}>"
-            ebase.description = f"Channel: {ch}\n"
+            ebase.description += f"Channel: {ch}\n"
             for entry in mpk['filterping'].items(): 
                 plist = []
                 for p in entry[1]:
@@ -191,7 +193,11 @@ class Filters(commands.Cog):
         plist = set()
 
         for entry in mpk['filterping'].items():
-            if re.search(entry[0], msg.content, re.IGNORECASE):
+            if entry[0][0] == entry[0][-1] == '/':
+                f = re.search(entry[0], msg.content, re.IGNORECASE)
+            else:
+                f = entry[0].lower() in msg.content.lower() 
+            if f:
                 flist.append(entry[0])
                 for memb in entry[1]:
                     forceNo = memb in {x.id for x in msg.mentions}
@@ -219,7 +225,11 @@ class Filters(commands.Cog):
 
         if hasf:
             for x in mpk['filter']:
-                if re.search(x, msg.content, re.IGNORECASE):
+                if x[0] == x[-1] == '/':
+                    f = re.search(x, msg.content, re.IGNORECASE)
+                else:
+                    f = x.lower() in msg.content.lower() 
+                if f:
                     try: return await msg.delete()
                     except discord.Forbidden: return
         
