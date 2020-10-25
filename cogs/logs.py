@@ -145,7 +145,7 @@ class Logging(commands.Cog):
         #first lets travel up. if this is a chain of some kind, the author will remain
         async for m2 in chn.history(after=datetime.utcnow() - timedelta(minutes=7), oldest_first=False):
             if m2.author.id != self.bot.user.id or (not m2.embeds): break
-            if m2.embeds and m2.embeds[0].author != EmptyEmbed:
+            if m2.embeds and m2.embeds[0].author:
                 m = m2
                 break
         if m:
@@ -157,7 +157,7 @@ class Logging(commands.Cog):
             
             if (c.description.split('\n')[0] == e.description.split('\n')[0]) and re.fullmatch(r"<#(\d*)>", e.description.split('\n')[0]):
                 e.description = '\n'.join(e.description.split('\n')[1:])
-            if EmptyEmbed not in {c.footer, e.footer}:
+            if c.footer and e.footer:
                 r = []
                 s = tuple(c.footer.text.split(" | "))
                 for x in e.footer.text.split(" | "):
@@ -355,7 +355,7 @@ class Logging(commands.Cog):
             if message.author.bot: return
         log = await self.getaudit(AuditLogAction.message_delete, message.guild, after=True)
         embed = await embeds.buildembed(embeds, message, link=False, attachmode=0b11)
-        embed.color = discord.Color(0xDC322F)
+        embed.color = discord.Color(0xdd2e44)
         embed.set_author(name=f"{message.author.display_name} ({message.author})", icon_url=message.author.avatar_url)
         embed.title = "Message Deletion"
         embed.timestamp = message.created_at
@@ -389,7 +389,7 @@ class Logging(commands.Cog):
             embed.description += f"<@{uid}>: **{totaldict[uid]}** messages\n"
         if possible:
             embed.description += f"Unknown: **{possible}** messages\n"
-        embed.color = discord.Color(0xDC322F)
+        embed.color = discord.Color(0xdd2e44)
         embed.title = "Bulk Message Deletion"
         if (log):
             embed.description += f"> **Deleted by** {log.user.mention}"
