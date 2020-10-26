@@ -401,8 +401,8 @@ class Logging(commands.Cog):
         first = min(ttlist)
         last = max(ttlist)
 
-        log.debug(first)
-        log.debug(last)
+        #log.debug(first)
+        #log.debug(last)
 
         embed.timestamp = first
 
@@ -691,7 +691,7 @@ class Logging(commands.Cog):
         if (log): return
         log = await self.getaudit(AuditLogAction.kick, member.guild, target=member.id, after=True)
         if (log):
-            log.debug(log.user)
+            #log.debug(log.user)
             embed.title = "Member Kick"
             embed.description = f"User **{member.mention}** was kicked!\n> **{'(No reason)' if not log.reason else log.reason}** - *{log.user.mention}*"
         else:
