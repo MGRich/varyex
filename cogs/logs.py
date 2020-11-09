@@ -142,9 +142,14 @@ class Logging(commands.Cog):
     async def send(self, chn: discord.TextChannel, e: discord.Embed):
         from discord.embeds import EmptyEmbed
         m = None
+        offset = datetime.utcnow() - timedelta(minutes=7)
         #first lets travel up. if this is a chain of some kind, the author will remain
-        async for m2 in chn.history(after=datetime.utcnow() - timedelta(minutes=7), oldest_first=False):
+        while True:
+            ml = await chn.history(after=offset, oldest_first=False).flatten()
+            if not ml: break
+            m2 = ml[0] 
             if m2.author.id != self.bot.user.id or (not m2.embeds): break
+            offset = m2.created_at - timedelta(minutes=7)
             if m2.embeds and m2.embeds[0].author:
                 m = m2
                 break
