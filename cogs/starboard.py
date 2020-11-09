@@ -9,10 +9,12 @@ from cogs.utils.other import getord
 from typing import Optional
 from datetime import datetime, timedelta
 from timeit import default_timer
-from asyncio import sleep
+from asyncio import sleep, Lock
 
 import logging
 log = logging.getLogger('bot')
+
+reactlock = Lock()
 
 class Starboard(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -116,18 +118,21 @@ class Starboard(commands.Cog):
         msg: discord.Message = pins[0]
         log.debug(msg)
         fakepay = discord.RawReactionActionEvent({'message_id': msg.id, 'channel_id': chn.id, 'user_id': 0, 'guild_id': 1}, None, "")
-        await self.handlereact(fakepay, 0)
+        async with reactlock:
+            await self.handlereact(fakepay, 0)
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payl):
         start = default_timer()
-        await self.handlereact(payl, -1)
+        async with reactlock:
+            await self.handlereact(payl, -1)
         log.debug(default_timer() - start)
     
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payl):
         start = default_timer()
-        await self.handlereact(payl, 1)
+        async with reactlock:
+            await self.handlereact(payl, 1)
         log.debug(default_timer() - start)
 
     @commands.group(aliases = ["sb"])
