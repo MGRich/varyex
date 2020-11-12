@@ -1,8 +1,10 @@
-import discord, re
+import discord, re, difflib
+from typing import List
 from discord.ext import commands
 
+CUTOFF = .75
 class UserLookup(commands.Converter):
-    async def convert(self, ctx, argument) -> discord.User:
+    async def convert(self, ctx: commands.Context, argument) -> discord.User:
         try: return await commands.UserConverter().convert(ctx, argument)
         except:
             match = re.match(r'<@!?([0-9]+)>$', argument)
@@ -10,13 +12,28 @@ class UserLookup(commands.Converter):
             if match: lookup = int(match.group(1))
             else:
                 try: lookup = int(argument)
-                except: raise commands.BadArgument(argument)
+                except: pass
             #only handle mentions and ids
             try: return await ctx.bot.fetch_user(lookup)
-            except: raise commands.BadArgument(argument) #TODO: when 1.5 hits upgrade to UserNotFound
+            except:
+                if (ctx.guild):
+                    mlist: List[discord.Member] = ctx.guild.members
+                    fmlist = [x.display_name for x in mlist]
+                    matches = difflib.get_close_matches(argument, fmlist, n=1, cutoff=CUTOFF)
+                    if not matches:
+                        fmlist = [x.name for x in mlist]
+                        matches = difflib.get_close_matches(argument, fmlist, n=1, cutoff=CUTOFF)
+                    if (matches):
+                        member = mlist[fmlist.index(matches[0])]
+                        u = ctx.bot.get_user(member.id)
+                        if u: return u
+                        try: return await ctx.bot.fetch_user(member.id)
+                        except: pass #literally how in the fuck
+
+                raise commands.UserNotFound(argument)
 
 class MemberLookup(commands.Converter):
-    async def convert(self, ctx, argument) -> discord.Member:
+    async def convert(self, ctx: commands.Context, argument) -> discord.Member:
         try: return await commands.MemberConverter().convert(ctx, argument)
         except:
             match = re.match(r'<@!?([0-9]+)>$', argument)
@@ -24,11 +41,17 @@ class MemberLookup(commands.Converter):
             if match: lookup = int(match.group(1))
             else:
                 try: lookup = int(argument)
-                except: raise commands.BadArgument(argument)
+                except: pass
             try: return ctx.guild.get_user(lookup)
             except:
-                u = await UserLookup().convert(ctx, argument)
-                m = ctx.guild.get_member_named(str(u))
-                if not m: raise commands.BadArgument(argument) #TODO: when 1.5 hits upgrade to MemberNotFound
-                return m
+                ctx.guild: discord.Guild
+                mlist: List[discord.Member] = ctx.guild.members
+                fmlist = [x.display_name for x in mlist]
+                matches = difflib.get_close_matches(argument, fmlist, n=1, cutoff=CUTOFF)
+                if not matches:
+                    fmlist = [x.name for x in mlist]
+                    matches = difflib.get_close_matches(argument, fmlist, n=1, cutoff=CUTOFF)
+                if (matches):
+                    return mlist[fmlist.index(matches[0])]
+                raise commands.MemberNotFound(argument)
 

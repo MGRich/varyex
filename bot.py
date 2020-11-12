@@ -1,4 +1,4 @@
-import discord, traceback, json, os, sys, subprocess, textwrap, contextlib, base64, lzma, msgpack, github, difflib
+import discord, traceback, json, os, sys, subprocess, textwrap, contextlib, base64, lzma, umsgpack, github, difflib
 from discord.ext import commands, tasks
 from io import StringIO
 import cogs.utils.mpk as mpku
@@ -175,7 +175,7 @@ async def mainloop():
             for p in Path("config").rglob('*.mpk'):
                 if not (n := p.parent.name) in fd: fd[n] = {}
                 fd[n][p.stem] = open(p.resolve(), "rb").read()
-            f = {'varyexbackup': github.InputFileContent(content=base64.a85encode(lzma.compress(msgpack.packb(fd), format=lzma.FORMAT_ALONE)).decode('ascii'))}
+            f = {'varyexbackup': github.InputFileContent(content=base64.a85encode(lzma.compress(umsgpack.packb(fd), format=lzma.FORMAT_ALONE)).decode('ascii'))}
             github.Github(os.getenv('KEY')).get_gist(os.getenv('GIST')).edit(files=f)
             glog.debug("backed up configs")
             hourcounter = 0
@@ -207,7 +207,7 @@ async def retrieve(ctx):
     except: pass
     Path("config").mkdir(exist_ok=True)
     c = github.Github(data['key']).get_gist(data['gist']).files['varyexbackup'].content
-    result = msgpack.unpackb(lzma.decompress(base64.a85decode(c), format=lzma.FORMAT_ALONE))
+    result = umsgpack.unpackb(lzma.decompress(base64.a85decode(c), format=lzma.FORMAT_ALONE))
     if ('config' in result):
         for x in result['config']:
             open(f"config/{x}.mpk", "wb").write(result['config'][x])

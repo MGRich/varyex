@@ -475,7 +475,7 @@ class Help(commands.Cog):
         embed = discord.Embed(title=cog, color=self.bot.data['color'], description="")
         for cmd in self.bot.get_cog(cog).walk_commands():
             if cmd.hidden or (not cmd.enabled) or (not cmd.help) or cmd.parent: continue
-            summary = cmd.help.split('\n')[0]
+            summary = cmd.help.splitlines()[0]
             aliasstr = ""
             if (cmd.aliases):
                 aliasstr = f" - `{'`, `'.join(cmd.aliases)}`"

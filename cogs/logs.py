@@ -160,8 +160,8 @@ class Logging(commands.Cog):
             e.remove_author()
             if (c.title == e.title): e.title = EmptyEmbed #do i really wanna seperate these 2?? we'll find out latere\
             
-            if (c.description.split('\n')[0] == e.description.split('\n')[0]) and re.fullmatch(r"<#(\d*)>", e.description.split('\n')[0]):
-                e.description = '\n'.join(e.description.split('\n')[1:])
+            if (c.description.splitlines()[0] == e.description.splitlines()[0]) and re.fullmatch(r"<#(\d*)>", e.description.splitlines()[0]):
+                e.description = '\n'.join(e.description.splitlines()[1:])
             if c.footer and e.footer:
                 r = []
                 s = tuple(c.footer.text.split(" | "))
@@ -188,7 +188,7 @@ class Logging(commands.Cog):
             e.timestamp = EmptyEmbed
             #we're gonna check everything and keep repeating
             carry = ""
-            split = e.description.split('\n')
+            split = e.description.splitlines()
             iternum = 0
             while True:
                 count = 0
