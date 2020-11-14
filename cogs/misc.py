@@ -2,6 +2,7 @@ import discord, re #general/misc
 from discord.ext import commands, tasks
 
 import cogs.utils.mpk as mpku
+from cogs.utils.converters import UserLookup
 from typing import Optional, Union, List
 from asyncio import sleep #auto rolecolor
 from numpy import clip
@@ -123,6 +124,17 @@ class Misc(commands.Cog):
         except AttributeError: pass
         if not rem: await ctx.send(f"My prefix here is now `{prefix}`!")
         else: await ctx.send("My prefix here has been reset.")
+
+    @commands.command(aliases=('pfp',))
+    async def avatar(self, ctx, user: Optional[MemberLookup]):
+        """Fetches your own or a user's avatar.
+
+        `avatar/pfp [user]`"""
+        if not user: user = ctx.author
+        e = discord.Embed(color=(discord.Color(self.bot.data['color']) if user.color == discord.Color.default() else user.color))
+        e.set_author(name=f"{user.display_name}'s avatar", icon_url=str(user.avatar_url_as(static_format='jpg', size=64)))
+        e.set_image(url=str(user.avatar_url_as(static_format='png', size=2048)))
+        return await ctx.send(embed=e)
 
     @commands.command()
     async def ping(self, ctx):
