@@ -1,4 +1,4 @@
-import discord, msgpack, os, copy
+import discord, umsgpack, os, copy
 
 opened = {}
 class MPKManager:
@@ -11,7 +11,7 @@ class MPKManager:
         if gid and not os.path.exists(f"config/{gid}/"):
             os.mkdir(f"config/{gid}/")
         if (not os.path.exists(self.path)): return
-        with open(self.path, "rb") as f: self.data = msgpack.load(f)
+        with open(self.path, "rb") as f: self.data = umsgpack.load(f)
 
     def __del__(self):
         if not self.deleted:
@@ -35,7 +35,7 @@ class MPKManager:
         return r
 
     def save(self, sub = True):
-        with open(self.path, "wb") as f: msgpack.dump(self.data, f)
+        with open(self.path, "wb") as f: umsgpack.dump(self.data, f)
         if sub:
             opened[self.dictstr][1] -= 1
             if not opened[self.dictstr][1]:

@@ -4,7 +4,8 @@ from discord.ext.commands import Greedy
 
 import cogs.utils.mpk as mpku
 from cogs.utils.menus import Confirm
-from cogs.utils.converters import UserLookup, MemberLookup
+from cogs.utils.converters import UserLookup, MemberLookup, DurationString
+from cogs.utils.other import timeint
 
 from typing import Optional
 from copy import copy
@@ -48,25 +49,39 @@ class Moderation(commands.Cog):
     @commands.guild_only()
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
-    async def ban(self, ctx, members: commands.Greedy[UserLookup], *, reason: Optional[str] = ""):
+    async def ban(self, ctx, members: commands.Greedy[UserLookup], *, reason: Optional[DurationString] = ""):
         """Bans users.
         Both the bot and the runner **must be able to ban.**
 
         `ban <members> [reason]`"""
         if not members: return
+        if reason != "":
+            time = reason.duration
+            if time:
+                mpm = mpku.getmpm('moderation', ctx.guild)
+                mpk = mpm.data
+            reason = reason.string
+        else:
+            time = 0
+            reason = ""
         banlist = []
         for member in members:
-            if member == ctx.message.author: continue
+            if member == ctx.message.author: continue #TODO: april fools event
             try:
                 await ctx.guild.ban(member, reason=(f'{reason} ' if reason else '') + f"(Banned by {ctx.author})", delete_message_days=0)
                 t = f"You have been banned in {ctx.guild}"
+                if time:
+                    t += f" for {timeint(time)}"
+                    uid = str(member.id)
+                    mpk['inwarn'][uid] = {'left': 0, 'time': toInt(datetime.utcnow() + timedelta(seconds=time)), 'type': 'ban'}
                 if (reason != ""): t += f" for {reason}{'.' if not reason[-1] in punctuation else ''}"
                 else: t += '.'
                 banlist.append(member.mention)
                 if reason:
                     try: await member.send(t)
-                    except discord.Forbidden: continue
+                    except: continue
             except discord.Forbidden: continue
+        if time: mpm.save()
         if not banlist:
             return await ctx.send("I was not able to ban any users.")
         await ctx.send(f"User{'s' if len(banlist) > 1 else ''} {', '.join(banlist)} successfully banned.")
@@ -112,7 +127,7 @@ class Moderation(commands.Cog):
                 if (reason != ""): t += f" for {reason}{'.' if not reason[-1] in punctuation else ''}"
                 else: t += '.'
                 try: await member.send(f"You have been kicked in {ctx.guild} by {ctx.author.mention}")
-                except discord.Forbidden: pass
+                except: pass
                 banlist.append(member.mention)
             except discord.Forbidden: continue
         
@@ -170,42 +185,53 @@ class Moderation(commands.Cog):
             changed = False
             #guild = self.bot.get_guild(int(gid))
             #if (guild == None): continue
-            mpm = mpku.getmpm('moderation', guild)
+            mpm = mpku.getmpm('moderation', guild, filter=True)
             mpk = mpm.data
             if not mpku.testgiven(mpk, ['inwarn', 'offences', 'actions', 'users']): continue
             for uid in list(mpk['inwarn']):
                 try: mpk['inwarn'][uid]['time']
                 except: continue
+                inwarn = mpk['inwarn'][uid]
                 #log.debug(uid)
 
                 try: user = await guild.fetch_member(int(uid))
                 except discord.NotFound: user = None 
                 #log.debug(uid + " " + str(user))
                 if not user:
-                    if mpk['inwarn'][uid]['left'] == 0:
-                        mpk['inwarn'][uid]['left'] = now()
+                    if inwarn['type'] != 'ban' and inwarn['left'] == 0:
+                        inwarn['left'] = now()
                         changed = True
                     #continue
-                elif mpk['inwarn'][uid]['left'] != 0:
-                    mpk['inwarn'][uid]['time'] += now() - mpk['inwarn'][uid]['left']
-                    mpk['inwarn'][uid]['left'] = 0
-                    changed = True
-                    continue
-                
-                try: cnt = len(majorWarns(mpk['users'][uid]))
-                except KeyError:
-                    del mpk['inwarn'][uid]
+                elif inwarn['left'] != 0:
+                    inwarn['time'] += now() - inwarn['left']
+                    inwarn['left'] = 0
                     changed = True
                     continue
 
+                try: cnt = len(majorWarns(mpk['users'][uid]))
+                except KeyError:
+                    if not inwarn['type'] == 'ban':
+                        del mpk['inwarn'][uid]
+                        changed = True
+                        continue
+                    else: cnt = 1
+
                 #log.debug(uid)
-                if (mpk['inwarn'][uid]['time'] <= now()):
+                if (inwarn['time'] <= now()):
                     #log.debug(guild.id)
                     #try: log.debug(mpk['users'][uid])
                     #except KeyError: log.debug("fuck")
                     if cnt != 0:
-                        ofc = mpk['offences'][min(cnt - 1, len(mpk['actions']))]
-                        act = mpk['actions'][ofc['action']]
+                        try: t = inwarn['type']
+                        except: t = inwarn['type'] = 'warn' #just make it up
+                        if t == 'warn': 
+                            ofc = mpk['offences'][min(cnt - 1, len(mpk['actions']))]
+                            act = mpk['actions'][ofc['action']]
+                        elif t == 'mute':
+                            try: act = mpk['actions']['mute']
+                            except: act = {'type': 'gr', 'role': 0} #welp!
+                        elif t == 'ban':
+                            act = {'type': 'b'}
                         try:
                             if (act['type'] == "gr"):
                                 if not user: continue 
@@ -247,7 +273,7 @@ class Moderation(commands.Cog):
             except TypeError: pass #we try again later and see if it matches a warn
             else: 
                 if case < 1: return await ctx.send("Please enter a valid case number.")
-        mpm = mpku.getmpm('moderation', ctx.guild, ['users'], [{}])
+        mpm = mpku.getmpm('moderation', ctx.guild, ['users'], [{}], filter=True)
         mpk = mpm.data
         uid = str(user.id)
         try: mpk['users'][uid]
@@ -272,7 +298,7 @@ class Moderation(commands.Cog):
         You must be able to **manage messages and kick.**
 
         `editwarn/ewarn/ew <user> <case number> <new reason>`"""
-        mpm = mpku.getmpm('moderation', ctx.guild, ['users'], [{}])
+        mpm = mpku.getmpm('moderation', ctx.guild, ['users'], [{}], filter=True)
         mpk = mpm.data
         uid = str(user.id)
         try: mpk['users'][uid]
@@ -314,7 +340,7 @@ class Moderation(commands.Cog):
         `w cfg removeaction/rmaction/remove <name>`
         `w cfg settrack/track`"""
         if (ctx.invoked_subcommand) or ((not users) or (not reason)): return
-        mpm = mpku.getmpm('moderation', ctx.guild, basis1, basis2)
+        mpm = mpku.getmpm('moderation', ctx.guild, basis1, basis2, filter=True)
         mpk = mpm.data
         if not mpk['offences']: return await ctx.send("Warns aren't configured!")
         for user in users:
@@ -325,7 +351,8 @@ class Moderation(commands.Cog):
             act = copy(mpk['actions'][ofc['action']])
 
             worked = True
-            ex = None
+            #ex = None
+            cause = ""
             try:
                 if (ofc['action'] == "verbal"): pass
                 elif (act['type'] == "gr"): await user.add_roles(ctx.guild.get_role(act['role']), reason=reason)
@@ -333,10 +360,15 @@ class Moderation(commands.Cog):
                 elif (act['type'] == "b" ): await user.ban(reason=reason)
             except Exception as e: 
                 worked = False
-                ex = e
+                causes = {AttributeError: 'a role likely needs to be fixed', discord.Forbidden: "check my role position and permissions"}
+                try: cause = causes[type(e)]
+                except KeyError: 
+                    cause = f"unknown error: `{type(e).__name__}`"
+                    await self.bot.on_command_error(ctx, e) #pass it manually so i can review it juust in case
+
 
             if (not worked):
-                await ctx.send(f"I'm not able to take action, but the user will be warned. (Error of type `{type(ex).__name__}`)")
+                await ctx.send(f"I'm not able to take action ({cause}), but the user will be warned.")
                 act['dmmsg'] = "I'm not able to take the action I'm told to take, but you are still warned for [r]."
             
             act['dmmsg'] = act['dmmsg'].replace('[r]', reason)
@@ -346,18 +378,16 @@ class Moderation(commands.Cog):
             if (worked):
                 try:
                     if (act['timed']):
-                        act['dmmsg'] = act['dmmsg'].replace('[t]', str(ofc['time']))
-                        act['msg'] = act['msg'].replace('[t]', str(ofc['time']))
+                        act['dmmsg'] = act['dmmsg'].replace('[t]', timeint(ofc['time'], True))
+                        act['msg'] = act['msg'].replace('[t]', timeint(ofc['time'], True))
                         if (ofc['time']):
-                            mpk['inwarn'][uid] = {}
-                            mpk['inwarn'][uid]['left'] = 0
-                            mpk['inwarn'][uid]['time'] = toInt(datetime.utcnow() + timedelta(minutes=ofc['time']))
+                            mpk['inwarn'][uid] = {'left': 0, 'time': toInt(datetime.utcnow() + timedelta(minutes=ofc['time'])), 'type': 'warn'}
                 except KeyError:
                     pass
 
             if act['dmmsg']:
                 try: await user.send(act['dmmsg'])
-                except discord.Forbidden: pass
+                except: pass
             if (worked): await ctx.send(act['msg'])
             mpm.save()
             try: await self.bot.get_cog('Logging').on_warn(user, ctx.guild, mpk['users'][uid][-1], f"`{ofc['action']}`")
@@ -368,7 +398,7 @@ class Moderation(commands.Cog):
     @commands.has_permissions(manage_guild=True, ban_members=True) 
     async def config(self, ctx, action: Optional[str]):
         if ctx.invoked_subcommand: return
-        mpk = mpku.getmpm('moderation', ctx.guild, ['actions', 'offences'], [{}, []]).getanddel()
+        mpk = mpku.getmpm('moderation', ctx.guild, ['actions', 'offences'], [{}, []], filter=True).getanddel()
         embed = discord.Embed(title="Warning Config", color=discord.Color(self.bot.data['color']), description="")
         if action:
             try: a = mpk['actions'][action]
@@ -426,7 +456,7 @@ class Moderation(commands.Cog):
         name = name.lower()
         if ' ' in name:
             return await ctx.send("Action names can't have spaces.")
-        mpm = mpku.getmpm('moderation', ctx.guild, ['actions'], [{}])
+        mpm = mpku.getmpm('moderation', ctx.guild, ['actions'], [{}], filter=True)
         mpk = mpm.data
         if name in mpk['actions']:
             return await ctx.send("This action already exists! If you want to edit it, remove it and re-add it.")
@@ -491,7 +521,7 @@ class Moderation(commands.Cog):
             tstring = touse
             tstring = tstring.replace("[u]", ctx.author.mention)
             tstring = tstring.replace("[r]", "pinging mods for no reason")
-            if timed: tstring = tstring.replace("[t]", "30")
+            if timed: tstring = tstring.replace("[t]", "30 minutes")
             good = await Confirm(f"Is this ok? Your message will appear like this:\n{tstring}").prompt(ctx)
         actdict.update({'msg': touse})
         embed.description = pre + f"**Server MSG:** `{touse}`\n"
@@ -506,7 +536,7 @@ class Moderation(commands.Cog):
             touse = await waitfor()
             tstring = touse
             tstring = tstring.replace("[r]", "pinging mods for no reason")
-            if timed: tstring = tstring.replace("[t]", "30")
+            if timed: tstring = tstring.replace("[t]", "30 minutes")
             good = await Confirm(f"Is this ok? Your message will appear like this:\n{tstring}").prompt(ctx)
         actdict.update({'dmmsg': touse})
         embed.description = pre + f"**DM MSG:** `{touse}`\n"
@@ -518,7 +548,7 @@ class Moderation(commands.Cog):
     @config.command(aliases=('removeaction', 'remove', 'r'))
     @commands.has_permissions(manage_guild=True, ban_members=True) 
     async def rmaction(self, ctx, action):
-        mpm = mpku.getmpm('moderation', ctx.guild, ['actions', 'offences'], [{}, []])
+        mpm = mpku.getmpm('moderation', ctx.guild, ['actions', 'offences'], [{}, []], filter=True)
         mpk = mpm.data
         if not action in mpk['actions']:
             return await ctx.send("This action doesn't exist!")
@@ -531,7 +561,7 @@ class Moderation(commands.Cog):
     @commands.has_permissions(manage_guild=True, ban_members=True) 
     async def settrack(self, ctx):
         if ctx.invoked_with == "track": return await ctx.invoke(self.config, None)
-        mpm = mpku.getmpm('moderation', ctx.guild, ['actions', 'offences'], [{}, []])
+        mpm = mpku.getmpm('moderation', ctx.guild, ['actions', 'offences'], [{}, []], filter=True)
         mpk = mpm.data
         #valid = [x for x in mpk['actions'] if x != 'verbal']
         valid = mpk['actions']
@@ -579,13 +609,14 @@ class Moderation(commands.Cog):
                 track.append({'action': r})
                 try:
                     if mpk['actions'][r]['timed']:
-                        td = await ctx.send("Please enter the duration in minutes (or 0 if manual).")
+                        td = await ctx.send("Please enter the duration (atleast 5 minutes).")
                         while True:
                             try: 
-                                if (dur := int(await waitfor())) < 0: raise ValueError()
+                                if (not (v := pytimeparse.parse(await waitfor()))): raise ValueError()
+                                elif v // 60 < 5: raise ValueError()
                             except ValueError: await (await ctx.send("Please send a valid value.")).delete(delay=5)
                             else:
-                                track[-1].update({'time': dur})
+                                track[-1].update({'time': v})
                                 await td.delete()
                                 break
                 except KeyError: pass
@@ -597,13 +628,12 @@ class Moderation(commands.Cog):
     @commands.command(aliases=('m',))
     @commands.guild_only()
     @commands.has_permissions(manage_messages=True, kick_members=True)
-    async def mute(self, ctx, users: Greedy[MemberLookup], duration, *, reason):
+    async def mute(self, ctx, users: Greedy[MemberLookup], *, reason: DurationString):
         """Mutes users for a durarion. **Must be setup.**
         
         `mute/m <users> <duration> <reason>`"""
-        duration = pytimeparse.parse(duration)
-        if not duration: return await ctx.send("Please set a valid duration.")
-        await ctx.invoke(self.verbalwarn, users, reason=reason, mute=duration)
+        if not reason.duration: return await ctx.send("Please set a valid duration.")
+        await ctx.invoke(self.verbalwarn, users, reason=reason.string, mute=reason.duration)
 
     @commands.command(aliases=('vwarn', 'vw'))
     @commands.guild_only()
@@ -615,11 +645,11 @@ class Moderation(commands.Cog):
         and will never automatically culminate into a warn.
 
         `verbalwarn/vwarn/vw <users> <reason>`"""
-        mpm = mpku.getmpm('moderation', ctx.guild, basis1, basis2)
+        mpm = mpku.getmpm('moderation', ctx.guild, basis1, basis2, filter=True)
         mpk = mpm.data
         strused = 'mute' if mute else 'verbal'
         try: mpk['actions'][strused]
-        except: return await ctx.send(f"{strused.title()}s aren't setup! Set it up with `{ctx.prefix}warncfg add {strused}`")
+        except: return await ctx.send(f"{strused.title()}s aren't setup! Set it up with `{ctx.prefix}warn cfg add {strused}`")
         if (not users) or (not reason): return
         for user in users:
             uid = str(user.id)
@@ -645,18 +675,15 @@ class Moderation(commands.Cog):
                 except discord.Forbidden:
                     await ctx.send("I'm not able to mute, so this will be counted only as a verbal. Please make sure the mute role is below my role.")
                     return await ctx.invoke(self.verbalwarn, users, reason=reason, mute=0)
-                mute = float(mute) / 60
-                act['dmmsg'] = act['dmmsg'].replace('[t]', str(int(mute)))
-                act['msg'] = act['msg'].replace('[t]', str(int(mute)))
-                mpk['inwarn'][uid] = {}
-                mpk['inwarn'][uid]['left'] = 0
-                mpk['inwarn'][uid]['time'] = toInt(datetime.utcnow() + timedelta(minutes=mute))
+                act['dmmsg'] = act['dmmsg'].replace('[t]', timeint(mute))
+                act['msg'] = act['msg'].replace('[t]', timeint(mute))
+                mpk['inwarn'][uid] = {'left': 0, 'time': toInt(datetime.utcnow() + timedelta(seconds=mute)), 'type': 'mute'}
             if act['dmmsg']:
                 try: await user.send(act['dmmsg'])
                 except: pass
             await ctx.send(act['msg'])
             mpm.save()
-            try: await self.bot.get_cog('Logging').on_warn(user, ctx.guild, mpk['users'][uid][cnt], None)
+            try: await self.bot.get_cog('Logging').on_warn(user, ctx.guild, mpk['users'][uid][cnt], '`mute`' if mute else None)
             except AttributeError: pass
 
     @commands.command(aliases=('warnings',))
@@ -672,7 +699,7 @@ class Moderation(commands.Cog):
         if (user != ctx.author):
             if (not (ctx.author.guild_permissions.manage_messages and ctx.author.guild_permissions.kick_members)):
                 return
-        mpk = mpku.getmpm('moderation', ctx.guild, ['users'], [{}]).getanddel()
+        mpk = mpku.getmpm('moderation', ctx.guild, ['users'], [{}], filter=True).getanddel()
         #gid = str(ctx.guild.id)
         uid = str(user.id)
         embed = discord.Embed(color=(discord.Color(self.bot.data['color']) if user.color == discord.Color.default() else user.color))

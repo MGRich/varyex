@@ -42,7 +42,7 @@ def prefix(_bot, message):
             prf.append(con['prefix'])
         except: pass
     
-    users = mpku.getmpm('users', None).getanddel()
+    users = mpku.getmpm('users', None, filter=True).getanddel()
     try: prf.insert(0, users[str(message.author.id)]['prefix'])
     except: pass
     return prf
@@ -74,10 +74,10 @@ async def on_ready():
         first = True
         if (os.path.exists("updateout.log")):
             #info = await bot.application_info()
-            tmp = open("updateout.log", "r").read()
+            tmp = open("updateout.log").read()
             await user.send(f"```\n{tmp}```")
             os.remove("updateout.log")
-            tmp = open("updateerr.log", "r").read()
+            tmp = open("updateerr.log").read()
             await user.send(f"```\n{tmp}```")
             os.remove("updateerr.log")
         if __name__ == '__main__':
@@ -134,7 +134,7 @@ async def on_command_error(ctx: commands.Context, error):
     embed = discord.Embed(title=f"Error in {ctx.command}")
     st = '\n'.join(traceback.format_exception(type(error), error, error.__traceback__))
     embed.description = f"```py\n{st}\n```"
-    embed.description += f"\nServer ID: `{ctx.guild.id}`\nUser ID: `{ctx.author.id}`\nMessage ID: `{ctx.message.id}`"
+    embed.description += f"User ID: `{ctx.author.id}` {ctx.author.mention}\nChannel ID: `{ctx.channel.id}` {ctx.channel.mention if isinstance(ctx.channel, discord.TextChannel) else '(DM)'}"
     try: return await bot.owner.send(embed=embed)
     except: pass
 
@@ -206,7 +206,7 @@ async def retrieve(ctx):
     try: Path("config").rename("configold")
     except: pass
     Path("config").mkdir(exist_ok=True)
-    c = github.Github(data['key']).get_gist(data['gist']).files['varyexbackup'].content
+    c = github.Github(os.getenv('KEY')).get_gist(os.getenv('GIST')).files['varyexbackup'].content
     result = umsgpack.unpackb(lzma.decompress(base64.a85decode(c), format=lzma.FORMAT_ALONE))
     if ('config' in result):
         for x in result['config']:

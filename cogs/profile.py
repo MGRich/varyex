@@ -130,6 +130,73 @@ class TZMenu(menus.Menu):
         await self.start(ctx, wait=True)
         return self.result
 
+class PronounSelector(menus.Menu):
+    def __init__(self, bot):
+        super().__init__()
+        self.result = {}
+        self.dval = 0
+        self.double = 2
+        self.bot = bot
+
+        self.embed = discord.Embed(title="Pronoun Selector", color=discord.Color(self.bot.data['color']), 
+            description =  """
+            \U0001F468 - he/him
+            \U0001F469 - she/her
+            \U0001F9D1 - they/them
+            \U0001F465 - double (primary and secondary out of main 3)
+            \u2754 - other/manually set (varyex will use they/them where pronouns are used)""")
+
+        for x in {'\U0001F468', '\U0001F469', '\U0001F9D1'}:
+            self.add_button(menus.Button(x, self.handler))
+        self.add_button(menus.Button('\U0001F465', self.doublemethod))
+        self.add_button(menus.Button('\u2754', self.otherstop))
+
+    async def send_initial_message(self, ctx, channel):
+        return await channel.send(embed=self.embed)
+
+    async def prompt(self, ctx):
+        await self.start(ctx, wait=True)
+        return self.result
+    
+    async def handler(self, payload):
+        if payload.event_type == "REACTION_REMOVE": return
+        self.dval |= (['\U0001F468', '\U0001F469', '\U0001F9D1'].index(payload.emoji.name)) << ((self.double % 2) * 2)
+        self.result = {'value': self.dval, 'custom': False}
+        if (self.double >= 2): self.stop()
+        else:
+            self.double += 1
+            await self.remove_button(payload.emoji.name, react=True)
+            l = ['he', 'she', 'they']
+            ou = []
+            for i in range(self.double):
+                ou.append(l[(self.dval >> (i * 2)) & 0b11])
+            self.embed.description = ''.join(self.embed.description.splitlines(keepends=True)[:-1]) + f"Currently selected: {'/'.join(ou)}"
+            await self.message.edit(embed=self.embed)
+            if (self.double >= 2):
+                self.result['value'] |= 0b10000 
+                self.stop()
+            
+    async def doublemethod(self, _payload):
+        self.double = 0
+        await self.remove_button('\U0001F465', react=True)
+        await self.remove_button('\u2754', react=True)
+        self.embed.description = """
+            \U0001F468 - he/him
+            \U0001F469 - she/her
+            \U0001F9D1 - they/them
+
+            Select 2 options one after the other.
+            Currently selected: *none*"""
+        await self.message.edit(embed=self.embed)
+
+    async def otherstop(self, _payload):
+        self.result = {'value': '', 'custom': True}
+        self.stop()
+
+    @menus.button('\u23F9')
+    async def cancelb(self, _payload):
+        self.result = {} #ensure we cancel
+        self.stop()
 
 class Profile(commands.Cog):
     def __init__(self, bot):
@@ -153,9 +220,9 @@ class Profile(commands.Cog):
         rec([x.replace('_', ' ') for x in pytz.common_timezones], [])
 
     def getmpm(self) -> mpku.MPKManager:
-        return mpku.getmpm('users', None)
+        return mpku.getmpm('users', None, filter=True)
 
-    @commands.group(aliases = ["userinfo"])
+    @commands.group(aliases = ["userinfo", "userprofile"])
     async def profile(self, ctx: commands.Context, user: Optional[UserLookup]):
         """Edit or get your own or someone else's profule.
         This also includes generic user info such as roles and account creation/server join date.
@@ -221,13 +288,25 @@ class Profile(commands.Cog):
             ps = ""
             if (last['custom']): ps = last['value']
             else:
-                if   (last['value'] == 0): 
+                double = False
+                vused = last['value']
+                if (vused & 0b10000): 
+                    double = True
+                    vused &= 0b11 #primary first
+                if   (vused == 0): 
                     ps = "he/him"
                     pnb = "his"
-                elif (last['value'] == 1): 
+                elif (vused == 1): 
                     ps = "she/her"
                     pnb = "her"
-                elif (last['value'] == 2): ps = "they/them" #non-binary (0b10 = 2) :troll
+                elif (vused == 2): ps = "they/them" #non-binary (0b10 = 2) :troll
+                if (double):
+                    #we modify just after the /
+                    ps = ps.split('/')[0] + '/'
+                    vused = (last['value'] >> 2) & 0b11
+                    if   (vused == 0): ps += "he"
+                    elif (vused == 1): ps += "she"
+                    elif (vused == 2): ps += "they"
             pval += f"{ps}\n"
         getfromprofile("birthday")
         pval += "**Birthday**: "
@@ -322,90 +401,50 @@ class Profile(commands.Cog):
                 embed.description += '\n'
         await ctx.send(embed=embed)
 
-    @edit.command(aliases = ['setrealname', 'rname'])
-    async def realname(self, ctx):
+    async def _edit(self, ctx, prompts, max, key, pretext):
         mpm = self.getmpm()
         try: mpk = mpm.data[str(ctx.author.id)]['profile']
         except: return await ctx.invoke(self.edit)
-        await ctx.send("Please type your real name. Remember, everyone can see this, so I recommend a \"nickname\" of sorts.\nIt must be under 40 characters. You can type `cancel` to cancel.")
+        if not pretext: await ctx.send(prompts[0])
         def waitforcheck(m):
             return (m.author == ctx.author) and (m.channel == ctx.channel)
         while True:
-            try: ret = await self.bot.wait_for('message', check=waitforcheck, timeout=60.0)
-            except: return
-            if (ret.content.lower() == "cancel"):
-                await ctx.send("Cancelled name setting.")
-                break
-            if (len(ret.content) > 40): 
-                await (await ctx.send("Please keep it under 40 characters.")).delete(delay=5)
+            if pretext: ret = pretext
+            else:
+                try: ret = (await self.bot.wait_for('message', check=waitforcheck, timeout=60.0)).content
+                except: return
+            if (ret.lower() == "cancel"):
+                await ctx.send(prompts[2])
+                return
+            if (len(ret) > max): 
+                await (await ctx.send(f"Please keep it under {max} characters ({len(ret)}/{max}).")).delete(delay=5)
+                if pretext: 
+                    pretext = None
+                    await ctx.send(prompts[0])
                 continue
-            mpk['realname'] = ret.content
+            mpk[key] = ret
             mpm.save()
-            return await ctx.send("Real name set!")
+            return await ctx.send(prompts[1])
+
+    @edit.command(aliases = ['setrealname', 'rname'])
+    async def realname(self, ctx, *, pretext: Optional[str]):
+        await self._edit(ctx, ["Please type your real name. Remember, everyone can see this, so I recommend a \"nickname\" of sorts.\nIt must be under 30 characters. You can type `cancel` to cancel.",
+            "Real name set!", "Cancelled name setting."], 30, 'realname', pretext)
 
     @edit.command(aliases = ['setname'])
-    async def name(self, ctx):
-        mpm = self.getmpm()
-        try: mpk = mpm.data[str(ctx.author.id)]['profile']
-        except: return await ctx.invoke(self.edit)
-        await ctx.send("Please type your preferred name. It must be under 30 characters. You can type `cancel` to cancel.")
-        def waitforcheck(m):
-            return (m.author == ctx.author) and (m.channel == ctx.channel)
-        while True:
-            try: ret = await self.bot.wait_for('message', check=waitforcheck, timeout=60.0)
-            except: return
-            if (ret.content.lower() == "cancel"):
-                await ctx.send("Cancelled name setting.")
-                break
-            if (len(ret.content) > 30): 
-                await (await ctx.send("Please keep it under 30 characters.")).delete(delay=5)
-                continue
-            mpk['name'] = ret.content
-            mpm.save()
-            return await ctx.send("Name set!")
+    async def name(self, ctx, *, pretext: Optional[str]):
+        await self._edit(ctx, ["Please type your preferred name. It must be under 30 characters. You can type `cancel` to cancel.",
+            "Name set!", "Cancelled name setting."], 30, 'name', pretext)
 
     @edit.command(aliases = ['setlocation', 'loc', 'setloc'])
-    async def location(self, ctx):
-        mpm = self.getmpm()
-        try: mpk = mpm.data[str(ctx.author.id)]['profile']
-        except: return await ctx.invoke(self.edit)
-        await ctx.send("Please type your location. **Don't** be specific. It must be under 30 characters. You can type `cancel` to cancel.")
-        def waitforcheck(m):
-            return (m.author == ctx.author) and (m.channel == ctx.channel)
-        while True:
-            try: ret = await self.bot.wait_for('message', check=waitforcheck, timeout=60.0)
-            except: return
-            if (ret.content.lower() == "cancel"):
-                await ctx.send("Cancelled location setting.")
-                break
-            if (len(ret.content) > 30): 
-                await (await ctx.send("Please keep it under 30 characters.")).delete(delay=5)
-                continue
-            mpk['location'] = ret.content
-            mpm.save()
-            return await ctx.send("Location set!")
-
+    async def location(self, ctx, *, pretext: Optional[str]):
+        await self._edit(ctx, ["Please type your location. **Don't be specific.** It must be under 30 characters. You can type `cancel` to cancel.",
+            "Location set!", "Cancelled location setting."], 30, 'location', pretext)
 
     @edit.command(aliases = ['setbio'])
-    async def bio(self, ctx):
-        mpm = self.getmpm()
-        try: mpk = mpm.data[str(ctx.author.id)]['profile']
-        except: return await ctx.invoke(self.edit)
-        await ctx.send("Please type up a bio. It must be under 400 characters. You can type `cancel` to cancel.")
-        def waitforcheck(m):
-            return (m.author == ctx.author) and (m.channel == ctx.channel)
-        while True:
-            try: ret = await self.bot.wait_for('message', check=waitforcheck, timeout=60.0)
-            except: return
-            if (ret.content.lower() == "cancel"):
-                await ctx.send("Cancelled bio setting.")
-                break
-            if (len(ret.content) > 400): 
-                await (await ctx.send(f"Please keep it under 400 characters. (that was {len(ret.content)} characters)")).delete(delay=5)
-                continue
-            mpk['bio'] = ret.content
-            mpm.save()
-            return await ctx.send("Bio set!")
+    async def bio(self, ctx, *, pretext: Optional[str]):
+        await self._edit(ctx, ["Please type up a bio. It must be under 400 characters. You can type `cancel` to cancel.",
+            "Bio set!", "Cancelled bio setting."], 400, 'bio', pretext)
 
 
     @edit.command(aliases = ['setbday', 'bday', 'setbirthday'])
@@ -444,29 +483,25 @@ class Profile(commands.Cog):
         mpm = self.getmpm()
         try: mpk = mpm.data[str(ctx.author.id)]['profile']
         except: return await ctx.invoke(self.edit)
-        e = discord.Embed(title="Pronoun Selector", color=discord.Color(self.bot.data['color']))
-        e.description = """
-        \U0001F468 - he/him
-        \U0001F469 - she/her
-        \U0001F9D1 - they/them
-        \u2754 - other/manually set (varyex will use they/them where pronouns are used)
-        """
-        e.set_footer(text="This will automatically cancel in 2 minutes.")
-        ch = await Choice(e, ['\U0001F468', '\U0001F469', '\U0001F9D1', '\u2754'], timeout=120.0, clear_reactions_after=True).prompt(ctx)
-        if ch == 3:
-            await ctx.send("Type out what your pronouns to be displayed as.")
+        result = await PronounSelector(self.bot).prompt(ctx)
+        if not result:
+            return await ctx.send("Cancelled pronoun setting.")
+        elif result['custom']:
+            await ctx.send("Please type out your preferred pronouns (under 50 chars). Type `cancel` to cancel.")
             def waitforcheck(m):
                 return (m.author == ctx.author) and (m.channel == ctx.channel)
             while True:
                 try: ret = await self.bot.wait_for('message', check=waitforcheck, timeout=60.0)
                 except: return
+                if (ret.content.lower() == "cancel"):
+                    return await ctx.send("Cancelled pronoun setting.")
                 if (len(ret.content) > 50): 
                     await (await ctx.send("Please keep it under 50 characters.")).delete(delay=5)
                     continue
-                mpk['pronoun'] = {'value': ret.content, 'custom': True}
+                result.update({'value': ret.content})
+                mpm.save()
                 break
-        else:
-            mpk['pronoun'] = {'value': ch, 'custom': False}
+        mpk['pronoun'] = result
         mpm.save()
         return await ctx.send("Pronouns set!")
 

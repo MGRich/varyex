@@ -1,4 +1,4 @@
-import discord, re, difflib
+import discord, re, difflib, pytimeparse
 from typing import List
 from discord.ext import commands
 
@@ -54,4 +54,31 @@ class MemberLookup(commands.Converter):
                 if (matches):
                     return mlist[fmlist.index(matches[0])]
                 raise commands.MemberNotFound(argument)
+
+class DurationStringClass:
+    def __init__(self, string="", duration=0):
+        self.duration = duration
+        self.string = string
+
+class DurationString(commands.Converter): #making this look nicer by fucking with the naming
+    async def convert(self, ctx: commands.Context, argument: str) -> DurationStringClass:
+        flipped = False
+        s = argument
+        d = 0
+        i = 0
+        while True:
+            try: r = pytimeparse.parse(s.split()[i])
+            except IndexError: break 
+            if not r: 
+                if not flipped: 
+                    i = -1
+                    flipped = True
+                    continue
+                else: break
+            d += r
+            flipped = True #we will no longer flip cause this is where we are
+            slist = re.split(r'(\s+)', s)
+            del slist[i]
+            s = ''.join(slist).strip()
+        return DurationStringClass(s, d)
 
