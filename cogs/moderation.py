@@ -193,6 +193,8 @@ class Moderation(commands.Cog):
                 except: continue
                 inwarn = mpk['inwarn'][uid]
                 #log.debug(uid)
+                try: inwarn['type']
+                except: inwarn['type'] = 'warn'
 
                 try: user = await guild.fetch_member(int(uid))
                 except discord.NotFound: user = None 
