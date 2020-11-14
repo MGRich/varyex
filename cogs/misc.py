@@ -2,7 +2,7 @@ import discord, re #general/misc
 from discord.ext import commands, tasks
 
 import cogs.utils.mpk as mpku
-from cogs.utils.converters import UserLookup
+from cogs.utils.converters import MemberLookup, UserLookup
 from typing import Optional, Union, List
 from asyncio import sleep #auto rolecolor
 from numpy import clip
