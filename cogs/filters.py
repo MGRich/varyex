@@ -20,7 +20,7 @@ class Filters(commands.Cog):
     @commands.group(aliases = ['f'])
     @commands.has_permissions(manage_messages = True)
     async def filter(self, ctx):
-        """Manage filters. **(!!!!)**
+        """Manage filters.
         You **must be able to manage messages.**
 
         `filter/f`

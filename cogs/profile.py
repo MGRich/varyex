@@ -1,5 +1,5 @@
 import discord, asyncio
-from discord.ext import commands, tasks, menus
+from discord.ext import commands, menus
 
 from cogs.utils.converters import UserLookup
 from cogs.utils.menus import Confirm, Choice
@@ -11,11 +11,11 @@ import timeago
 import cogs.utils.mpk as mpku
 import pytz
 import dateparser
+import number_parser as numparser
 from copy import copy
-from multiprocessing import Pool
 
 import logging
-log = logging.getLogger('bot')
+LOG = logging.getLogger('bot')
 
 def isdst(tz): bool(datetime.now(tz).dst()) #https://stackoverflow.com/a/19968515
 
@@ -248,14 +248,14 @@ class Profile(commands.Cog):
 
     @commands.group(aliases = ["userinfo", "userprofile"])
     async def profile(self, ctx: commands.Context, user: Optional[UserLookup]):
-        """Edit or get your own or someone else's profule.
+        """Edit or get your own or someone else's profile.
         This also includes generic user info such as roles and account creation/server join date.
 
         `profile/userinfo <user>`
         
         **EDITING**
         > `profile edit <property> [text if applicable]`
-        > Valid properties are: name, realname, pronoun, location, bio, birthday, accounts"""
+        > Valid properties are: name, realname, pronoun, location, bio, birthday"""
         if ctx.invoked_subcommand: return
         if not user: user = ctx.author
         user: discord.User
@@ -336,8 +336,8 @@ class Profile(commands.Cog):
             now = datetime.now(tz)
             if not hasy: dt = dt.replace(year=now.year)
             else: curr += f" ({timeago.format(dt, now).replace('ago', 'old')})"
-            log.debug(dt)
-            log.debug(now)
+            LOG.debug(dt)
+            LOG.debug(now)
             if now.date() == dt.date(): curr += f" **(It's {pnb} birthday today! \U0001F389)**"
             pval += f"{date}{curr}\n"
         if (getfromprofile("location")):
@@ -492,7 +492,6 @@ class Profile(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, m: discord.Message):
-        return
         if (m.author.id == self.bot.user.id) or not m.guild: return
         perms: discord.Permissions = m.channel.permissions_for(m.guild.me)
         if not (perms.read_message_history and perms.add_reactions and perms.send_messages and perms.manage_messages): return
@@ -501,20 +500,31 @@ class Profile(commands.Cog):
         except: return
 
         dt = None
-        split = m.content.split()
+        split = numparser.parse(m.content).split()
+        ddp = dateparser.DateDataParser(languages=['en'], settings={'TIMEZONE': tz, 'TO_TIMEZONE': 'UTC'})
 
         for i in range(len(split)):
             dt = None
             total = ""
             num = i
             worked = False
-            while num < len(split):
-                total += ' ' + split[num]
-                parsed = dateparser.parse(total, languages=['en'], settings={'TIMEZONE': tz, 'TO_TIMEZONE': 'UTC', 'RELATIVE_BASE': m.created_at})
-                if not parsed: break
-                worked = True
-                dt = parsed
-                num += 1
+            flip = False
+            while True:
+                try:
+                    if (num < 0): raise IndexError()
+                    if flip: total = split[num] + ' ' + total
+                    else: total += ' ' + split[num]
+                    parsed = ddp.get_date_data(total)
+                    if not (parsed and parsed['date_obj'] and (flip or parsed['period'] == 'day')): 
+                        raise IndexError()
+                except IndexError:
+                    if flip: break
+                    flip = True
+                    num = i - 1
+                    continue
+                worked = parsed['period'] == 'day'
+                dt = parsed['date_obj']
+                num += -1 if flip else 1 
             if not worked: continue
             try: int(total)
             except: break
@@ -526,7 +536,7 @@ class Profile(commands.Cog):
         def check(r, u):
             return u == m.author and str(r.emoji) == '\u23f0'
 
-        try: await self.bot.wait_for('reaction_add', timeout=2, check=check)
+        try: await self.bot.wait_for('reaction_add', timeout=1.5, check=check)
         except asyncio.TimeoutError: 
             return await m.remove_reaction('\u23f0', m.guild.me)
         else: 
