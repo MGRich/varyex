@@ -119,13 +119,15 @@ async def on_command_error(ctx: commands.Context, error):
         try: await ctx.message.author.send('This command cannot be used in Private Messages.')
         except: pass
         return
+    if isinstance(error, commands.MissingPermissions):
+        return await ctx.send("You don't have sufficient permissions to run this.")
+    if isinstance(error, commands.BotMissingPermissions):
+        return await ctx.send("I don't have sufficient permissions to run this.")
     #NOW we start being linient
     errored.append([ctx.message.id, 0])
     if isinstance(error, commands.CommandNotFound): return
     if isinstance(error, commands.UserInputError):
         return await ctx.invoke(bot.get_command("help"), ctx.command.root_parent.name if ctx.command.root_parent else ctx.command.name)
-    if isinstance(error, commands.MissingPermissions):
-        return await ctx.send("You don't have sufficient permissions to run this.")
 
     if bot.owner == ctx.author:
         return traceback.print_exception(type(error), error, error.__traceback__, file=(sys.stdout if (not stable) else sys.stderr))

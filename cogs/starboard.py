@@ -136,6 +136,7 @@ class Starboard(commands.Cog):
         log.debug(default_timer() - start)
 
     @commands.group(aliases = ["sb"])
+    @commands.guild_only()
     async def starboard(self, ctx):
         """Sets up the starboard/views the leaderboard if enabled.
         __This command is entirely run by subcommands.__
@@ -156,6 +157,7 @@ class Starboard(commands.Cog):
     
     @starboard.group(aliases = ["cfg"])
     @commands.has_permissions(manage_messages=True, manage_guild=True)
+    @commands.guild_only()
     async def config(self, ctx):
         if (ctx.invoked_subcommand == None):
             base = mpku.getmpm('starboard', ctx.guild).getanddel()
@@ -190,6 +192,7 @@ class Starboard(commands.Cog):
         log.debug(f"refreshed leaderboard for {gid}")
 
     @starboard.command(aliases = ["lb"])
+    @commands.guild_only()
     async def leaderboard(self, ctx):
         mpk = mpku.getmpm('starboard', ctx.guild).getanddel()
         if not (mpk['leaderboard']['enabled']): return
@@ -245,6 +248,7 @@ class Starboard(commands.Cog):
         
     @config.command(aliases = ['channel'])
     @commands.has_permissions(manage_guild=True)
+    @commands.guild_only()
     async def setchannel(self, ctx, chn: Optional[discord.TextChannel]):
         if not chn: return await ctx.invoke(self.config)
         mpm = mpku.getmpm('starboard', ctx.guild)
@@ -254,6 +258,7 @@ class Starboard(commands.Cog):
         await ctx.send(f"Channel {chn.mention} set as starboard channel!")
 
     @config.command(name = "leaderboard", aliases = ['lb'])
+    @commands.guild_only()
     async def lbcfg(self, ctx):
         mpm = mpku.getmpm('starboard', ctx.guild)
         mpk = mpm.data
