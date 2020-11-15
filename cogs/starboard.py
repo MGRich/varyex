@@ -152,7 +152,7 @@ class Starboard(commands.Cog):
         > `sb leaderboard`
         """
         if (ctx.invoked_subcommand == None):
-            await ctx.invoke(self.bot.get_command("help"), "sb")
+            raise commands.UserInputError()
     
     @starboard.group(aliases = ["cfg"])
     @commands.has_permissions(manage_messages=True, manage_guild=True)

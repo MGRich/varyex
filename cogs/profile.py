@@ -1,4 +1,4 @@
-import discord
+import discord, asyncio
 from discord.ext import commands, tasks, menus
 
 from cogs.utils.converters import UserLookup
@@ -12,11 +12,11 @@ import cogs.utils.mpk as mpku
 import pytz
 import dateparser
 from copy import copy
+from multiprocessing import Pool
 
 import logging
 log = logging.getLogger('bot')
 
-fields = ['name', 'realname', 'pronoun', 'birthday', 'bio', 'location', 'tz']
 def isdst(tz): bool(datetime.now(tz).dst()) #https://stackoverflow.com/a/19968515
 
 class TZMenu(menus.Menu):
@@ -140,13 +140,13 @@ class PronounSelector(menus.Menu):
 
         self.embed = discord.Embed(title="Pronoun Selector", color=discord.Color(self.bot.data['color']), 
             description =  """
-            \U0001F468 - he/him
-            \U0001F469 - she/her
+            \U00002642 - he/him
+            \U00002640 - she/her
             \U0001F9D1 - they/them
             \U0001F465 - double (primary and secondary out of main 3)
             \u2754 - other/manually set (varyex will use they/them where pronouns are used)""")
 
-        for x in {'\U0001F468', '\U0001F469', '\U0001F9D1'}:
+        for x in {'\u2642', '\u2640', '\U0001F9D1'}:
             self.add_button(menus.Button(x, self.handler))
         self.add_button(menus.Button('\U0001F465', self.doublemethod))
         self.add_button(menus.Button('\u2754', self.otherstop))
@@ -160,20 +160,17 @@ class PronounSelector(menus.Menu):
     
     async def handler(self, payload):
         if payload.event_type == "REACTION_REMOVE": return
-        self.dval |= (['\U0001F468', '\U0001F469', '\U0001F9D1'].index(payload.emoji.name)) << ((self.double % 2) * 2)
+        used = ['\u2642', '\u2640', '\U0001F9D1'].index(payload.emoji.name)
+        n = ((self.double % 2) * 2)
+        self.dval = (self.dval & ~(0b11 << n)) | (used << n)  
         self.result = {'value': self.dval, 'custom': False}
         if (self.double >= 2): self.stop()
         else:
             self.double += 1
             await self.remove_button(payload.emoji.name, react=True)
-            l = ['he', 'she', 'they']
-            ou = []
-            for i in range(self.double):
-                ou.append(l[(self.dval >> (i * 2)) & 0b11])
-            self.embed.description = ''.join(self.embed.description.splitlines(keepends=True)[:-1]) + f"Currently selected: {'/'.join(ou)}"
+            self.embed.description = ''.join(self.embed.description.splitlines(keepends=True)[:-1]) + f"Currently selected: {pronounstrings(self.result)[0]}"
             await self.message.edit(embed=self.embed)
             if (self.double >= 2):
-                self.result['value'] |= 0b10000 
                 self.stop()
             
     async def doublemethod(self, _payload):
@@ -181,13 +178,14 @@ class PronounSelector(menus.Menu):
         await self.remove_button('\U0001F465', react=True)
         await self.remove_button('\u2754', react=True)
         self.embed.description = """
-            \U0001F468 - he/him
-            \U0001F469 - she/her
+            \U00002642 - he/him
+            \U00002640 - she/her
             \U0001F9D1 - they/them
 
             Select 2 options one after the other.
             Currently selected: *none*"""
         await self.message.edit(embed=self.embed)
+        self.dval |= 0b11100
 
     async def otherstop(self, _payload):
         self.result = {'value': '', 'custom': True}
@@ -198,8 +196,34 @@ class PronounSelector(menus.Menu):
         self.result = {} #ensure we cancel
         self.stop()
 
+def pronounstrings(d):
+    ps = ""
+    used = "their"
+    if (d['custom']): ps = d['value']
+    else:
+        double = False
+        vused = d['value']
+        if (vused & 0b10000): 
+            double = True
+            vused &= 0b11 #primary first
+        if   (vused == 0): 
+            ps = "he/him"
+            used = "his"
+        elif (vused == 1): 
+            ps = "she/her"
+            used = "her"
+        elif (vused == 2): ps = "they/them" #non-binary (0b10 = 2) :troll
+        if (double):
+            #we modify just after the /
+            ps = ps.split('/')[0] + '/'
+            vused = (d['value'] >> 2) & 0b11
+            if   (vused == 0): ps += "he"
+            elif (vused == 1): ps += "she"
+            elif (vused == 2): ps += "they"
+    return (ps, used)
+
 class Profile(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.tzd = {}
         def rec(cur, startswith):
@@ -227,7 +251,11 @@ class Profile(commands.Cog):
         """Edit or get your own or someone else's profule.
         This also includes generic user info such as roles and account creation/server join date.
 
-        `profile/userinfo <user>`"""
+        `profile/userinfo <user>`
+        
+        **EDITING**
+        > `profile edit <property> [text if applicable]`
+        > Valid properties are: name, realname, pronoun, location, bio, birthday, accounts"""
         if ctx.invoked_subcommand: return
         if not user: user = ctx.author
         user: discord.User
@@ -285,28 +313,7 @@ class Profile(commands.Cog):
         if not last:
             pval += "*Not set*\n"
         else:
-            ps = ""
-            if (last['custom']): ps = last['value']
-            else:
-                double = False
-                vused = last['value']
-                if (vused & 0b10000): 
-                    double = True
-                    vused &= 0b11 #primary first
-                if   (vused == 0): 
-                    ps = "he/him"
-                    pnb = "his"
-                elif (vused == 1): 
-                    ps = "she/her"
-                    pnb = "her"
-                elif (vused == 2): ps = "they/them" #non-binary (0b10 = 2) :troll
-                if (double):
-                    #we modify just after the /
-                    ps = ps.split('/')[0] + '/'
-                    vused = (last['value'] >> 2) & 0b11
-                    if   (vused == 0): ps += "he"
-                    elif (vused == 1): ps += "she"
-                    elif (vused == 2): ps += "they"
+            ps, pnb = pronounstrings(last)
             pval += f"{ps}\n"
         getfromprofile("birthday")
         pval += "**Birthday**: "
@@ -354,7 +361,7 @@ class Profile(commands.Cog):
     @profile.group(aliases = ["set"])
     async def edit(self, ctx: commands.Context):
         if ctx.invoked_subcommand: return
-        try: mpk = self.getmpm().getanddel()[str(ctx.author.id)]['profile']
+        try: self.getmpm().getanddel()[str(ctx.author.id)]['profile']
         except:
             a = await Confirm("Do you want to create a profile? This cannot be undone. (Remember, anyone can view your profile at any time.)", delete_message_after=False).prompt(ctx)
             if a:
@@ -365,41 +372,7 @@ class Profile(commands.Cog):
                 mpm.save()
                 return await ctx.reinvoke(restart=True)
             return await ctx.send("Profile declined.")
-        last: Union[str, dict]
-        def getfromprofile(st, notset=True):
-            nonlocal last
-            try:
-                last = mpk[st] 
-                if not last: raise Exception()
-            except: last = "*Not set*" if notset else None
-            return last
-        embed = discord.Embed(title="Current Profile Properties", color=discord.Color(self.bot.data['color']), timestamp=datetime.utcnow())
-        embed.set_footer(text=f"Set a property using {ctx.prefix}profile edit (property)")
-        embed.set_author(name=ctx.author.display_name, icon_url=str(ctx.author.avatar_url))
-        embed.description = ''
-        for x in fields:
-            embed.description += f"`{x}`: "
-            if x in {'name', 'realname', 'bio', 'tz', 'location'}:
-                embed.description += f"{getfromprofile(x)}\n"
-            else:
-                if x == 'birthday':
-                    getfromprofile(x, False)
-                    if not last: embed.description += "*Not set*"
-                    else: 
-                        if (len(last) == 4): embed.description += datetime.strptime(last, "%d%m").strftime("%m/%d")
-                        else: embed.description += datetime.strptime(last, "%d%m%y").strftime("%m/%d/%y")
-                elif x == "pronoun":
-                    getfromprofile(x, False)
-                    if not last:
-                        embed.description += "*Not set*"
-                    else:
-                        if (last['custom']): embed.description += last['value']
-                        else:
-                            if   (last['value'] == 0): embed.description += "he/him"
-                            elif (last['value'] == 1): embed.description += "she/her"
-                            elif (last['value'] == 2): embed.description += "they/them" #non-binary (0b10 = 2) :troll
-                embed.description += '\n'
-        await ctx.send(embed=embed)
+        raise commands.UserInputError()
 
     async def _edit(self, ctx, prompts, max, key, pretext):
         mpm = self.getmpm()
@@ -516,6 +489,52 @@ class Profile(commands.Cog):
             mpm.save()
             return await ctx.send("Timezone set!")
         return await ctx.send("Timezone setting cancelled.")
+
+    @commands.Cog.listener()
+    async def on_message(self, m: discord.Message):
+        if (m.author.id == self.bot.user.id) or not m.guild: return
+        perms: discord.Permissions = m.channel.permissions_for(m.guild.me)
+        if not (perms.read_message_history and perms.add_reactions and perms.send_messages and perms.manage_messages): return
+
+        try: tz = self.getmpm().getanddel()[str(m.author.id)]['profile']['tz'].replace(' ', '_')
+        except: return
+
+        dt = None
+        split = m.content.split()
+
+        for i in range(len(split)):
+            dt = None
+            total = ""
+            num = i
+            worked = False
+            while num < len(split):
+                total += ' ' + split[num]
+                parsed = dateparser.parse(total, languages=['en'], settings={'TIMEZONE': tz, 'TO_TIMEZONE': 'UTC', 'RELATIVE_BASE': m.created_at})
+                if not parsed: break
+                worked = True
+                dt = parsed
+                num += 1
+            if not worked: continue
+            try: int(total)
+            except: break
+
+        if not dt: return
+        await m.add_reaction('\u23f0')
+        
+
+        def check(r, u):
+            return u == m.author and str(r.emoji) == '\u23f0'
+
+        try: await self.bot.wait_for('reaction_add', timeout=2, check=check)
+        except asyncio.TimeoutError: 
+            return await m.remove_reaction('\u23f0', m.guild.me)
+        else: 
+            await m.remove_reaction('\u23f0', m.guild.me)
+            await m.remove_reaction('\u23f0', m.author)
+
+        e = discord.Embed(timestamp = dt, color=self.bot.data['color'])
+        e.set_footer(text="Date above in local time")
+        await m.channel.send(embed=e)
 
 def setup(bot):
     bot.add_cog(Profile(bot))        

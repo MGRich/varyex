@@ -126,13 +126,16 @@ class Misc(commands.Cog):
         else: await ctx.send("My prefix here has been reset.")
 
     @commands.command(aliases=('pfp',))
-    async def avatar(self, ctx, user: Optional[MemberLookup]):
+    async def avatar(self, ctx, user: Optional[UserLookup]):
         """Fetches your own or a user's avatar.
 
         `avatar/pfp [user]`"""
-        if not user: user = ctx.author
+        if ctx.guild and user:
+            user = ctx.guild.get_member(user.id) or user
+        elif not user: user = ctx.author
+        
         e = discord.Embed(color=(discord.Color(self.bot.data['color']) if user.color == discord.Color.default() else user.color))
-        e.set_author(name=f"{user.display_name}'s avatar", icon_url=str(user.avatar_url_as(static_format='jpg', size=64)))
+        e.set_author(name=f"{user.display_name}'s avatar", icon_url=str(user.avatar_url_as(format='jpg', size=64)))
         e.set_image(url=str(user.avatar_url_as(static_format='png', size=2048)))
         return await ctx.send(embed=e)
 
@@ -180,6 +183,8 @@ class Misc(commands.Cog):
                 if (joined - x.created_at < timedelta(seconds=1)) and x.managed:
                     return await x.edit(color=discord.Color(brighten))
         except discord.Forbidden: return
+
+
     ##########################################GARFIELD############################################
     async def calcstripfromdate(self, date: Union[datetime, int], sromg): 
         attempts = 0
