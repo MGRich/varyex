@@ -518,7 +518,9 @@ class Profile(commands.Cog):
                     if not (parsed and parsed['date_obj'] and (flip or parsed['period'] == 'day')): 
                         raise IndexError()
                 except IndexError:
-                    if flip: break
+                    if flip:
+                        worked = parsed['period'] == 'day' 
+                        break
                     flip = True
                     num = i - 1
                     continue
