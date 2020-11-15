@@ -520,6 +520,7 @@ class Profile(commands.Cog):
                 except IndexError:
                     if flip:
                         worked = parsed['period'] == 'day' 
+                        dt = parsed['date_obj']
                         break
                     flip = True
                     num = i - 1
@@ -527,6 +528,7 @@ class Profile(commands.Cog):
                 worked = parsed['period'] == 'day'
                 dt = parsed['date_obj']
                 num += -1 if flip else 1 
+                if (num < 0): break
             if not worked: continue
             try: int(total)
             except: break
