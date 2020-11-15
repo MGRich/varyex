@@ -179,6 +179,8 @@ class Starboard(commands.Cog):
         mpk = mpm.data
         try: mpk['leaderboard']
         except: mpk['leaderboard'] = {}
+        try: mpk['blacklist']
+        except: mpk['blacklist'] = []
         if 'enabled' not in mpk['leaderboard']: lbe = True
         else: lbe = mpk['leaderboard']['enabled']
         mpk['leaderboard'] = {'enabled': lbe}
@@ -186,6 +188,7 @@ class Starboard(commands.Cog):
             msg = mpk['messages'][x]
             try: del msg['spstate']
             except: pass
+            if msg['chn'] in mpk['blacklist']: continue
             if (aid := str(msg['author'])) not in mpk['leaderboard']: mpk['leaderboard'][aid] = 0
             mpk['leaderboard'][aid] += msg['count']
         mpm.save()
