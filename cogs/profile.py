@@ -492,6 +492,7 @@ class Profile(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, m: discord.Message):
+        return
         if (m.author.id == self.bot.user.id) or not m.guild: return
         perms: discord.Permissions = m.channel.permissions_for(m.guild.me)
         if not (perms.read_message_history and perms.add_reactions and perms.send_messages and perms.manage_messages): return
