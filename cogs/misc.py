@@ -366,13 +366,15 @@ class Misc(commands.Cog):
             try: mpk = mpku.getmpm('misc', guild).getanddel()['garfield']
             except: continue
             if (shown & 0b01) and mpk['g']:
+                try:
                 chn = guild.get_channel(mpk['g'])
-                if chn:
                     await chn.send(embed=gembed)
+                except: pass
             if (shown & 0b10) and mpk['s']:
+                try:
                 chn = guild.get_channel(mpk['s'])
-                if chn:
                     await chn.send(embed=sembed)
+                except: pass
         mpkr = mpku.getmpm("users", None).getanddel()
         for uid in mpkr:
             try: mpk = mpkr[uid]['garfield']
