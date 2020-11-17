@@ -1,5 +1,5 @@
 import discord, umsgpack, os, zlib
-from copy import copy
+from copy import copy, deepcopy
 
 
 class MPKManager:
@@ -17,7 +17,7 @@ class MPKManager:
         if not raw: self._filter(False)
 
     def _filter(self, s, d=None):
-        if s: d = d or copy(self.data)
+        if s: d = d or deepcopy(self.data)
         else: d = self.data
         if s or (self.vflags & 1):
             self._recur(s, d)
@@ -43,7 +43,7 @@ class MPKManager:
         return self.data
     
     def save(self, d=None):
-        d = self._filter(True, d or copy(self.data))
+        d = self._filter(True, d)
         with open(self.path, "wb") as f: umsgpack.dump(d, f)
 
 def testgiven(mpk, checks) -> bool:
