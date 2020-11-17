@@ -746,9 +746,10 @@ class Profile(commands.Cog):
             try: checkembed = data['embed']
             except: checkembed = True
             tocheck = ""
+            url = data['link'].replace('[]', ret)
             if checkembed:
                 dump = self.bot.get_channel(DUMPCHANNEL)                
-                keepread = await dump.send(data['link'].replace('[]', ret))
+                keepread = await dump.send(url)
                 await asyncio.sleep(.5)
                 for i in range(5):
                     keepread = await dump.fetch_message(keepread.id)
@@ -759,7 +760,8 @@ class Profile(commands.Cog):
                     await asyncio.sleep(1)
             else: 
                 try:
-                    async with aiohttp.request('GET', data['link'].replace('[]', ret)) as resp:
+                    async with aiohttp.request('GET', url) as resp:
+                        if resp.status != 200: raise Exception()
                         tree = html.fromstring(await resp.text())
                     head = None
                     for x in tree:
@@ -780,7 +782,10 @@ class Profile(commands.Cog):
             try: name = match.group("name")
             except: name = ret
             try: handle = match.group("handle")
-            except: handle = name
+            except: 
+                if name.lower() == ret.lower():
+                    handle = name
+                else: handle = ret
             break
         await td.delete()
         alist.append({'handle': handle, 'name': name})
