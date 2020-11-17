@@ -296,7 +296,8 @@ class Misc(commands.Cog):
                 mpk = mpm.data
             else:
                 mpm = self.bot.usermpm
-                mpk = mpm.data[str(ctx.author.id)]
+                try: mpk = mpm.data[str(ctx.author.id)]
+                except: mpk = mpm.data[str(ctx.author.id)] = {}
             try: mpk['garfield']
             except: mpk['garfield'] = {'g': 0, 's': 0}
             check = 's' if isSROMG else 'g'
