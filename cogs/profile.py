@@ -447,7 +447,7 @@ class Profile(commands.Cog):
         getfromprofile("accounts")
         #last = {'twitter': [{'handle': 'rmg_rich', 'name': 'RMGRich'}, {'handle': 'rmgrich', 'name': 'rmgrich'}], 'twitch': [{'name': 'RMGBread', 'handle': 'rmgbread'}], 'youtube': [{'handle': 'UC9ecwl3FTG66jIKA9JRDtmg', 'name': 'SiIvaGunner'}]}
         if last:
-            pval += "**Accounts:**\n"
+            aval = ""
             for acc in last:
                 t = ACCOUNTS[acc]['type']
                 emoji = self.bot.get_emoji(ACCOUNTS[acc]['emoji'])
@@ -462,8 +462,8 @@ class Profile(commands.Cog):
                     if t == 0: display += f" ({name})"
                     display = discord.utils.escape_markdown(display)
                     link = ACCOUNTS[acc]['link'].replace('[]', x['handle'])
-                    pval += f"> {emoji} [{display}]({link})\n"
-        if pval.endswith("**Accounts:**\n"): pval = pval[:-len("**Accounts:**\n")]
+                    aval += f"{emoji} [{display}]({link})\n"
+            if aval: e.add_field(name="Accounts", value=aval)
 
         pval += "\n"
 
