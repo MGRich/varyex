@@ -43,7 +43,7 @@ class MPKManager:
         return self.data
     
     def save(self, d=None):
-        d = self._filter(True, d)
+        d = self._filter(True, copy(d))
         with open(self.path, "wb") as f: umsgpack.dump(d, f)
 
 def testgiven(mpk, checks) -> bool:
