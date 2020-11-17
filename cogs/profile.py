@@ -478,7 +478,7 @@ class Profile(commands.Cog):
     @profile.group(aliases = ["set"])
     async def edit(self, ctx: commands.Context):
         if ctx.invoked_subcommand: return
-        try: self.bot.usermpm[str(ctx.author.id)]['profile']
+        try: self.bot.usermpm.data[str(ctx.author.id)]['profile']
         except:
             a = await Confirm("Do you want to create a profile? This cannot be undone. (Remember, anyone can view your profile at any time.)", delete_message_after=False).prompt(ctx)
             if a:
