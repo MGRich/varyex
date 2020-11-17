@@ -27,7 +27,7 @@ class Filters(commands.Cog):
         `f cfg [add/remove] [phrases]`
         """
         if not (ctx.invoked_subcommand):
-            ebase = discord.Embed(title="Current Filters", color=discord.Color(self.bot.data['color']))
+            ebase = discord.Embed(title="Current Filters", color=self.bot.data['color'])
             mpk = self.getmpm(ctx.guild).getanddel()
             ebase.set_footer(text=f"Add with {ctx.prefix}f cfg add [phrases]")
             ebase.description = "**Filters/filterpings were recently changed.** If any of your filters are regex, please add `/` to the start and end.\n"
@@ -47,7 +47,7 @@ class Filters(commands.Cog):
         `fp cfg [add/remove] [phrase] <members>` 
         """
         if not (ctx.invoked_subcommand):
-            ebase = discord.Embed(title="Current Filterpings", color=discord.Color(self.bot.data['color']))
+            ebase = discord.Embed(title="Current Filterpings", color=self.bot.data['color'])
             ebase.set_footer(text=f"Add with {ctx.prefix}fp cfg add [phrase] [members]")
             mpk = self.getmpm(ctx.guild).getanddel()
             ebase.description = "**Filters/filterpings were recently changed.** If any of your filters are regex, please add `/` to the start and end.\n"

@@ -74,7 +74,7 @@ class embeds:
             except: pass
             #SPECIAL HANDLING   
             if typ == "twitter":
-                embed.colour = discord.Color(0x1DA1F2)
+                embed.colour = 0x1DA1F2
                 if e.description != e.Empty:
                     at = e.author.name.split("@")[-1].split(")")[0]
                     embed.add_field(name="Tweet", value=f"**__[{e.author.name}](https://twitter.com/{at})__** {'*(multiple images)*' if len(msg.embeds) > 1 else ''}\n{e.description}")
@@ -108,7 +108,7 @@ class embeds:
                     embed.set_image(url=e.thumbnail.url)
                 except: ftxt.append(" | [bad YT embed]")
             elif typ == "twitch":
-                embed.colour = discord.Color(0x9147FF)
+                embed.colour = 0x9147FF
                 titlesplit = e.title.split(' - ')
                 try: typ = ("clip" if titlesplit[2] == "Twitch Clips" else "vod")
                 except: typ = "vod" if "/videos/" in e.url else "channel"
@@ -141,7 +141,7 @@ class embeds:
                 data['category'] = e.description.split(" in the ")[1].split(" category")[0]
 
                 #####finally
-                embed.colour = discord.Color(0xE6D85E)
+                embed.colour = 0xE6D85E
                 embed.set_image(url=e.thumbnail.url)
                 embed.title = f"{data['name']} | {data['full']}"
                 if (data['tease']): ftxt.append(f" | \"{data['tease']}\"") 

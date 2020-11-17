@@ -1,4 +1,4 @@
-import discord, traceback, json, os, sys, subprocess, textwrap, contextlib, base64, lzma, umsgpack, github, difflib
+import discord, traceback, json, os, sys, subprocess, textwrap, contextlib, base64, lzma, umsgpack, github, difflib, asyncio
 from discord.ext import commands, tasks
 from io import StringIO
 import cogs.utils.mpk as mpku
@@ -32,7 +32,7 @@ handler.setFormatter(logging.Formatter("[%(name)s - %(levelname)s] [%(filename)s
 dlog.addHandler(handler)
 glog.addHandler(handler)
 
-def prefix(_bot, message):
+def prefix(bot, message):
     prf = data['prefix'].copy()
     if message.guild:
         con = mpku.getmpm("misc", message.guild).getanddel()
@@ -42,7 +42,7 @@ def prefix(_bot, message):
             prf.append(con['prefix'])
         except: pass
     
-    users = mpku.getmpm('users', None, filter=True).getanddel()
+    users = bot.usermpm.data 
     try: prf.insert(0, users[str(message.author.id)]['prefix'])
     except: pass
     return prf
@@ -58,6 +58,8 @@ intents.presences = True
 bot = commands.Bot(command_prefix=prefix, owner_id=data['owner'], intents=intents)
 bot.__dict__['data'] = data
 commands.Bot.data = property(lambda x: x.__dict__['data'])
+bot.__dict__['userdata'] = mpku.getmpm('users', None, filter=True)
+commands.Bot.usermpm = property(lambda x: x.__dict__['userdata'])
 bot.remove_command('help')
 
 first = False
@@ -123,6 +125,8 @@ async def on_command_error(ctx: commands.Context, error):
         return await ctx.send("You don't have sufficient permissions to run this.")
     if isinstance(error, commands.BotMissingPermissions):
         return await ctx.send("I don't have sufficient permissions to run this.")
+    if isinstance(error, asyncio.TimeoutError):
+        return await ctx.send("Prompt above timed out. Please redo the command.")
     #NOW we start being linient
     errored.append([ctx.message.id, 0])
     if isinstance(error, commands.CommandNotFound): return

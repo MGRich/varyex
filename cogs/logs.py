@@ -21,7 +21,7 @@ class LogMenu(menus.Menu):
         self.mpk = mpku.getmpm("moderation", gid)
         self.page = 0
         self.max = len(bitlist) // 5
-        self.color = discord.Color(datadict['color'])
+        self.color = datadict['color']
         self.prefix = prefix
         self.shown = 5
         self.message = None
@@ -239,14 +239,14 @@ class Logging(commands.Cog):
             embed = discord.Embed(color=(discord.Color(self.bot.data['color']) if member.color == discord.Color.default() else member.color))
             embed.set_author(name=f"{member.display_name} ({str(member)})", icon_url=member.avatar_url)
         elif (isinstance(member, discord.Guild)):
-            embed = discord.Embed(color=discord.Color(self.bot.data['color']))
+            embed = discord.Embed(color=self.bot.data['color'])
             embed.set_author(name=str(member), icon_url=str(member.icon_url))
         else:
-            embed = discord.Embed(color=discord.Color(self.bot.data['color']))
+            embed = discord.Embed(color=self.bot.data['color'])
             embed.set_author(name=str(member), icon_url=member.avatar_url)
         if (colortype != 2):
-            if (colortype): embed.color = discord.Color(0x59b539)
-            else: embed.color = discord.Color(0xdd2e44)
+            if (colortype): embed.color = 0x59b539
+            else: embed.color = 0xdd2e44
         embed.timestamp = timestamp
         if not isinstance(member, discord.Guild):
             embed.set_footer(text=f"User ID: {member.id}")
@@ -329,7 +329,7 @@ class Logging(commands.Cog):
         self.setupjson(ctx.guild)
         if (ctx.invoked_subcommand == None):
             mpk = self.getmpm(ctx.guild).getanddel()
-            embed = discord.Embed(title = "Log Config", color=discord.Color(self.bot.data['color']), description = "")
+            embed = discord.Embed(title = "Log Config", color=self.bot.data['color'], description = "")
             for i in range(len(bitlist)):
                 unic = '\u2705' if (mpk['log']['flags'] >> i) & 1 else '\u26D4'
                 embed.description += f"{bitlist[i]}: {unic}\n"
@@ -360,7 +360,7 @@ class Logging(commands.Cog):
             if message.author.bot: return
         log = await self.getaudit(AuditLogAction.message_delete, message.guild, after=True)
         embed = await embeds.buildembed(embeds, message, link=False, attachmode=0b11)
-        embed.color = discord.Color(0xdd2e44)
+        embed.color = 0xdd2e44
         embed.set_author(name=f"{message.author.display_name} ({message.author})", icon_url=message.author.avatar_url)
         embed.title = "Message Deletion"
         embed.timestamp = message.created_at
@@ -394,7 +394,7 @@ class Logging(commands.Cog):
             embed.description += f"<@{uid}>: **{totaldict[uid]}** messages\n"
         if possible:
             embed.description += f"Unknown: **{possible}** messages\n"
-        embed.color = discord.Color(0xdd2e44)
+        embed.color = 0xdd2e44
         embed.title = "Bulk Message Deletion"
         if (log):
             embed.description += f"> **Deleted by** {log.user.mention}"

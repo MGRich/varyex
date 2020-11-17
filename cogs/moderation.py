@@ -401,7 +401,7 @@ class Moderation(commands.Cog):
     async def config(self, ctx, action: Optional[str]):
         if ctx.invoked_subcommand: return
         mpk = mpku.getmpm('moderation', ctx.guild, ['actions', 'offences'], [{}, []], filter=True).getanddel()
-        embed = discord.Embed(title="Warning Config", color=discord.Color(self.bot.data['color']), description="")
+        embed = discord.Embed(title="Warning Config", color=self.bot.data['color'], description="")
         if action:
             try: a = mpk['actions'][action]
             except: return await ctx.send("That action doesn't exist!")
@@ -466,7 +466,7 @@ class Moderation(commands.Cog):
             return (m.author == ctx.author) and (m.channel == ctx.channel)
         ret: discord.Message = None
         timed = False
-        embed = discord.Embed(title=f"Action Setup - `{name}`", color=discord.Color(self.bot.data['color']))
+        embed = discord.Embed(title=f"Action Setup - `{name}`", color=self.bot.data['color'])
         embed.description = f"**Name:** `{name}`\n{f'**Type:** `{typ}`' if typ else ''}\n".strip() + "\n"
         embed.set_footer(text="You can type cancel at any time to stop.")
         msg = await ctx.send(embed=embed)
@@ -568,7 +568,7 @@ class Moderation(commands.Cog):
         #valid = [x for x in mpk['actions'] if x != 'verbal']
         valid = mpk['actions']
         if not valid: return await ctx.send("There are no actions to use! Add some first!")
-        embed = discord.Embed(title="Warn Config - Track Setup", color=discord.Color(self.bot.data['color']))
+        embed = discord.Embed(title="Warn Config - Track Setup", color=self.bot.data['color'])
         embed.description = "__**Valid track actions:**__\n"
         for action in valid:
             embed.description += f"> `{action}`\n"

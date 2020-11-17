@@ -164,7 +164,7 @@ class Starboard(commands.Cog):
             def fetch(st):
                 try: return base[st]
                 except: return "*Not set*"
-            embed = discord.Embed(title="Starboard Config", color=discord.Color(self.bot.data['color']))
+            embed = discord.Embed(title="Starboard Config", color=self.bot.data['color'])
             try: lb = 'enabled' if base['leaderboard']['enabled'] else 'disabled'
             except KeyError: lb = 'disabled'
             embed.description = f"**Minimum:** `{fetch('amount')}`\n**Star:** {fetch('emoji')}\n**Leaderboard:** `{lb}`\n**Channel:** <#{fetch('channel')}>\n"
@@ -223,7 +223,7 @@ class Starboard(commands.Cog):
                 ebase.description = f"{first.display_name} is in {getord(x + 1)}!\n*You're in {getord(senderpos + 1)}!*"
                 break
             except: continue
-        if (ebase.colour == discord.Color.default()): ebase.colour = discord.Color(0xFFAC33)
+        if (ebase.colour == discord.Color.default()): ebase.colour = 0xFFAC33
         count = 1
         page = 1
         txb = []

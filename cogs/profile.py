@@ -1,4 +1,4 @@
-import discord, asyncio
+import discord, asyncio, re, aiohttp
 from discord.ext import commands, menus
 
 from cogs.utils.converters import UserLookup
@@ -13,9 +13,104 @@ import pytz
 import dateparser
 import number_parser as numparser
 from copy import copy
+from lxml import html
 
 import logging
 LOG = logging.getLogger('bot')
+DUMPCHANNEL = 777709381931892766
+
+REBASE = r'(?P<name>.*) \(%P%(?P<handle>.*)\)'
+ACCOUNTS = {
+    'twitter': {
+        'emoji': 777705359535636481,
+        'prefix': '@',
+        'link': 'https://twitter.com/[]',
+        'type': 0,
+        're': REBASE,
+        'color': 0x1da1f2,
+    },
+    'twitch': {
+        'emoji': 777763562222911509,
+        'link': 'https://twitch.tv/[]',
+        'type': 2,
+        're': r'(?P<name>\w*) -',
+        'color': 0x9146ff,
+    },
+    'steam': {
+        'emoji': 777768944316579860,
+        'link': 'https://steamcommunity.com/id/[]/',
+        'type': 2,
+        're': r':: (?P<name>\w*)',
+        'color': 0x231f20
+    },
+    'github': {
+        'emoji': 777770141416685588,
+        'link': 'https://github.com/[]',
+        'type': 2,
+        're': r'(?P<name>\w*) -',
+        'color': 0x171516
+    },
+    'youtube': {
+        'emoji': 777766517700821023,
+        'link': 'https://www.youtube.com/channel/[]',
+        'type': 2,
+        're': r'(?P<name>.*)',
+        'color': 0xff0000
+    },
+    'reddit': {
+        'emoji': 777771510311026688,
+        'prefix': 'u/',
+        'link': 'https://reddit.com/u/[]',
+        'type': 1,
+        're': REBASE,
+        'color': 0xff4500
+    },
+#   'facebook': {
+#       'link': 'https://facebook.com/[]'
+#   },
+    'instagram': {
+        'emoji': 777774500926324757,
+        'prefix': '@',
+        'link': 'https://instagram.com/[]/',
+        'type': 0,
+        're': REBASE,
+        'embed': False,
+        'color': 0xdf4176
+    },
+    'soundcloud': {
+        'emoji': 777775128448073729,
+        'link': 'https://soundcloud.com/[]',
+        'type': 2,
+        're': r'(?P<name>.*)',
+        'color': 0xff5500
+    },
+    'lastfm': {
+        'emoji': 778092674581790720,
+        'link': 'https://www.last.fm/user/[]',
+        'type': 2,
+        're': r'(?P<name>\w*).s Music',
+        'color': 0xe31c23,
+        'name': 'Last.fm'
+    },
+    'tumblr': {
+        'emoji': 777911052456689684,
+        'link': 'https://[].tumblr.com',
+        'prefix': '@',
+        'type': 0,
+        're': r'(?P<name>.*)',
+        'embed': True,
+        'color': 0x001935
+    },
+    'deviantart': {
+        'emoji': 777913856444989440,
+        'link': 'https://deviantart.com/[]',
+        'type': 2,
+        're': r'(?P<name>\w*) User Profile \|',
+        'embed': False,
+        'name': 'DeviantArt',
+        'color': 0x06cc47
+    }
+}
 
 def isdst(tz): bool(datetime.now(tz).dst()) #https://stackoverflow.com/a/19968515
 
@@ -138,7 +233,7 @@ class PronounSelector(menus.Menu):
         self.double = 2
         self.bot = bot
 
-        self.embed = discord.Embed(title="Pronoun Selector", color=discord.Color(self.bot.data['color']), 
+        self.embed = discord.Embed(title="Pronoun Selector", color=self.bot.data['color'], 
             description =  """
             \U00002642 - he/him
             \U00002640 - she/her
@@ -244,7 +339,7 @@ class Profile(commands.Cog):
         rec([x.replace('_', ' ') for x in pytz.common_timezones], [])
 
     def getmpm(self) -> mpku.MPKManager:
-        return mpku.getmpm('users', None, filter=True)
+        return self.bot.usermpm
 
     @commands.group(aliases = ["userinfo", "userprofile"])
     async def profile(self, ctx: commands.Context, user: Optional[UserLookup]):
@@ -344,11 +439,33 @@ class Profile(commands.Cog):
             pval += f"**Location**: {last}\n"
         pval += "**Timezone**: "
         if not (getfromprofile("tz")):
-            pval += "*Not set*\n\n"
+            pval += "*Not set*\n"
         else:
             now = datetime.now(pytz.timezone(last.replace(' ', '_')))
-            pval += f"{last} (Currently {now.strftime('%m/%d/%y %I:%M%p')})\n\n"
+            pval += f"{last} (Currently {now.strftime('%m/%d/%y %I:%M%p')})\n"
 
+        getfromprofile("accounts")
+        #last = {'twitter': [{'handle': 'rmg_rich', 'name': 'RMGRich'}, {'handle': 'rmgrich', 'name': 'rmgrich'}], 'twitch': [{'name': 'RMGBread', 'handle': 'rmgbread'}], 'youtube': [{'handle': 'UC9ecwl3FTG66jIKA9JRDtmg', 'name': 'SiIvaGunner'}]}
+        if last:
+            pval += "**Accounts:**\n"
+            for acc in last:
+                t = ACCOUNTS[acc]['type']
+                emoji = self.bot.get_emoji(ACCOUNTS[acc]['emoji'])
+                try: prefix = ACCOUNTS[acc]['prefix']
+                except: prefix = ''
+                for x in last[acc]:
+                    handle = x['handle']
+                    name = x['name']
+                    display = ""
+                    if t != 2: display  = f"{prefix}{handle}"
+                    else:      display  = name 
+                    if t == 0: display += f" ({name})"
+                    display = discord.utils.escape_markdown(display)
+                    link = ACCOUNTS[acc]['link'].replace('[]', x['handle'])
+                    pval += f"> {emoji} [{display}]({link})\n"
+        if pval.endswith("**Accounts:**\n"): pval = pval[:-len("**Accounts:**\n")]
+
+        pval += "\n"
 
         getfromprofile("bio")
         if not last:
@@ -361,11 +478,11 @@ class Profile(commands.Cog):
     @profile.group(aliases = ["set"])
     async def edit(self, ctx: commands.Context):
         if ctx.invoked_subcommand: return
-        try: self.getmpm().getanddel()[str(ctx.author.id)]['profile']
+        try: self.bot.usermpm[str(ctx.author.id)]['profile']
         except:
             a = await Confirm("Do you want to create a profile? This cannot be undone. (Remember, anyone can view your profile at any time.)", delete_message_after=False).prompt(ctx)
             if a:
-                mpm = self.getmpm()
+                mpm = self.bot.usermpm
                 try: mpm.data[str(ctx.author.id)]
                 except: mpm.data[str(ctx.author.id)] = {}
                 mpm.data[str(ctx.author.id)]['profile'] = {}
@@ -551,6 +668,130 @@ class Profile(commands.Cog):
         e = discord.Embed(timestamp = dt, color=self.bot.data['color'])
         e.set_footer(text="Date above in local time")
         await m.channel.send(embed=e)
+
+    @commands.guild_only()
+    @edit.command(aliases = ('account', 'accounts', 'setaccount'))
+    async def setaccounts(self, ctx: commands.Context):
+        mpm = self.bot.usermpm
+        try: mpk = mpm.data[str(ctx.author.id)]['profile']
+        except: return await ctx.invoke(self.edit)
+        try: accdict = mpk['accounts']
+        except: accdict = mpk['accounts'] = {}
+
+        embed = discord.Embed(title = "Accounts Management", description = "Pick which account you'd like to add/remove.",
+            color = self.bot.data['color'] if ctx.author.color == discord.Color.default() else ctx.author.color)
+        embed.set_author(name=ctx.author.display_name, icon_url=str(ctx.author.avatar_url_as(format='jpg', size=64)))
+        emoji = [self.bot.get_emoji(ACCOUNTS[x]['emoji']) for x in ACCOUNTS]
+        msg = await ctx.send(embed=embed)
+        a = await Choice(msg, emoji).prompt(ctx)
+
+        acctype = list(ACCOUNTS)[a]
+        data = ACCOUNTS[acctype]
+        try: aname = data['name']
+        except: aname = acctype.title()
+        embed.title += f" - {aname}"
+        embed.set_footer(text=aname, icon_url=str(emoji[a].url))
+        embed.color = data['color']
+
+        try: alist = accdict[acctype]
+        except: alist = accdict[acctype] = []
+        embed.description = "Current accounts:\n" if alist else "*No accounts.*\n"
+        t = data['type']
+        i = 0
+        for x in alist:
+            handle = x['handle']
+            name = x['name']
+            display = ""
+            if t != 2: display  = f"{data['prefix']}{handle}"
+            else:      display  = name 
+            if t == 0: display += f" ({name})"
+            display = discord.utils.escape_markdown(display)
+            link = data['link'].replace('[]', x['handle'])
+            embed.description += f"#{i + 1}: [{display}]({link})\n"
+            i += 1
+
+        pre = embed.description
+        embed.description += "\nAdd using \u2705, remove using \u26D4, cancel using \u274C"
+        await msg.edit(embed=embed)
+
+        a = await Choice(msg, ['\u2705', '\u26D4', '\u274C']).prompt(ctx)
+        if a == 2: return await ctx.send("Cancelled account management.") 
+        if a == 1:
+            if not alist: return await ctx.send("There's no accounts to delete!")
+            em = []
+            for x in range(1, len(alist) + 1):
+                em.append(str(x) + "\uFE0F\u20E3")
+            embed.description = pre + "\nPlease react with the number of which account you want to delete."
+            await msg.edit(embed=embed)
+            a = await Choice(msg, em).prompt(ctx)
+            del alist[a]
+            mpm.save()
+            return await ctx.send(f"Account #{a+1} removed!")
+        if len(alist) >= 3: return await ctx.send(f"You can't add any more accounts for {aname}!")
+        await ctx.send(f"Please send your {aname} handle (the text that goes in `[]` for `{data['link']}`.)")
+        handle = name = ""
+        td = None
+        def waitforcheck(m):
+            return (m.author == ctx.author) and (m.channel == ctx.channel)
+        while True:
+            try: 
+                if td: await td.delete()
+            except: td = None
+            ret = (await self.bot.wait_for('message', check=waitforcheck, timeout=20.0)).content
+            if re.search(r'\s', ret):
+                await (await ctx.send("There should be no spaces. Please try again.")).delete(delay=5)
+                continue
+            td = await ctx.send("Verifying...")
+            await ctx.channel.trigger_typing()
+            try: checkembed = data['embed']
+            except: checkembed = True
+            tocheck = ""
+            if checkembed:
+                dump = self.bot.get_channel(DUMPCHANNEL)                
+                keepread = await dump.send(data['link'].replace('[]', ret))
+                await asyncio.sleep(.5)
+                for i in range(5):
+                    keepread = await dump.fetch_message(keepread.id)
+                    if keepread.embeds:
+                        tocheck = keepread.embeds[0].title
+                        await keepread.delete()
+                        break
+                    await asyncio.sleep(1)
+            else: 
+                try:
+                    async with aiohttp.request('GET', data['link'].replace('[]', ret)) as resp:
+                        tree = html.fromstring(await resp.text())
+                    head = None
+                    for x in tree:
+                        if x.tag == 'head': head = x
+                    if head is None: raise Exception()
+                    for x in head:
+                        if x.tag == 'title': tocheck = x.text
+                    raise Exception()
+                except: pass
+            res = data['re']
+            try: res = res.replace('%P%', data['prefix'])
+            except: pass
+            print(tocheck, res)
+            match = re.search(res, tocheck)
+            if not match: 
+                await (await ctx.send("Verification failed. Please try again and check your account spelling.")).delete(delay=5)
+                continue
+            try: name = match.group("name")
+            except: name = ret
+            try: handle = match.group("handle")
+            except: handle = name
+            break
+        await td.delete()
+        alist.append({'handle': handle, 'name': name})
+        mpm.save()
+        await ctx.send("Account added!")
+
+
+
+            
+
+
 
 def setup(bot):
     bot.add_cog(Profile(bot))        

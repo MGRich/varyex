@@ -181,7 +181,7 @@ class Misc(commands.Cog):
             joined = guild.get_member(self.bot.user.id).joined_at
             for x in guild.roles:
                 if (joined - x.created_at < timedelta(seconds=1)) and x.managed:
-                    return await x.edit(color=discord.Color(brighten))
+                    return await x.edit(color=brighten)
         except discord.Forbidden: return
 
 
@@ -215,7 +215,7 @@ class Misc(commands.Cog):
 
     
     async def formatembed(self, url, s, d, day=None):
-        embed = discord.Embed(title=f"{'Daily ' if d else ''}{'SROMG' if s else 'Garfield'} Comic", colour=discord.Color(0xfe9701))
+        embed = discord.Embed(title=f"{'Daily ' if d else ''}{'SROMG' if s else 'Garfield'} Comic", colour=0xfe9701)
         if s: 
             num = url.split('/')[-1][:-4]
             embed.set_footer(text=f"Strip #{int(num)}")
@@ -295,7 +295,7 @@ class Misc(commands.Cog):
                 mpm = mpku.getmpm("misc", ctx.guild)
                 mpk = mpm.data
             else:
-                mpm = mpku.getmpm('users', None)
+                mpm = self.bot.usermpm
                 mpk = mpm.data[str(ctx.author.id)]
             try: mpk['garfield']
             except: mpk['garfield'] = {'g': 0, 's': 0}

@@ -1,7 +1,7 @@
 import discord
 from discord.ext import menus
 
-from typing import List
+from typing import List, Union
 
 class Confirm(menus.Menu):
     def __init__(self, msg, timeout=None, **kwargs):
@@ -29,7 +29,7 @@ class Confirm(menus.Menu):
         return self.result
 
 class Choice(menus.Menu):
-    def __init__(self, msg, emoji: List[str], **kwargs):
+    def __init__(self, msg: discord.Message, emoji: List[str], **kwargs):
         super().__init__(**kwargs)
         self.msg = msg
         self.emoji = emoji
@@ -38,13 +38,25 @@ class Choice(menus.Menu):
             self.add_button(menus.Button(x, self.onpick))
 
     async def send_initial_message(self, ctx, channel):
+        if (isinstance(self.msg, discord.Message)):
+            self.msg = await self.msg.channel.fetch_message(self.msg.id)
+            try: 
+                for x in self.msg.reactions: await x.clear()
+            except discord.Forbidden: 
+                await (await self.msg.channel.send("(I can't remove reactions. Please make sure I can manage messages!)")).delete(delay=5) 
+            return self.msg
         if (isinstance(self.msg, str)):
             return await channel.send(self.msg)
         return await channel.send(embed=self.msg)        
 
     async def onpick(self, payload: discord.RawReactionActionEvent):
-        self.choice = self.emoji.index(payload.emoji.name)
-        self.stop()
+        try: 
+            if payload.emoji.is_custom_emoji():
+                self.choice = [x.id for x in self.emoji].index(payload.emoji.id)
+            else:
+                self.choice = self.emoji.index(payload.emoji.name)
+        except: pass
+        else: self.stop()
 
     async def prompt(self, ctx):
         await self.start(ctx, wait=True)
