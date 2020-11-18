@@ -38,7 +38,7 @@ ACCOUNTS = {
     },
     'steam': {
         'emoji': 777768944316579860,
-        'link': 'https://steamcommunity.com/id/[]/',
+        'link': 'https://steamcommunity.com/id/[]',
         'type': 2,
         're': r':: (?P<name>\w*)',
         'color': 0x231f20
@@ -71,7 +71,7 @@ ACCOUNTS = {
     'instagram': {
         'emoji': 777774500926324757,
         'prefix': '@',
-        'link': 'https://instagram.com/[]/',
+        'link': 'https://instagram.com/[]',
         'type': 0,
         're': REBASE,
         'embed': False,
@@ -388,7 +388,7 @@ class Profile(commands.Cog):
         ##BEGIN PROFILE SHIT
         if isbot: return await ctx.send(embed=e) #botphobia
         pval = ""
-        try: mpk = self.getmpm().getanddel()[str(user.id)]['profile']
+        try: mpk = self.bot.usermpm[str(user.id)]['profile']
         except: return await ctx.send(embed=e)
         last: Union[dict, str]
         def getfromprofile(st, notset=False):
@@ -492,7 +492,7 @@ class Profile(commands.Cog):
         raise commands.UserInputError()
 
     async def _edit(self, ctx, prompts, max, key, pretext):
-        mpm = self.getmpm()
+        mpm = self.bot.usermpm
         try: mpk = mpm.data[str(ctx.author.id)]['profile']
         except: return await ctx.invoke(self.edit)
         if not pretext: await ctx.send(prompts[0])
@@ -539,7 +539,7 @@ class Profile(commands.Cog):
 
     @edit.command(aliases = ['setbday', 'bday', 'setbirthday'])
     async def birthday(self, ctx):
-        mpm = self.getmpm()
+        mpm = self.bot.usermpm
         try: mpk = mpm.data[str(ctx.author.id)]['profile']
         except: return await ctx.invoke(self.edit)
         await ctx.send("Please send your birthday. This can include year, but doesn't have to. Send `cancel` to cancel.")
@@ -570,7 +570,7 @@ class Profile(commands.Cog):
 
     @edit.command(aliases = ['setpronouns', 'setpronoun', 'pronouns'])
     async def pronoun(self, ctx):
-        mpm = self.getmpm()
+        mpm = self.bot.usermpm
         try: mpk = mpm.data[str(ctx.author.id)]['profile']
         except: return await ctx.invoke(self.edit)
         result = await PronounSelector(self.bot).prompt(ctx)
@@ -597,7 +597,7 @@ class Profile(commands.Cog):
 
     @edit.command(aliases = ['settz', "timezone", "tz"])
     async def settimezone(self, ctx):
-        mpm = self.getmpm()
+        mpm = self.bot.usermpm
         try: mpk = mpm.data[str(ctx.author.id)]['profile']
         except: return await ctx.invoke(self.edit)
         r = await TZMenu(self.tzd, discord.Color(self.bot.data['color'])).prompt(ctx)
@@ -614,7 +614,7 @@ class Profile(commands.Cog):
         perms: discord.Permissions = m.channel.permissions_for(m.guild.me)
         if not (perms.read_message_history and perms.add_reactions and perms.send_messages and perms.manage_messages): return
 
-        try: tz = self.getmpm().getanddel()[str(m.author.id)]['profile']['tz'].replace(' ', '_')
+        try: tz = self.bot.usermpm[str(m.author.id)]['profile']['tz'].replace(' ', '_')
         except: return
 
         dt = None
@@ -711,7 +711,7 @@ class Profile(commands.Cog):
             i += 1
 
         pre = embed.description
-        embed.description += "\nAdd using \u2705, remove using \u26D4, cancel using \u274C"
+        embed.description += "\nAdd using \u2705, remove using \u26D4, cancel using \u274C\nIf you need to update a name, just add one of the same handle."
         await msg.edit(embed=embed)
 
         a = await Choice(msg, ['\u2705', '\u26D4', '\u274C']).prompt(ctx)
@@ -747,7 +747,13 @@ class Profile(commands.Cog):
             except: checkembed = True
             tocheck = ""
             url = data['link'].replace('[]', ret)
-            if checkembed:
+            try:
+                async with aiohttp.request('HEAD', url) as resp:
+                    if resp.status != 200 or (not str(resp.url).startswith(url)): raise Exception()
+            except: 
+                await (await ctx.send("Invalid URL. Please try again.")).delete(delay=5)
+                continue
+            if checkembed: 
                 dump = self.bot.get_channel(DUMPCHANNEL)                
                 keepread = await dump.send(url)
                 await asyncio.sleep(.5)
@@ -761,7 +767,6 @@ class Profile(commands.Cog):
             else: 
                 try:
                     async with aiohttp.request('GET', url) as resp:
-                        if resp.status != 200: raise Exception()
                         tree = html.fromstring(await resp.text())
                     head = None
                     for x in tree:
@@ -774,9 +779,8 @@ class Profile(commands.Cog):
             res = data['re']
             try: res = res.replace('%P%', data['prefix'])
             except: pass
-            print(tocheck, res)
             match = re.search(res, tocheck)
-            if not match: 
+            if (not match): 
                 await (await ctx.send("Verification failed. Please try again and check your account spelling.")).delete(delay=5)
                 continue
             try: name = match.group("name")
@@ -788,14 +792,15 @@ class Profile(commands.Cog):
                 else: handle = ret
             break
         await td.delete()
+        existlist = [x['handle'] for x in alist]
+        if handle in existlist:
+            index = existlist.index(handle)
+            alist[index].update({'name': name})
+            mpm.save()
+            return await ctx.send(f"Updated account name for account #{index + 1}!")
         alist.append({'handle': handle, 'name': name})
         mpm.save()
-        await ctx.send("Account added!")
-
-
-
-            
-
+        await ctx.send("Account added!")            
 
 
 def setup(bot):
