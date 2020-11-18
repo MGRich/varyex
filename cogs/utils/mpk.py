@@ -16,6 +16,9 @@ class MPKManager:
         else: del self.data["_"]
         if not raw: self._filter(False)
 
+    def __getitem__(self, i):
+        return self.data[i]
+
     def _filter(self, s, d=None):
         if s: d = d or deepcopy(self.data)
         else: d = self.data
