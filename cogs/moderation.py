@@ -618,7 +618,7 @@ class Moderation(commands.Cog):
                                 elif v // 60 < 5: raise ValueError()
                             except ValueError: await (await ctx.send("Please send a valid value.")).delete(delay=5)
                             else:
-                                track[-1].update({'time': v})
+                                track[-1].update({'time': v // 60})
                                 await td.delete()
                                 break
                 except KeyError: pass
