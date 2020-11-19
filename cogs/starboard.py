@@ -198,7 +198,8 @@ class Starboard(commands.Cog):
     @commands.guild_only()
     async def leaderboard(self, ctx):
         mpk = mpku.getmpm('starboard', ctx.guild).getanddel()
-        if not (mpk['leaderboard']['enabled']): return
+        try: if not (mpk['leaderboard']['enabled']): return
+        except: pass
         tbd = await ctx.send("Generating.. this may take a while.. (we're also refreshing the count)")
         self.refreshserver(ctx.guild.id)
         await ctx.trigger_typing()
