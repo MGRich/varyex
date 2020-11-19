@@ -205,7 +205,8 @@ class Starboard(commands.Cog):
         self.refreshserver(ctx.guild.id)
         await ctx.trigger_typing()
         cpy = copy.copy(mpk['leaderboard'])
-        del cpy['enabled']
+        try: del cpy['enabled']
+        except: pass
         srtd = sorted(cpy.items(), key = lambda x : x[1])
         if not srtd: return await tbd.edit(content="Not enough data so cancelled leaderboard calculation.")
         srtd.reverse()
