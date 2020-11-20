@@ -227,7 +227,7 @@ class Moderation(commands.Cog):
                         try: t = inwarn['type']
                         except: t = inwarn['type'] = 'warn' #just make it up
                         if t == 'warn': 
-                            ofc = mpk['offences'][min(cnt - 1, len(mpk['actions']))]
+                            ofc = mpk['offences'][min(cnt - 1, len(mpk['offences']))]
                             act = mpk['actions'][ofc['action']]
                         elif t == 'mute':
                             try: act = mpk['actions']['mute']
