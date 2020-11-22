@@ -27,8 +27,8 @@ class Starboard(commands.Cog):
         #typ of 0 is pin, 1 or -1 is star/unstar
         try: msg = await self.bot.get_channel(payl.channel_id).fetch_message(payl.message_id)
         except discord.NotFound: return
-        mpm = mpku.getmpm('starboard',  msg.guild, ['blacklist', 'count', 'messages', 'leaderboard'], [[], 6, {}, {}])
-        mpk = mpm.data       
+        mpk = mpku.getmpm('starboard', msg.guild)
+        mpk['count'] = (6,)
         if not mpku.testgiven(mpk, ['channel', 'emoji']) or not mpk['channel'] or (payl.channel_id in mpk['blacklist']): return
         if typ and ((payl.emoji.name if payl.emoji.is_unicode_emoji() else payl.emoji.id) != mpk['emoji']): return
 
@@ -75,15 +75,13 @@ class Starboard(commands.Cog):
         if payl.user_id == msg.author.id: return 
         log.debug("COUNT " + str(default_timer() - start))
         start = default_timer()
-        try: mpk['leaderboard'][aid] 
-        except: mpk['leaderboard'][aid] = 0
-        try: msgdata = mpk['messages'][mid]
-        except:
-            mpk['messages'][mid] = {}
-            msgdata = mpk['messages'][mid]
-            msgdata['author']  = msg.author.id
-            msgdata['chn']     = cid
-            msgdata['sbid']    = 0
+        mpk['leaderboard'][aid] = (0,)  
+        mpk['messages'][mid] = ({},)
+        msgdata = mpk['messages'][mid]
+        if not msgdata:
+            msgdata['author'] = msg.author.id
+            msgdata['chn']    = cid
+            msgdata['sbid']   = 0
             mpk['leaderboard'][aid] += count - typ
         spstate = ((count >= mpk['amount']) << 1) | msg.pinned
         mpk['leaderboard'][aid] += typ
@@ -93,24 +91,21 @@ class Starboard(commands.Cog):
             except AttributeError: pass
         log.debug("MISC  " + str(default_timer() - start))
         start = default_timer()
-        mpm.save(False)
+        mpk.save(False)
         e = await embeds.buildembed(embeds, msg, stardata=[count, spstate, mpk], compare=sbmsg.embeds[0] if sbmsg else None)
         log.debug("EMBED " + str(default_timer() - start))
         if sbmsg:
             if not spstate:
                 try: await sbmsg.delete()
                 except discord.NotFound: pass #cover this incase it ever happens for some reason
-                del mpm
                 return
             try: await sbmsg.edit(embed=e)
             except: pass
-            else: 
-                del mpm
-                return
+            else: return
         if (not spstate) or (not datetime.now() - (msg.created_at) < timedelta(days=60)): return
         made = await chl.send(embed=e)
         msgdata['sbid'] = made.id
-        return mpm.save()            
+        return mpk.save()            
             
     @commands.Cog.listener()
     async def on_guild_channel_pins_update(self, chn: discord.TextChannel, pin: Optional[datetime]):
@@ -135,7 +130,7 @@ class Starboard(commands.Cog):
             await self.handlereact(payl, 1)
         log.debug(default_timer() - start)
 
-    @commands.group(aliases = ["sb"])
+    @commands.group(aliases = ("sb",))
     @commands.guild_only()
     async def starboard(self, ctx):
         """Sets up the starboard/views the leaderboard if enabled.
@@ -155,52 +150,48 @@ class Starboard(commands.Cog):
         if (ctx.invoked_subcommand == None):
             raise commands.UserInputError()
     
-    @starboard.group(aliases = ["cfg"])
+    @starboard.group(aliases = ("cfg",))
     @commands.has_permissions(manage_messages=True, manage_guild=True)
     @commands.guild_only()
     async def config(self, ctx):
         if (ctx.invoked_subcommand == None):
-            base = mpku.getmpm('starboard', ctx.guild).getanddel()
+            base = mpku.getmpm('starboard', ctx.guild)
             def fetch(st):
-                try: return base[st]
-                except: return "*Not set*"
+                return base[st] or "*Not set*"  
             embed = discord.Embed(title="Starboard Config", color=self.bot.data['color'])
-            try: lb = 'enabled' if base['leaderboard']['enabled'] else 'disabled'
-            except KeyError: lb = 'disabled'
-            embed.description = f"**Minimum:** `{fetch('amount')}`\n**Star:** {fetch('emoji')}\n**Leaderboard:** `{lb}`\n**Channel:** <#{fetch('channel')}>\n"
-            if mpku.testgiven(base, ['blacklist']) and base['blacklist']:
+            base['leaderboard']['enabled'] = (True,)
+            lb = 'enabled' if base['leaderboard']['enabled'] else 'disabled'
+            embed.description = f"**Minimum:** {fetch('amount')}\n**Star:** {fetch('emoji')}\n**Leaderboard:** `{lb}`\n"
+            if not base['channel']: embed.description += "**Channel:** *Not set*\n"
+            else: embed.description += f"**Channel:** <#{base['channel']}>"
+            if base['blacklist']:
                 embed.description += "**Blacklist:**\n"
                 for x in base['blacklist']:
                     embed.description += f"> <#{x}>\n"
             await ctx.send(embed=embed)
 
     def refreshserver(self, gid):
-        mpm = mpku.getmpm('starboard', gid)
-        mpk = mpm.data
-        try: mpk['leaderboard']
-        except: mpk['leaderboard'] = {}
-        try: mpk['blacklist']
-        except: mpk['blacklist'] = []
-        if 'enabled' not in mpk['leaderboard']: lbe = True
-        else: lbe = mpk['leaderboard']['enabled']
+        mpk = mpku.getmpm('starboard', gid)
+        mpk['leaderboard'] = ({},)
+        mpk['blacklist'] = ([],)
+        mpk['leaderboard']['enabled'] = (True,)
+        lbe = mpk['leaderboard']['enabled']
         mpk['leaderboard'] = {'enabled': lbe}
         for x in mpk['messages']:
             msg = mpk['messages'][x]
-            try: del msg['spstate']
-            except: pass
+            del msg['spstate']
             if msg['chn'] in mpk['blacklist']: continue
             if (aid := str(msg['author'])) not in mpk['leaderboard']: mpk['leaderboard'][aid] = 0
             mpk['leaderboard'][aid] += msg['count']
-        mpm.save()
+        mpk.save()
         log.debug(f"refreshed leaderboard for {gid}")
 
-    @starboard.command(aliases = ["lb"])
+    @starboard.command(aliases = ("lb",))
     @commands.guild_only()
     async def leaderboard(self, ctx):
-        mpk = mpku.getmpm('starboard', ctx.guild).getanddel()
-        try: 
-            if not (mpk['leaderboard']['enabled']): return
-        except: pass
+        mpk = mpku.getmpm('starboard', ctx.guild)
+        mpk['leaderboard']['enabled'] = (True,)
+        if not mpk['leaderboard']['enabled']: return
         tbd = await ctx.send("Generating.. this may take a while.. (we're also refreshing the count)")
         self.refreshserver(ctx.guild.id)
         await ctx.trigger_typing()
@@ -252,31 +243,25 @@ class Starboard(commands.Cog):
         await tbd.delete()
         return await Paginator(groups).start(ctx)
         
-    @config.command(aliases = ['channel'])
+    @config.command(aliases = ('channel',))
     @commands.has_permissions(manage_guild=True)
     @commands.guild_only()
     async def setchannel(self, ctx, chn: Optional[discord.TextChannel]):
         if not chn: return await ctx.invoke(self.config)
-        mpm = mpku.getmpm('starboard', ctx.guild)
-        mpk = mpm.data       
+        mpk = mpku.getmpm('starboard', ctx.guild)
         mpk['channel'] = chn.id
-        mpm.save()
+        mpk.save()
         await ctx.send(f"Channel {chn.mention} set as starboard channel!")
 
-    @config.command(name = "leaderboard", aliases = ['lb'])
+    @config.command(name = "leaderboard", aliases = ('lb',))
     @commands.guild_only()
     async def lbcfg(self, ctx):
-        mpm = mpku.getmpm('starboard', ctx.guild)
-        mpk = mpm.data
-        try: mpk['leaderboard']['enabled'] ^= True
-        except KeyError: 
-            try: mpk['leaderboard']
-            except: mpk['leaderboard'] = {'enabled': False}
-            else: mpk['leaderboard']['enabled'] = False
-        mpm.save()
+        mpk = mpku.getmpm('starboard', ctx.guild)
+        mpk['leaderboard']['enabled'] = (False, not mpk['leaderboard']['enabled'])
+        mpk.save()
         await ctx.send(f"Leaderboard has been {'enabled' if mpk['leaderboard']['enabled'] else 'disabled'}.")
 
-    @config.command(aliases = ['setstar'])
+    @config.command(aliases = ('setstar',))
     @commands.has_permissions(manage_guild=True)
     async def setemoji(self, ctx):
         def check(_r, u):
@@ -284,41 +269,36 @@ class Starboard(commands.Cog):
         
         await ctx.send("Please react to this with the emoji you want.")
         em = await self.bot.wait_for('reaction_add', timeout=20.0, check=check)
-        mpm = mpku.getmpm('starboard', ctx.guild)
-        mpk = mpm.data       
+        mpk = mpku.getmpm('starboard', ctx.guild)
         em = em[0]
         if (not em.custom_emoji): mpk['emoji'] = mpk['emojiname'] = str(em.emoji)
         else: 
             mpk['emoji'] = em.emoji.id
             mpk['emojiname'] = em.emoji.name
-        mpm.save()
+        mpk.save()
         await ctx.send("Starboard emoji set!")
     
-    @config.command(aliases = ['setcount'])
+    @config.command(aliases = ('setcount',))
     @commands.has_permissions(manage_guild=True)
     async def count(self, ctx, count: Optional[int]):
         if not count: return await ctx.invoke(self.config)
-        mpm = mpku.getmpm('starboard', ctx.guild)
-        mpk = mpm.data       
+        mpk = mpku.getmpm('starboard', ctx.guild)
         mpk['amount'] = count
-        mpm.save()
+        mpk.save()
         await ctx.send(f"{count} amount of stars is now the minimum!")
 
     @config.command()
     @commands.has_permissions(manage_guild=True)
     async def blacklist(self, ctx, act, *channel: discord.TextChannel):
         if (len(channel) == 0): return
-        mpm = mpku.getmpm('starboard', ctx.guild)
-        mpk = mpm.data       
-        try: mpk['blacklist']
-        except: mpk['blacklist'] = []
+        mpk = mpku.getmpm('starboard', ctx.guild)
         channel = list(channel)
         for chn in channel:
             if (act.startswith("a")): mpk['blacklist'].append(chn.id)
             else: 
                 try: mpk['blacklist'].remove(chn.id)
                 except: pass
-        mpm.save()
+        mpk.save()
         cstr = "" 
         for chn in channel:
             cstr += f", {chn.mention}"

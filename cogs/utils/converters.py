@@ -70,11 +70,10 @@ class DurationString(commands.Converter): #making this look nicer by fucking wit
             try: r = pytimeparse.parse(s.split()[i])
             except IndexError: break 
             if not r: 
-                if not flipped: 
-                    i = -1
-                    flipped = True
-                    continue
-                else: break
+                if flipped: break
+                i = -1
+                flipped = True
+                continue
             d += r
             flipped = True #we will no longer flip cause this is where we are
             slist = re.split(r'(\s+)', s)

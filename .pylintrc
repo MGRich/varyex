@@ -150,7 +150,8 @@ disable=print-statement,
         exec-used,
         broad-except,
         logging-fstring-interpolation,
-        logging-not-lazy
+        logging-not-lazy,
+        unsupported-assignment-operation
 
 
 # Enable the message, report, category or checker with the given id(s). You can

@@ -2,7 +2,7 @@ import discord, re #general/misc
 from discord.ext import commands, tasks
 
 import cogs.utils.mpk as mpku
-from cogs.utils.converters import MemberLookup, UserLookup
+from cogs.utils.converters import UserLookup
 from typing import Optional, Union, List
 from asyncio import sleep #auto rolecolor
 from numpy import clip
@@ -79,21 +79,20 @@ class Misc(commands.Cog):
         if (self.garfloop.get_task()): self.garfloop.cancel()
         self.garfloop.start()
 
-    @commands.command(aliases = ['usrprefix', 'userprefix'])
+    @commands.command(aliases = ('usrprefix', 'userprefix'))
     async def prefix(self, ctx, prefix: Optional[str] = None):
         """Sets the prefix for either the server or yourself.
         If you set server prefix, you **must have manage guild.**
 
         `prefix <prefix>`
         `userprefix/usrprefix <prefix>`"""
-        try: mpm = mpku.getmpm("misc", ctx.guild.id)
-        except AttributeError: mpm = None
-        else: mpk = mpm.data
+        try: mpk = mpku.getmpm("misc", ctx.guild.id)
+        except AttributeError: mpk = None
         user = False
-        users = mpku.getmpm("users", None)
+        users = self.bot.usermpm
         mid = str(ctx.author.id)
         try:
-            users.data[mid]['prefix']
+            users[mid]['prefix']
             user = True
         except: pass
 
@@ -102,14 +101,12 @@ class Misc(commands.Cog):
                 return await ctx.send(f"My main prefix here is `{self.bot.command_prefix(self.bot, ctx.message)[0]}`.")
             prefixes = self.bot.command_prefix(self.bot, ctx.message)
             return await ctx.send(f"Your personal prefix is `{prefixes[0]}` and my main prefix here is `{prefixes[1]}`.")
-        user = (ctx.invoked_with in {'usrprefix', 'userprefix'}) or (not mpm)
+        user = (ctx.invoked_with in {'usrprefix', 'userprefix'}) or (not mpk)
         rem = prefix in {"reset", "off"}
         if user:
-            try: users.data[mid]
-            except: users.data[mid] = {}
-            if not rem: users.data[mid]['prefix'] = prefix
+            if not rem: users[mid]['prefix'] = prefix
             else:
-                try: del users.data[mid]['prefix']
+                try: del users[mid]['prefix']
                 except: pass
             users.save()
             if not rem:
@@ -118,10 +115,8 @@ class Misc(commands.Cog):
         if not ctx.author.guild_permissions.manage_guild: return
         if not rem: mpk['prefix'] = prefix
         else:
-            try: del mpk['prefix']
-            except: pass
-        try: mpm.save()
-        except AttributeError: pass
+            del mpk['prefix']
+        if mpk: mpk.save()
         if not rem: await ctx.send(f"My prefix here is now `{prefix}`!")
         else: await ctx.send("My prefix here has been reset.")
 
@@ -155,7 +150,7 @@ class Misc(commands.Cog):
         `say <chn> <text>`"""
         await chn.send(funny)
 
-    @commands.command(aliases = ['about', 'invite'])
+    @commands.command(aliases = ('about', 'invite'))
     async def info(self, ctx):
         """Shows information about me."""
         #("Members", len(list(self.bot.get_all_members)))
@@ -221,7 +216,7 @@ class Misc(commands.Cog):
             embed.set_footer(text=f"Strip #{int(num)}")
             js = None
             try:
-                async with aiohttp.request('GET', f"https://garfield-comics.glitch.me/~SRoMG/?comic={num}") as resp: #TODO: if and when zulu changes this, change how this works
+                async with aiohttp.request('GET', f"https://garfield-comics.glitch.me/~SRoMG/?comic={num}") as resp:
                     js = (await resp.json())['data']
             except: pass
             if not js:
@@ -294,21 +289,17 @@ class Misc(commands.Cog):
         elif date.startswith("sub"):
             if ctx.guild:
                 if not ctx.author.permissions_in(ctx.channel).manage_channels: raise commands.MissingPermissions(["manage_channel"])
-                mpm = mpku.getmpm("misc", ctx.guild)
-                mpk = mpm.data
+                mpk = mpku.getmpm("misc", ctx.guild)
             else:
-                mpm = self.bot.usermpm
-                try: mpk = mpm.data[str(ctx.author.id)]
-                except: mpk = mpm.data[str(ctx.author.id)] = {}
-            try: mpk['garfield']
-            except: mpk['garfield'] = {'g': 0, 's': 0}
+                mpk = self.bot.usermpm[str(ctx.author.id)]
+            mpk['garfield'] = ({'g': 0, 's': 0},)
             check = 's' if isSROMG else 'g'
             if (not mpk['garfield'][check]) or (ctx.guild and mpk['garfield'][check] != ctx.channel.id):
                 mpk['garfield'][check] = ctx.channel.id if ctx.guild else 1
-                mpm.save()
+                mpk.save()
                 return await ctx.send(f"{'This channel' if ctx.guild else 'You'} will now recieve {'SROMG' if isSROMG else 'Garfield'} strips daily!")
             mpk['garfield'][check] = 0
-            mpm.save()
+            mpk.save()
             return await ctx.send(f"{'This channel' if ctx.guild else 'You'} will no longer recieve {'SROMG' if isSROMG else 'Garfield'} strips.")
         elif date == "random":
             if isSROMG:
@@ -366,7 +357,7 @@ class Misc(commands.Cog):
         #first we check guilds cause thats easy
         for guild in self.bot.guilds:
             guild: discord.Guild
-            try: mpk = mpku.getmpm('misc', guild).getanddel()['garfield']
+            try: mpk = mpku.getmpm('misc', guild)['garfield']
             except: continue
             if (shown & 0b01) and mpk['g']:
                 chn = guild.get_channel(mpk['g'])
@@ -376,7 +367,7 @@ class Misc(commands.Cog):
                 chn = guild.get_channel(mpk['s'])
                 try: await chn.send(embed=sembed)
                 except: pass
-        mpkr = mpku.getmpm("users", None).getanddel()
+        mpkr = self.bot.usermpm
         for uid in mpkr:
             try: mpk = mpkr[uid]['garfield']
             except: continue

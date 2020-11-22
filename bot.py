@@ -35,14 +35,14 @@ glog.addHandler(handler)
 def prefix(bot, message):
     prf = data['prefix'].copy()
     if message.guild:
-        con = mpku.getmpm("misc", message.guild).getanddel()
+        con = mpku.getmpm("misc", message.guild)
         try: 
             con['prefix']
             prf.clear()
             prf.append(con['prefix'])
         except: pass
     
-    users = bot.usermpm.data 
+    users = bot.usermpm
     try: prf.insert(0, users[str(message.author.id)]['prefix'])
     except: pass
     return prf
@@ -58,7 +58,7 @@ intents.presences = True
 bot = commands.Bot(command_prefix=prefix, owner_id=data['owner'], intents=intents)
 bot.__dict__['data'] = data
 commands.Bot.data = property(lambda x: x.__dict__['data'])
-bot.__dict__['userdata'] = mpku.getmpm('users', None, filter=True)
+bot.__dict__['userdata'] = mpku.getmpm('users', None)
 commands.Bot.usermpm = property(lambda x: x.__dict__['userdata'])
 bot.remove_command('help')
 
@@ -201,7 +201,7 @@ async def mainloop():
         sys.stderr = usrout
 
 upd = False
-@bot.command(aliases = ['get'])
+@bot.command(aliases = ('get',))
 @commands.is_owner()
 async def retrieve(ctx):
     global upd

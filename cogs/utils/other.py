@@ -1,5 +1,5 @@
 import humanize
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 
 def getord(num):
@@ -14,3 +14,14 @@ def getord(num):
 
 def timeint(num, minutes=False):
     return humanize.naturaldelta(timedelta(seconds=(num * (60 if minutes else 1))))
+
+def timestamp_to_int(dt):
+    return int(datetime.timestamp(dt) * 1000000)
+def timestamp_now():
+    return timestamp_to_int(datetime.utcnow())    
+def datetime_from_int(dt):
+    return datetime.fromtimestamp(dt  / 1000000)
+
+def iiterate(i, iafter = True):
+    if iafter: return zip(i, range(len(i)))
+    return zip(range(len(i)), i)

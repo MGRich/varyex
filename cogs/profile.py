@@ -1,17 +1,17 @@
 import discord, asyncio, re, aiohttp
-from discord.ext import commands, menus
+from discord.ext import commands, menus, tasks
 
-from cogs.utils.converters import UserLookup
+from cogs.utils.converters import UserLookup, DurationString
 from cogs.utils.menus import Confirm, Choice
-from cogs.utils.other import getord
+from cogs.utils.other import getord, timestamp_to_int, datetime_from_int, timestamp_now, iiterate
 
 from typing import Union, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 import timeago
-import cogs.utils.mpk as mpku
 import pytz
 import dateparser
 import number_parser as numparser
+from humanize import naturaltime
 from copy import copy
 from lxml import html
 
@@ -65,9 +65,6 @@ ACCOUNTS = {
         're': REBASE,
         'color': 0xff4500
     },
-#   'facebook': {
-#       'link': 'https://facebook.com/[]'
-#   },
     'instagram': {
         'emoji': 777774500926324757,
         'prefix': '@',
@@ -338,10 +335,30 @@ class Profile(commands.Cog):
 
         rec([x.replace('_', ' ') for x in pytz.common_timezones], [])
 
-    def getmpm(self) -> mpku.MPKManager:
-        return self.bot.usermpm
+    @commands.command(aliases = ('remind', 'reminder', 'setreminder', 'setremind'))
+    async def remindme(self, ctx: commands.Context, *, ds: DurationString):
+        if not ((d := ds.duration) and (st := ds.string)): return await ctx.send("Please set a valid duration.")
+        mpk = self.bot.usermpm[str(ctx.author.id)]
 
-    @commands.group(aliases = ["userinfo", "userprofile"])
+    @tasks.loop(minutes=1)
+    async def remindloop(self):
+        mpk = self.bot.usermpm
+        for x in mpk:
+            if not (r := mpk[x]['reminders']): continue
+            subtract = 0
+            for reminder, i in iiterate(r):
+                if reminder['time'] <= timestamp_now():
+                    st = f"{naturaltime(timedelta(minutes=reminder['len']))}, you set a reminder: {reminder['msg']}"
+                    try: await (await self.bot.fetch_user(int(x))).send(st)
+                    except:
+                        try: await self.bot.get_channel(int(reminder['ch'])).send(f"<@{x}> {st}")
+                        except: pass #could not send reminder
+                    del r[i - subtract]
+                    subtraft += 1
+                    
+
+
+    @commands.group(aliases = ("userinfo", "userprofile"))
     async def profile(self, ctx: commands.Context, user: Optional[UserLookup]):
         """Edit or get your own or someone else's profile.
         This also includes generic user info such as roles and account creation/server join date.
@@ -388,8 +405,8 @@ class Profile(commands.Cog):
         ##BEGIN PROFILE SHIT
         if isbot: return await ctx.send(embed=e) #botphobia
         pval = ""
-        try: mpk = self.bot.usermpm[str(user.id)]['profile']
-        except: return await ctx.send(embed=e)
+        if not (mpk := self.bot.usermpm[str(user.id)]['profile']):
+            return await ctx.send(embed=e)
         last: Union[dict, str]
         def getfromprofile(st, notset=False):
             nonlocal last
@@ -475,26 +492,23 @@ class Profile(commands.Cog):
 
         await ctx.send(embed=e)     
 
-    @profile.group(aliases = ["set"])
+    @profile.group(aliases = ("set",))
     async def edit(self, ctx: commands.Context):
         if ctx.invoked_subcommand: return
-        try: self.bot.usermpm.data[str(ctx.author.id)]['profile']
-        except:
+        if self.bot.usermpm[str(ctx.author.id)]['profile'].isblank:
             a = await Confirm("Do you want to create a profile? This cannot be undone. (Remember, anyone can view your profile at any time.)", delete_message_after=False).prompt(ctx)
-            if a:
-                mpm = self.bot.usermpm
-                try: mpm.data[str(ctx.author.id)]
-                except: mpm.data[str(ctx.author.id)] = {}
-                mpm.data[str(ctx.author.id)]['profile'] = {}
-                mpm.save()
-                return await ctx.reinvoke(restart=True)
-            return await ctx.send("Profile declined.")
+            if not a: return await ctx.send("Profile declined.")
+            mpk = self.bot.usermpm
+            mpk[str(ctx.author.id)]['profile'] = {}
+            mpk.save()
+            return await ctx.reinvoke(restart=True)
+            
         raise commands.UserInputError()
 
     async def _edit(self, ctx, prompts, max, key, pretext):
         mpm = self.bot.usermpm
-        try: mpk = mpm.data[str(ctx.author.id)]['profile']
-        except: return await ctx.invoke(self.edit)
+        if (mpk := mpm[str(ctx.author.id)]['profile']).isblank:
+            return await ctx.invoke(self.edit)
         if not pretext: await ctx.send(prompts[0])
         def waitforcheck(m):
             return (m.author == ctx.author) and (m.channel == ctx.channel)
@@ -516,32 +530,32 @@ class Profile(commands.Cog):
             mpm.save()
             return await ctx.send(prompts[1])
 
-    @edit.command(aliases = ['setrealname', 'rname'])
+    @edit.command(aliases = ('setrealname', 'rname'))
     async def realname(self, ctx, *, pretext: Optional[str]):
         await self._edit(ctx, ["Please type your real name. Remember, everyone can see this, so I recommend a \"nickname\" of sorts.\nIt must be under 30 characters. You can type `cancel` to cancel.",
             "Real name set!", "Cancelled name setting."], 30, 'realname', pretext)
 
-    @edit.command(aliases = ['setname'])
+    @edit.command(aliases = ('setname',))
     async def name(self, ctx, *, pretext: Optional[str]):
         await self._edit(ctx, ["Please type your preferred name. It must be under 30 characters. You can type `cancel` to cancel.",
             "Name set!", "Cancelled name setting."], 30, 'name', pretext)
 
-    @edit.command(aliases = ['setlocation', 'loc', 'setloc'])
+    @edit.command(aliases = ('setlocation', 'loc', 'setloc'))
     async def location(self, ctx, *, pretext: Optional[str]):
         await self._edit(ctx, ["Please type your location. **Don't be specific.** It must be under 30 characters. You can type `cancel` to cancel.",
             "Location set!", "Cancelled location setting."], 30, 'location', pretext)
 
-    @edit.command(aliases = ['setbio'])
+    @edit.command(aliases = ('setbio',))
     async def bio(self, ctx, *, pretext: Optional[str]):
         await self._edit(ctx, ["Please type up a bio. It must be under 400 characters. You can type `cancel` to cancel.",
             "Bio set!", "Cancelled bio setting."], 400, 'bio', pretext)
 
 
-    @edit.command(aliases = ['setbday', 'bday', 'setbirthday'])
+    @edit.command(aliases = ('setbday', 'bday', 'setbirthday'))
     async def birthday(self, ctx):
         mpm = self.bot.usermpm
-        try: mpk = mpm.data[str(ctx.author.id)]['profile']
-        except: return await ctx.invoke(self.edit)
+        if (mpk := mpm[str(ctx.author.id)]['profile']).isblank:
+            return await ctx.invoke(self.edit)
         await ctx.send("Please send your birthday. This can include year, but doesn't have to. Send `cancel` to cancel.")
         def waitforcheck(m):
             return (m.author == ctx.author) and (m.channel == ctx.channel)
@@ -568,11 +582,11 @@ class Profile(commands.Cog):
             mpm.save()
             return await ctx.send("Birthday set!")
 
-    @edit.command(aliases = ['setpronouns', 'setpronoun', 'pronouns'])
+    @edit.command(aliases = ('setpronouns', 'setpronoun', 'pronouns'))
     async def pronoun(self, ctx):
         mpm = self.bot.usermpm
-        try: mpk = mpm.data[str(ctx.author.id)]['profile']
-        except: return await ctx.invoke(self.edit)
+        if (mpk := mpm[str(ctx.author.id)]['profile']).isblank:
+            return await ctx.invoke(self.edit)
         result = await PronounSelector(self.bot).prompt(ctx)
         if not result:
             return await ctx.send("Cancelled pronoun setting.")
@@ -595,11 +609,11 @@ class Profile(commands.Cog):
         mpm.save()
         return await ctx.send("Pronouns set!")
 
-    @edit.command(aliases = ['settz', "timezone", "tz"])
+    @edit.command(aliases = ('settz', "timezone", "tz"))
     async def settimezone(self, ctx):
         mpm = self.bot.usermpm
-        try: mpk = mpm.data[str(ctx.author.id)]['profile']
-        except: return await ctx.invoke(self.edit)
+        if (mpk := mpm[str(ctx.author.id)]['profile']).isblank:
+            return await ctx.invoke(self.edit)
         r = await TZMenu(self.tzd, discord.Color(self.bot.data['color'])).prompt(ctx)
         if r:
             mpk['tz'] = r
@@ -673,10 +687,9 @@ class Profile(commands.Cog):
     @edit.command(aliases = ('account', 'accounts', 'setaccount'))
     async def setaccounts(self, ctx: commands.Context):
         mpm = self.bot.usermpm
-        try: mpk = mpm.data[str(ctx.author.id)]['profile']
-        except: return await ctx.invoke(self.edit)
-        try: accdict = mpk['accounts']
-        except: accdict = mpk['accounts'] = {}
+        if (mpk := mpm[str(ctx.author.id)]['profile']).isblank:
+            return await ctx.invoke(self.edit)
+        accdict = mpk['accounts']
 
         embed = discord.Embed(title = "Accounts Management", description = "Pick which account you'd like to add/remove.",
             color = self.bot.data['color'] if ctx.author.color == discord.Color.default() else ctx.author.color)
@@ -693,8 +706,7 @@ class Profile(commands.Cog):
         embed.set_footer(text=aname, icon_url=str(emoji[a].url))
         embed.color = data['color']
 
-        try: alist = accdict[acctype]
-        except: alist = accdict[acctype] = []
+        alist = accdict[acctype]
         embed.description = "Current accounts:\n" if alist else "*No accounts.*\n"
         t = data['type']
         i = 0

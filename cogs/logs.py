@@ -35,7 +35,7 @@ class LogMenu(menus.Menu):
         self.shown = len(trimmedlist)
         embed = discord.Embed(title = "Log Config", color=self.color, description = "")
         for i in range(len(bitlist)):
-            unic = '\u2705' if (self.mpk.data['log']['flags'] >> i) & 1 else '\u26D4'
+            unic = '\u2705' if (self.mpk['log']['flags'] >> i) & 1 else '\u26D4'
             ch = -1
             if self.page * 5 <= i <= self.page * 5 + 4: 
                 ch = i - self.page * 5
@@ -56,7 +56,7 @@ class LogMenu(menus.Menu):
     async def finalize(self, _t):
         embed = discord.Embed(title = "Log Config - Saved", color=self.color, description = "")
         for i in range(len(bitlist)):
-            unic = '\u2705' if (self.mpk.data['log']['flags'] >> i) & 1 else '\u26D4'
+            unic = '\u2705' if (self.mpk['log']['flags'] >> i) & 1 else '\u26D4'
             embed.description += f"{bitlist[i]}: {unic}\n"
         await self.message.edit(embed=embed)
         self.mpk.save()
@@ -81,7 +81,7 @@ class LogMenu(menus.Menu):
         if not payload.member: return
         await self.message.remove_reaction(payload.emoji, payload.member)
         if self.shown >= (picked := [str(x) + "\uFE0F\u20E3" for x in range(1, 6)].index(payload.emoji.name)) + 1:
-            self.mpk.data['log']['flags'] ^= 1 << (self.page * 5 + picked)
+            self.mpk['log']['flags'] ^= 1 << (self.page * 5 + picked)
             await self.editmessage()  
 
 class Logging(commands.Cog):
@@ -102,18 +102,11 @@ class Logging(commands.Cog):
 
 
     ######FUNCTIONS######
-    def getmpm(self, guild) -> mpku.MPKManager:
-        return mpku.getmpm("moderation", guild.id)
     
     def setupjson(self, guild):
-        mpm = self.getmpm(guild)
-        mpk = mpm.data
-        try: mpk['log']
-        except: mpk['log'] = {
-            'flags': 0b11111111111,
-            'channel': 0
-        }
-        mpm.save()
+        mpk = mpku.getmpm("moderation", guild.id)
+        mpk['log'] = ({'flags': 0b11111111111, 'channel': 0 },)
+        mpk.save()
         return mpk
 
     def getbit(self, val, pos):
@@ -132,9 +125,8 @@ class Logging(commands.Cog):
         if not holdoff: 
             try: self.invites[guild.id] = await guild.invites()
             except discord.Forbidden: pass
-        mpk = self.getmpm(guild).getanddel()
-        try: mpk['log']['flags']
-        except: return None
+        mpk = mpku.getmpm("moderation", guild.id)
+        if not mpk['log']['flags']: return None
         if (not self.getbit(mpk['log']['flags'], pos)):
             return None
         return (guild.get_channel(mpk['log']['channel']) if mpk['log']['channel'] != 0 else None)
@@ -142,17 +134,19 @@ class Logging(commands.Cog):
     async def send(self, chn: discord.TextChannel, e: discord.Embed):
         from discord.embeds import EmptyEmbed
         m = None
-        offset = datetime.utcnow() - timedelta(minutes=7)
+        offset = None
         #first lets travel up. if this is a chain of some kind, the author will remain
         while True:
-            ml = await chn.history(after=offset, oldest_first=False).flatten()
-            if not ml: break
-            m2 = ml[0] 
-            if m2.author.id != self.bot.user.id or (not m2.embeds): break
-            offset = m2.created_at - timedelta(minutes=7)
-            if m2.embeds and m2.embeds[0].author:
-                m = m2
-                break
+            ml = await chn.history(before=offset, after=(offset or datetime.utcnow()) - timedelta(minutes=7), oldest_first=False, limit=10).flatten()
+            if (not ml): break
+            for m3 in ml:
+                m2 = m3
+                if m2.author.id != self.bot.user.id or (not m2.embeds): break
+                offset = m2.created_at
+                if m2.embeds and m2.embeds[0].author:
+                    m = m2
+                    break
+            if m: break
         if m:
             #now lets chip off
             c = m.embeds[0]
@@ -328,7 +322,7 @@ class Logging(commands.Cog):
         `log cfg channel/setchannel [channel]`"""
         self.setupjson(ctx.guild)
         if (ctx.invoked_subcommand == None):
-            mpk = self.getmpm(ctx.guild).getanddel()
+            mpk = mpku.getmpm("moderation", ctx.guild.id)
             embed = discord.Embed(title = "Log Config", color=self.bot.data['color'], description = "")
             for i in range(len(bitlist)):
                 unic = '\u2705' if (mpk['log']['flags'] >> i) & 1 else '\u26D4'
@@ -336,18 +330,18 @@ class Logging(commands.Cog):
             embed.description += f"Channel: <#{mpk['log']['channel']}>" if mpk['log']['channel'] else "Channel: *not set*"
             await ctx.send(embed=embed)
     
-    @log.group(aliases = ['cfg'])
+    @log.group(aliases = ('cfg',))
     async def config(self, ctx):
         if not ctx.invoked_subcommand:
             await LogMenu(ctx.guild.id, self.bot.data, ctx.prefix).prompt(ctx)
 
-    @config.command(aliases = ['setchannel'])
+    @config.command(aliases = ('setchannel',))
     @commands.has_permissions(manage_guild=True)
     async def channel(self, ctx, channel: Optional[discord.TextChannel]):
         if not channel: return await ctx.invoke(self.log)
-        mpm = self.getmpm(ctx.guild)
-        mpm.data['log']['channel'] = channel.id
-        mpm.save()
+        mpk = mpku.getmpm("moderation", ctx.guild.id)
+        mpk['log']['channel'] = channel.id
+        mpk.save()
         await ctx.send(f"Log channel set to {channel.mention}!")
 
     #######EVENTS########
@@ -404,7 +398,6 @@ class Logging(commands.Cog):
         for m in messages:
             ttlist.append(m.created_at)
         first = min(ttlist)
-        last = max(ttlist)
 
         #log.debug(first)
         #log.debug(last)
