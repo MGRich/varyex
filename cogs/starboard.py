@@ -179,7 +179,7 @@ class Starboard(commands.Cog):
         mpk['leaderboard'] = {'enabled': lbe}
         for x in mpk['messages']:
             msg = mpk['messages'][x]
-            if msg['chn'] in mpk['blacklist']: continue
+            if msg['chn'] in mpk['blacklist'] or not msg['count']: continue #HOW DID MSGCOUNT GET FUCKED UP??
             aid = str(msg['author'])
             mpk['leaderboard'][aid] = (0,)
             mpk['leaderboard'][aid] += msg['count']
