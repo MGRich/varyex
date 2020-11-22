@@ -82,6 +82,9 @@ class DefaultContainer:
         self._settype("")
         return self._data.update(d)
     ##flexible
+    def clear(self):
+        if not self._data: return
+        self._data.clear()
     def items(self):
         #items can actually be used flexibily for both (after all, it's key-value, and list "keys" are ints)
         if not self._data: return []
