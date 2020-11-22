@@ -316,6 +316,7 @@ def pronounstrings(d):
 
 class Profile(commands.Cog):
     def __init__(self, bot: commands.Bot):
+        # pylint: disable=no-member
         self.bot = bot
         self.tzd = {}
         def rec(cur, startswith):
@@ -335,10 +336,30 @@ class Profile(commands.Cog):
 
         rec([x.replace('_', ' ') for x in pytz.common_timezones], [])
 
+        self.remindloop.start()
+
+    def cog_unload(self):
+        # pylint: disable=no-member
+        self.remindloop.cancel()
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        # pylint: disable=no-member
+        if (self.garfloop.get_task()): self.remindloop.cancel()
+        self.remindloop.start()
+
     @commands.command(aliases = ('remind', 'reminder', 'setreminder', 'setremind'))
     async def remindme(self, ctx: commands.Context, *, ds: DurationString):
-        if not ((d := ds.duration) and (st := ds.string)): return await ctx.send("Please set a valid duration.")
+        """Sets a reminder that (tries) to DM you.
+        If it can't DM you, it will send a message in the channel you set the reminder in.
+
+        remindme <duration> <message>""" 
+        if not ((d := ds.duration) and (st := ds.string)): return await ctx.send("Please set a valid reminder.")
+        if d // 60 == 0:  return await ctx.send("Please set a valid duration.")
         mpk = self.bot.usermpm[str(ctx.author.id)]
+        mpk['reminders'].append({'len': d // 60, 'time': timestamp_to_int(datetime.utcnow() + timedelta(seconds=d)), 'msg': st, 'ch': ctx.channel.id})
+        self.bot.usermpm.save()
+        await ctx.send("Reminder set!")
 
     @tasks.loop(minutes=1)
     async def remindloop(self):
@@ -348,13 +369,13 @@ class Profile(commands.Cog):
             subtract = 0
             for reminder, i in iiterate(r):
                 if reminder['time'] <= timestamp_now():
-                    st = f"{naturaltime(timedelta(minutes=reminder['len']))}, you set a reminder: {reminder['msg']}"
+                    st = f"{naturaltime(timedelta(minutes=reminder['len'])).capitalize()}, you set a reminder: {reminder['msg']}"
                     try: await (await self.bot.fetch_user(int(x))).send(st)
                     except:
                         try: await self.bot.get_channel(int(reminder['ch'])).send(f"<@{x}> {st}")
                         except: pass #could not send reminder
                     del r[i - subtract]
-                    subtraft += 1
+                    subtract += 1
                     
 
 
