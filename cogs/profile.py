@@ -363,7 +363,7 @@ class Profile(commands.Cog):
 
     @tasks.loop(minutes=1)
     async def remindloop(self):
-        mpk = self.bot.usermpm
+        mpk = copy(self.bot.usermpm)
         for x in mpk:
             if not (r := mpk[x]['reminders']): continue
             subtract = 0
