@@ -180,7 +180,8 @@ class Starboard(commands.Cog):
         for x in mpk['messages']:
             msg = mpk['messages'][x]
             if msg['chn'] in mpk['blacklist']: continue
-            if (aid := str(msg['author'])) not in mpk['leaderboard']: mpk['leaderboard'][aid] = 0
+            aid = str(msg['author'])
+            mpk['leaderboard'][aid] = (0,)
             mpk['leaderboard'][aid] += msg['count']
         mpk.save()
         log.debug(f"refreshed leaderboard for {gid}")
