@@ -43,8 +43,8 @@ def prefix(bot, message):
         except: pass
     
     users = bot.usermpm
-    try: prf.insert(0, users[str(message.author.id)]['prefix'])
-    except: pass
+    if users[str(message.author.id)]['prefix']:
+        prf.insert(0, users[str(message.author.id)]['prefix'])
     return prf
 
 #fetch cogs
