@@ -363,12 +363,16 @@ class Profile(commands.Cog):
 
     @tasks.loop(minutes=1)
     async def remindloop(self):
-        mpk = copy(self.bot.usermpm)
-        for x in mpk:
+        mpk = self.bot.usermpm
+        changed = False
+        cp = copy(self.bot.usermpm)
+        for x in cp:
             if not (r := mpk[x]['reminders']): continue
             subtract = 0
-            for reminder, i in iiterate(r):
+            cr = copy(r)
+            for reminder, i in iiterate(cr):
                 if reminder['time'] <= timestamp_now():
+                    changed = True
                     st = f"{naturaltime(timedelta(minutes=reminder['len'])).capitalize()}, you set a reminder: {reminder['msg']}"
                     try: await (await self.bot.fetch_user(int(x))).send(st)
                     except:
@@ -376,6 +380,7 @@ class Profile(commands.Cog):
                         except: pass #could not send reminder
                     del r[i - subtract]
                     subtract += 1
+        if changed: mpk.save()
                     
 
 
