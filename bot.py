@@ -36,11 +36,9 @@ def prefix(bot, message):
     prf = data['prefix'].copy()
     if message.guild:
         con = mpku.getmpm("misc", message.guild)
-        try: 
-            con['prefix']
+        if con['prefix']:
             prf.clear()
             prf.append(con['prefix'])
-        except: pass
     
     users = bot.usermpm
     if users[str(message.author.id)]['prefix']:
