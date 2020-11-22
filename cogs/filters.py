@@ -158,8 +158,7 @@ class Filters(commands.Cog):
         hasfp = False
         hasf = False
         
-        if mpk['filterping']:
-            if (not mpk['channel']): raise Exception()
+        if mpk['filterping'] and mpk['channel']:
             try: chn = await self.bot.fetch_channel(mpk['channel'])
             except: pass
             else: hasfp = not msg.author.bot

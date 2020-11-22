@@ -9,6 +9,7 @@ from numpy import clip
 
 import dateparser, random, html #garfield
 from datetime import datetime, timedelta
+from copy import deepcopy
 
 import aiohttp #garfield AND imgfilter
 
@@ -367,10 +368,9 @@ class Misc(commands.Cog):
                 chn = guild.get_channel(mpk['s'])
                 try: await chn.send(embed=sembed)
                 except: pass
-        mpkr = self.bot.usermpm
+        mpkr = deepcopy(self.bot.usermpm)
         for uid in mpkr:
-            try: mpk = mpkr[uid]['garfield']
-            except: continue
+            mpk = mpkr[uid]['garfield']
             user: discord.User = self.bot.get_user(uid)
             if not user: user = await self.bot.fetch_user(uid)
             if not user: continue

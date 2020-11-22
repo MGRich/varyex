@@ -26,7 +26,7 @@ class DefaultContainer:
         if isinstance(t, str): 
             self._data = {}
             return 
-        elif isinstance(t, (int, slice)):
+        if isinstance(t, (int, slice)):
             self._data = []
             return
         raise KeyError(f"invalid type ({type(t).__name__} is not str, int, or slice obj)")
