@@ -353,7 +353,7 @@ class Profile(commands.Cog):
         """Sets a reminder that (tries) to DM you.
         If it can't DM you, it will send a message in the channel you set the reminder in.
 
-        remindme <duration> <message>""" 
+        `remindme <duration> <message>`""" 
         if not ((d := ds.duration) and (st := ds.string)): return await ctx.send("Please set a valid reminder.")
         if d // 60 == 0:  return await ctx.send("Please set a valid duration.")
         mpk = self.bot.usermpm[str(ctx.author.id)]
