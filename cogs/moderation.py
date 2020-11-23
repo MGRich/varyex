@@ -8,7 +8,7 @@ from cogs.utils.converters import UserLookup, MemberLookup, DurationString
 from cogs.utils.other import timeint, timestamp_to_int, datetime_from_int, timestamp_now
 
 from typing import Optional
-from copy import copy
+from copy import copy, deepcopy
 from datetime import datetime, timedelta
 import pytz
 from string import punctuation
@@ -328,7 +328,7 @@ class Moderation(commands.Cog):
             mpk['users'][uid].append({'reason': reason, 'timestamp': timestamp_now(), 'who': ctx.author.id, 'major': True})
 
             ofc = mpk['offences'][min(len(majorWarns(mpk['users'][uid])), len(mpk['offences'])) - 1]
-            act = copy(mpk['actions'][ofc['action']])
+            act = deepcopy(mpk['actions'][ofc['action']])
 
             worked = True
             #ex = None
@@ -630,7 +630,7 @@ class Moderation(commands.Cog):
             mpk['users'][uid][cnt]['who'] = ctx.author.id
             mpk['users'][uid][cnt]['major'] = False
 
-            act = copy(mpk['actions'][strused])
+            act = deepcopy(mpk['actions'][strused])
 
             act['dmmsg'] = act['dmmsg'].replace('[r]', reason)
             act['msg'] = act['msg'].replace('[u]', user.mention)
