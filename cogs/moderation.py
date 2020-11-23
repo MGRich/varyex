@@ -649,9 +649,9 @@ class Moderation(commands.Cog):
                 try: await user.send(act['dmmsg'])
                 except: pass
             await ctx.send(act['msg'])
+            mpk.save()
             try: await self.bot.get_cog('Logging').on_warn(user, ctx.guild, mpk['users'][uid][cnt], '`mute`' if mute else None)
             except AttributeError: pass
-        mpk.save()
 
     @commands.command(aliases=('warnings',))
     @commands.guild_only()
