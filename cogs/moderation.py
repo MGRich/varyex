@@ -16,6 +16,10 @@ from string import punctuation
 import logging
 log = logging.getLogger('bot')
 
+def majorWarns(warns):
+    return [x for x in warns if (x['major'])]
+
+
 class Moderation(commands.Cog):
     def __init__(self, bot: commands.Bot):
         # pylint: disable=no-member
