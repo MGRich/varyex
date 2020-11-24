@@ -166,7 +166,7 @@ async def mainloop():
         elif iteration == 1:
             c = 0
             for y in tuple(x.members for x in bot.guilds):
-                c += len(y) 
+                c += len([z for z in y if not z.bot]) 
             st = f"{c} members"
         elif iteration == 2: st = f"v{data['version']}"
         await bot.change_presence(activity=discord.Activity(name=f"{data['status'].replace('[ch]', st)}", type=0))
