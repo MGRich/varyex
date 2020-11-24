@@ -70,7 +70,7 @@ class embeds:
                     if   "https://twitter.com/" in e.url: typ = "twitter"
                     elif "https://www.youtube.com/" == e.provider.url: typ = "yt"
                     elif "Twitch" == e.provider.name: typ = "twitch"
-                    elif "https://gamebanana.com" in e.url: typ = "gb"
+                    elif "GameBanana" == e.provider.name: typ = "gb"
             except: pass
             #SPECIAL HANDLING   
             if typ == "twitter":
