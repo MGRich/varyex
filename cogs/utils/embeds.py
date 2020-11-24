@@ -66,7 +66,7 @@ class embeds:
             typ = ""
             if (e.color != discord.Color.default() and e.color != e.Empty): embed.colour = e.color
             try:
-                if (stardata) and e.type == "rich":
+                if (stardata) and e.type in {"rich", "article"}:
                     if   "https://twitter.com/" in e.url: typ = "twitter"
                     elif "https://www.youtube.com/" == e.provider.url: typ = "yt"
                     elif "Twitch" == e.provider.name: typ = "twitch"
