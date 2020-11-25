@@ -62,19 +62,23 @@ class Main(commands.Bot):
         self.data = data
         self.usermpm = userdata
         self.loops: List[discord.ext.tasks.Loop] = []
-        #self.loop.create_task(self.loopcheckup())
+        self.looptask = self.loop.create_task(self.loopcheckup())
         self.remove_command("help")
 
         self.owner = None
         lh.BOT = self
 
     async def loopcheckup(self):
-        while True:
-            await asyncio.sleep(60 * 10) #every 10 minutes preform a loop checkup
-            for loop in self.loops:
-                if not loop.next_iteration:
-                    loop.start()
-                    await self.owner.send(f"restarted loop `{loop.coro.__name__}`")
+        try:
+            while True:
+                await asyncio.sleep(300) #every 5 minutes preform a loop checkup
+                for loop in self.loops:
+                    if not loop.next_iteration:
+                        if '.' in loop.coro.__qualname__:
+                            loop.start(bot.get_cog(loop.coro.__qualname__.split('.')[0]))
+                        else: loop.start()
+                        await self.owner.send(f"restarted loop `{loop.coro.__name__}`")
+        except asyncio.CancelledError: pass #lets just cancel
 
     
 #fetch cogs
@@ -98,6 +102,13 @@ async def loops(ctx, *loopnames):
     llist = bot.loops
     if loopnames:
         action = loopnames[0]
+        if action == "auto":
+            if not bot.looptask or bot.looptask.cancelled(): bot.looptask = bot.loop.create_task(bot.loopcheckup())
+            else: 
+                bot.looptask.cancel()
+                bot.looptask = None
+            return await ctx.send("on" if bot.looptask else "off")
+
         loopnames = loopnames[1:]
         llist = [x for x in bot.loops if x.coro.__name__ in loopnames] or llist
     if (not action):
