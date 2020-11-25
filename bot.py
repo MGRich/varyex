@@ -1,4 +1,4 @@
-import discord, json, subprocess
+import discord, subprocess
 from discord.ext import commands
 import cogs.utils.loophelper as loophelper
 
@@ -14,7 +14,7 @@ from pathlib import Path
 import base64, lzma, umsgpack, github
 
 import difflib, asyncio, textwrap, contextlib
-from typing import Optional, List
+from typing import List
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -469,7 +469,9 @@ async def _eval(ctx, *, evl):
 
 @bot.command(name="c")
 @commands.is_owner()
-async def nomore(_ctx):
+async def nomore(ctx):
+    if (stable):
+        if not await Confirm("Bitch!").prompt(ctx): return
     await bot.close()
 
 @bot.command()
