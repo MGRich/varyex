@@ -1,5 +1,5 @@
 import discord, re, difflib
-from discord.ext import commands, tasks, menus
+from discord.ext import commands, tasks
 from discord import AuditLogAction
 
 from cogs.utils.embeds import embeds
@@ -10,79 +10,8 @@ from datetime import datetime, timedelta
 from io import BytesIO
 
 import logging
-log = logging.getLogger('bot')
+LOG = logging.getLogger('bot')
 
-bitlist = ("Message Delete", "Message Edit", "Channel Edits", "Member Joining/Leaving", 
-    "Member Updates", "Server Updates", "Role Updates", "Emoji Updates", "Voice Updates",
-    "Bans", "Warnings", "Bots can trigger some logs", "Starboard Logging")
-class LogMenu(menus.Menu):
-    def __init__(self, gid, datadict, prefix):
-        super().__init__(timeout = 30.0, delete_message_after=False, clear_reactions_after=True)
-        self.mpk = mpku.getmpm("moderation", gid)
-        self.page = 0
-        self.max = len(bitlist) // 5
-        self.color = datadict['color']
-        self.prefix = prefix
-        self.shown = 5
-        self.message = None
-        for x in {"\U0001F53C", "\U0001F53D"}:
-            self.add_button(menus.Button(x, self.movepage))
-        for x in range(1, 6):
-            self.add_button(menus.Button(str(x) + "\uFE0F\u20E3", self.pick))
-
-    async def editmessage(self):
-        trimmedlist = bitlist[(self.page * 5):(self.page * 5 + 5)]
-        self.shown = len(trimmedlist)
-        embed = discord.Embed(title = "Log Config", color=self.color, description = "")
-        for i in range(len(bitlist)):
-            unic = '\u2705' if (self.mpk['log']['flags'] >> i) & 1 else '\u26D4'
-            ch = -1
-            if self.page * 5 <= i <= self.page * 5 + 4: 
-                ch = i - self.page * 5
-            if ch == -1: num = "\U0001F7E6 "
-            else: num = f"{str(ch + 1)}\uFE0F\u20e3 "
-            embed.description += f"{num}{bitlist[i]}: {unic}\n"
-        embed.set_footer(text="Use the reactions to toggle the flags.")
-        return await self.message.edit(content = "", embed=embed)
-
-    async def prompt(self, ctx):
-        await self.start(ctx)
-        
-    async def send_initial_message(self, ctx, channel):
-        ret = self.message = await channel.send("Please wait..")
-        await self.editmessage()
-        return ret
-
-    async def finalize(self, _t):
-        embed = discord.Embed(title = "Log Config - Saved", color=self.color, description = "")
-        for i in range(len(bitlist)):
-            unic = '\u2705' if (self.mpk['log']['flags'] >> i) & 1 else '\u26D4'
-            embed.description += f"{bitlist[i]}: {unic}\n"
-        await self.message.edit(embed=embed)
-        self.mpk.save()
-
-    async def movepage(self, payload):
-        if not payload.member: return
-        await self.message.remove_reaction(payload.emoji, payload.member)
-        if (payload.emoji.name == "\U0001F53C"):
-            self.page = max(self.page - 1, 0)
-        else:
-            self.page = min(self.page + 1, self.max)
-        log.debug(self.max)
-        log.debug(self.page)
-        await self.editmessage()
-    
-    @menus.button("\u23F9") #stop
-    async def stopemote(self, _payload):
-        await self.finalize(False)
-        self.stop()
-
-    async def pick(self, payload: discord.RawReactionActionEvent):
-        if not payload.member: return
-        await self.message.remove_reaction(payload.emoji, payload.member)
-        if self.shown >= (picked := [str(x) + "\uFE0F\u20E3" for x in range(1, 6)].index(payload.emoji.name)) + 1:
-            self.mpk['log']['flags'] ^= 1 << (self.page * 5 + picked)
-            await self.editmessage()  
 
 class Logging(commands.Cog):
     def __init__(self, bot: discord.Client):
@@ -94,27 +23,17 @@ class Logging(commands.Cog):
 
     @tasks.loop(count=1) #hacky but do not care
     async def setupinv(self):
-        log.debug("fetching invites")
+        LOG.debug("fetching invites")
         for guild in self.bot.guilds:
             try: self.invites[guild.id] = await guild.invites()
             except discord.Forbidden: pass
-        log.debug("done")
+        LOG.debug("done")
 
 
     ######FUNCTIONS######
     
-    def setupjson(self, guild):
-        mpk = mpku.getmpm("moderation", guild.id)
-        mpk['log'] = ({'flags': 0b11111111111, 'channel': 0 },)
-        mpk.save()
-        return mpk
-
     def getbit(self, val, pos):
         return bool((val >> (pos - 1)) & 1)
-    def toggle(self, val, bits):
-        return val ^ bits
-    def forceset(self, val, on, pos):
-        return val ^ (-on ^ val) & (1 << (pos - 1))
 
     async def checkbit(self, pos, gid, holdoff = False) -> Union[discord.TextChannel, mpku.MPKManager]:
         if not gid: return None
@@ -310,40 +229,6 @@ class Logging(commands.Cog):
             result = re.sub(fr"{x}(.*:)", fr"{x.upper()}\1", result,  flags=re.IGNORECASE)
         return result
 
-    ######COMMANDS#######
-
-    @commands.group(aliases=('logs',))
-    @commands.has_permissions(manage_guild=True)
-    async def log(self, ctx):
-        """Sets up logging.
-        
-        `log/logs`
-        `log cfg`
-        `log cfg channel/setchannel [channel]`"""
-        self.setupjson(ctx.guild)
-        if (ctx.invoked_subcommand == None):
-            mpk = mpku.getmpm("moderation", ctx.guild.id)
-            embed = discord.Embed(title = "Log Config", color=self.bot.data['color'], description = "")
-            for i in range(len(bitlist)):
-                unic = '\u2705' if (mpk['log']['flags'] >> i) & 1 else '\u26D4'
-                embed.description += f"{bitlist[i]}: {unic}\n"
-            embed.description += f"Channel: <#{mpk['log']['channel']}>" if mpk['log']['channel'] else "Channel: *not set*"
-            await ctx.send(embed=embed)
-    
-    @log.group(aliases = ('cfg',))
-    async def config(self, ctx):
-        if not ctx.invoked_subcommand:
-            await LogMenu(ctx.guild.id, self.bot.data, ctx.prefix).prompt(ctx)
-
-    @config.command(aliases = ('setchannel',))
-    @commands.has_permissions(manage_guild=True)
-    async def channel(self, ctx, channel: Optional[discord.TextChannel]):
-        if not channel: return await ctx.invoke(self.log)
-        mpk = mpku.getmpm("moderation", ctx.guild.id)
-        mpk['log']['channel'] = channel.id
-        mpk.save()
-        await ctx.send(f"Log channel set to {channel.mention}!")
-
     #######EVENTS########
     #@commands.Cog.listener()
     @commands.Cog.listener()
@@ -399,8 +284,8 @@ class Logging(commands.Cog):
             ttlist.append(m.created_at)
         first = min(ttlist)
 
-        #log.debug(first)
-        #log.debug(last)
+        #LOG.debug(first)
+        #LOG.debug(last)
 
         embed.timestamp = first
 
@@ -689,7 +574,7 @@ class Logging(commands.Cog):
         if (log): return
         log = await self.getaudit(AuditLogAction.kick, member.guild, target=member.id, after=True)
         if (log):
-            #log.debug(log.user)
+            #LOG.debug(log.user)
             embed.title = "Member Kick"
             embed.description = f"User **{member.mention}** was kicked!\n> **{'(No reason)' if not log.reason else log.reason}** - *{log.user.mention}*"
         else:

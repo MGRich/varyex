@@ -12,7 +12,7 @@ from timeit import default_timer
 from asyncio import sleep, Lock
 
 import logging
-log = logging.getLogger('bot')
+LOG = logging.getLogger('bot')
 
 reactlock = Lock()
 
@@ -38,11 +38,11 @@ class Starboard(commands.Cog):
         except: sbmsg = None
 
         rlist = []
-        log.debug("BEGIN " + str(default_timer() - start))
+        LOG.debug("BEGIN " + str(default_timer() - start))
         start = default_timer()
         if (msg.channel == chl) and msg.author.id == self.bot.user.id and msg.embeds and (msg.embeds[0].footer != discord.Embed.Empty):
             aid = msg.embeds[0].footer.text.split()[-1]
-            log.debug(aid)
+            LOG.debug(aid)
             if aid not in mpk['messages']: return
             cid = mpk['messages'][aid]['chn']
             c = self.bot.get_channel(cid)
@@ -52,7 +52,7 @@ class Starboard(commands.Cog):
             try: msg = await c.fetch_message(int(aid))
             except discord.NotFound: return 
         elif sbmsg: rlist += sbmsg.reactions
-        log.debug("SBMSG " + str(default_timer() - start))
+        LOG.debug("SBMSG " + str(default_timer() - start))
         start = default_timer()
         mid = str(msg.id)
         aid = str(msg.author.id)
@@ -73,7 +73,7 @@ class Starboard(commands.Cog):
                         count += 1
                         ulist.append(u.id)
         if payl.user_id == msg.author.id: return 
-        log.debug("COUNT " + str(default_timer() - start))
+        LOG.debug("COUNT " + str(default_timer() - start))
         start = default_timer()
         mpk['leaderboard'][aid] = (0,)  
         mpk['messages'][mid] = ({},)
@@ -89,11 +89,11 @@ class Starboard(commands.Cog):
         if typ:
             try: await self.bot.get_cog('Logging').on_sbreact(msg.guild.get_member(payl.user_id), msg, typ == 1)
             except AttributeError: pass
-        log.debug("MISC  " + str(default_timer() - start))
+        LOG.debug("MISC  " + str(default_timer() - start))
         start = default_timer()
         mpk.save(False)
         e = await embeds.buildembed(embeds, msg, stardata=[count, spstate, mpk], compare=sbmsg.embeds[0] if sbmsg else None)
-        log.debug("EMBED " + str(default_timer() - start))
+        LOG.debug("EMBED " + str(default_timer() - start))
         if sbmsg:
             if not spstate:
                 try: await sbmsg.delete()
@@ -111,7 +111,7 @@ class Starboard(commands.Cog):
     async def on_guild_channel_pins_update(self, chn: discord.TextChannel, pin: Optional[datetime]):
         if not pin or not (pins := (await chn.pins())) or ((datetime.utcnow() - pin) > timedelta(seconds=10)): return
         msg: discord.Message = pins[0]
-        log.debug(msg)
+        LOG.debug(msg)
         fakepay = discord.RawReactionActionEvent({'message_id': msg.id, 'channel_id': chn.id, 'user_id': 0, 'guild_id': 1}, None, "")
         async with reactlock:
             await self.handlereact(fakepay, 0)
@@ -121,14 +121,14 @@ class Starboard(commands.Cog):
         start = default_timer()
         async with reactlock:
             await self.handlereact(payl, -1)
-        log.debug(default_timer() - start)
+        LOG.debug(default_timer() - start)
     
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payl):
         start = default_timer()
         async with reactlock:
             await self.handlereact(payl, 1)
-        log.debug(default_timer() - start)
+        LOG.debug(default_timer() - start)
 
     @commands.group(aliases = ("sb",))
     @commands.guild_only()
@@ -184,7 +184,7 @@ class Starboard(commands.Cog):
             mpk['leaderboard'][aid] = (0,)
             mpk['leaderboard'][aid] += msg['count']
         mpk.save()
-        log.debug(f"refreshed leaderboard for {gid}")
+        LOG.debug(f"refreshed leaderboard for {gid}")
 
     @starboard.command(aliases = ("lb",))
     @commands.guild_only()
@@ -195,7 +195,7 @@ class Starboard(commands.Cog):
         tbd = await ctx.send("Generating.. this may take a while.. (we're also refreshing the count)")
         self.refreshserver(ctx.guild.id)
         await ctx.trigger_typing()
-        cpy = copy.copy(mpk['leaderboard'])
+        cpy = mpk['leaderboard'].copy()
         try: del cpy['enabled']
         except: pass
         srtd = sorted(cpy.items(), key = lambda x : x[1])

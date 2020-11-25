@@ -1,32 +1,15 @@
 import discord
 from discord.ext import menus
 
-from typing import List, Union
+from typing import List
 
-class Confirm(menus.Menu):
-    def __init__(self, msg, timeout=None, **kwargs):
-        super().__init__(timeout=timeout, **kwargs)
+class Confirm():
+    def __init__(self, msg, **kwargs):
         self.msg = msg
-        self.result = None
-
-    async def send_initial_message(self, ctx, channel):
-        if (isinstance(self.msg, str)):
-            return await channel.send(self.msg)
-        return await channel.send(embed=self.msg)
-
-    @menus.button('\N{WHITE HEAVY CHECK MARK}')
-    async def do_confirm(self, _payload):
-        self.result = True
-        self.stop()
-
-    @menus.button('\N{CROSS MARK}')
-    async def do_deny(self, _payload):
-        self.result = False
-        self.stop()
+        self.kwargs = kwargs
 
     async def prompt(self, ctx):
-        await self.start(ctx, wait=True)
-        return self.result
+        return not await Choice(self.msg, ["\N{WHITE HEAVY CHECK MARK}", "\N{CROSS MARK}"], **self.kwargs).prompt(ctx)
 
 class Choice(menus.Menu):
     def __init__(self, msg: discord.Message, emoji: List[str], **kwargs):
@@ -63,8 +46,8 @@ class Choice(menus.Menu):
         return self.choice
 
 class Paginator(menus.Menu):
-    def __init__(self, embeds: List[discord.Embed], timeout=None, footer=None, title=None, loop=False):
-        super().__init__(timeout=timeout, clear_reactions_after=True)
+    def __init__(self, embeds: List[discord.Embed], footer=None, title=None, loop=False, **kwargs):
+        super().__init__(clear_reactions_after=True, **kwargs)
         self.page = 0
         self.max = len(embeds) - 1
         self.loop = loop
@@ -83,20 +66,21 @@ class Paginator(menus.Menu):
 
     @menus.button('\u23ea', skip_if=isloop)
     async def tofirst(self, payload):
-        if not payload.member: return
+        if payload.event_type == "REACTION_REMOVE": return
         self.page = 0
         await self.edit()
-        await self.message.remove_reaction("\u23ea", payload.member)
-    
+        try: await self.message.remove_reaction("\u23ea", payload.member)
+        except: pass
     @menus.button('\u25C0')
     async def left(self, payload):
-        if not payload.member: return
+        if payload.event_type == "REACTION_REMOVE": return
         self.page -= 1
         if self.page < 0:
             if self.loop: self.page = self.max
             else: self.page = 0
         await self.edit()
-        await self.message.remove_reaction("\u25C0", payload.member)
+        try: await self.message.remove_reaction("\u25C0", payload.member)
+        except: pass
 
     @menus.button('\u23F9')
     async def stopbutton(self, _payload):
@@ -104,17 +88,19 @@ class Paginator(menus.Menu):
 
     @menus.button('\u25B6')
     async def right(self, payload):
-        if not payload.member: return
+        if payload.event_type == "REACTION_REMOVE": return
         self.page += 1
         if self.page > self.max:
             if self.loop: self.page = 0
             else: self.page = self.max
         await self.edit()
-        await self.message.remove_reaction("\u25B6", payload.member)
+        try: await self.message.remove_reaction("\u25B6", payload.member)
+        except: pass
     
     @menus.button('\u23e9', skip_if=isloop)
     async def tolast(self, payload):
-        if not payload.member: return
+        if payload.event_type == "REACTION_REMOVE": return
         self.page = self.max
         await self.edit()
-        await self.message.remove_reaction('\u23e9', payload.member)
+        try: await self.message.remove_reaction('\u23e9', payload.member)
+        except: pass

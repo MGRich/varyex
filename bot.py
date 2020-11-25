@@ -1,9 +1,20 @@
-import discord, traceback, json, os, sys, subprocess, textwrap, contextlib, base64, lzma, umsgpack, github, difflib, asyncio
-from discord.ext import commands, tasks
-from io import StringIO
-import cogs.utils.mpk as mpku
-from pathlib import Path
+import discord, json, subprocess
+from discord.ext import commands
+import cogs.utils.loophelper as loophelper
+
 from cogs.utils.menus import Confirm
+import cogs.utils.mpk as mpku
+
+import logging, sys, traceback
+from io import StringIO
+
+import os, json
+from pathlib import Path
+
+import base64, lzma, umsgpack, github
+
+import difflib, asyncio, textwrap, contextlib
+from typing import Optional, List
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -19,7 +30,6 @@ if stable:
 
 t = os.getenv('STOKEN' if stable else 'DTOKEN')
 
-import logging
 dlog = logging.getLogger('discord')
 glog = logging.getLogger('bot')
 dlog.setLevel('ERROR')
@@ -45,6 +55,28 @@ def prefix(bot, message):
         prf.insert(0, users[str(message.author.id)]['prefix'])
     return prf
 
+
+class Main(commands.Bot):
+    def __init__(self, data, userdata, lh, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.data = data
+        self.usermpm = userdata
+        self.loops: List[discord.ext.tasks.Loop] = []
+        #self.loop.create_task(self.loopcheckup())
+        self.remove_command("help")
+
+        self.owner = None
+        lh.BOT = self
+
+    async def loopcheckup(self):
+        while True:
+            await asyncio.sleep(60 * 10) #every 10 minutes preform a loop checkup
+            for loop in self.loops:
+                if not loop.next_iteration:
+                    loop.start()
+                    await self.owner.send(f"restarted loop `{loop.coro.__name__}`")
+
+    
 #fetch cogs
 cgs = []
 for x in os.listdir("cogs"):
@@ -53,23 +85,56 @@ for x in os.listdir("cogs"):
 intents = discord.Intents.default()
 intents.members = True 
 intents.presences = True
-bot = commands.Bot(command_prefix=prefix, owner_id=data['owner'], intents=intents)
-bot.__dict__['data'] = data
-commands.Bot.data = property(lambda x: x.__dict__['data'])
-bot.__dict__['userdata'] = mpku.getmpm('users', None)
-commands.Bot.usermpm = property(lambda x: x.__dict__['userdata'])
-bot.remove_command('help')
+bot = Main(data, mpku.getmpm('users', None), loophelper, command_prefix=prefix, owner_id=data['owner'], intents=intents)
 
 first = False
 print(bot.data)
+
+@bot.command(aliases=('loop',))
+@commands.is_owner()
+async def loops(ctx, *loopnames):
+    r = "```diff\n"
+    action = ""
+    llist = bot.loops
+    if loopnames:
+        action = loopnames[0]
+        loopnames = loopnames[1:]
+        llist = [x for x in bot.loops if x.coro.__name__ in loopnames] or llist
+    if (not action):
+        for loop in bot.loops:
+            r += f"{'~' if loop.next_iteration else '-'}{loop.coro.__name__}\n"
+        return await ctx.send(r + "```")
+    if action in {'r', 'restart', 'start'}:
+        for loop in llist:
+            use = loop.start if action == 'start' else loop.restart
+            before = bool(loop.next_iteration)
+            try:
+                if '.' in loop.coro.__qualname__:
+                    use(bot.get_cog(loop.coro.__qualname__.split('.')[0]))
+                else: use()
+            except RuntimeError: pass
+            r += f"{'~' if before else '+'}{loop.coro.__name__}\n"
+    elif action in {'c', 'cancel', 'stop'}:
+        for loop in llist:
+            before = bool(loop.next_iteration)
+            loop.cancel()
+            r += f"{'-' if before else '~'}{loop.coro.__name__}\n"
+    elif action == 'start':
+        for loop in llist:
+            before = bool(loop.next_iteration)
+            if '.' in loop.coro.__qualname__:
+                loop.start(bot.get_cog(loop.coro.__qualname__.split('.')[0]))
+            else: loop.start()
+            r += f"{'~' if before else '+'}{loop.coro.__name__}\n"
+    else: return await ctx.send(f"unknown action `{action}`")
+    return await ctx.send(r + "```")
 
 @bot.event
 async def on_ready():
     print(f'\n\nin as: {bot.user.name} - {bot.user.id}\non version: {discord.__version__}\n')
     global first
     if (not first):
-        bot.__dict__['owner'] = bot.get_user(bot.owner_id)
-        commands.Bot.owner = property(lambda x: x.__dict__['owner'])
+        bot.owner = bot.get_user(bot.owner_id)
         user = bot.owner
         first = True
         if (os.path.exists("updateout.log")):
@@ -100,8 +165,7 @@ async def on_ready():
                     traceback.print_exc()
                     print("-----END   {}".format(cog), file=sys.stderr)
             await user.send(msg + "```")
-    try: mainloop.start()
-    except: pass
+    await bot.get_command("loop").callback(user, "start")
 
 errored = []
 
@@ -145,7 +209,7 @@ async def on_command_error(ctx: commands.Context, error):
 iteration = 0
 count = 181
 hourcounter = 3600 - 30
-@tasks.loop(seconds=1, reconnect=True)
+@loophelper.trackedloop(seconds=1, reconnect=True)
 async def mainloop():
     ####EDIT LOOP
     global errored

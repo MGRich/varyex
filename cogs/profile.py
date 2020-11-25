@@ -1,9 +1,10 @@
 import discord, asyncio, re, aiohttp
-from discord.ext import commands, menus, tasks
+from discord.ext import commands, menus
+from cogs.utils.loophelper import trackedloop
 
 from cogs.utils.converters import UserLookup, DurationString
 from cogs.utils.menus import Confirm, Choice
-from cogs.utils.other import getord, timestamp_to_int, datetime_from_int, timestamp_now, iiterate
+from cogs.utils.other import getord, timestamp_to_int, timestamp_now, iiterate
 
 from typing import Union, Optional
 from datetime import datetime, timedelta
@@ -336,17 +337,10 @@ class Profile(commands.Cog):
 
         rec([x.replace('_', ' ') for x in pytz.common_timezones], [])
 
-        self.remindloop.start()
 
     def cog_unload(self):
         # pylint: disable=no-member
         self.remindloop.cancel()
-
-    @commands.Cog.listener()
-    async def on_ready(self):
-        # pylint: disable=no-member
-        if (self.garfloop.get_task()): self.remindloop.cancel()
-        self.remindloop.start()
 
     @commands.command(aliases = ('remind', 'reminder', 'setreminder', 'setremind'))
     async def remindme(self, ctx: commands.Context, *, ds: DurationString):
@@ -355,21 +349,21 @@ class Profile(commands.Cog):
 
         `remindme <duration> <message>`""" 
         if not ((d := ds.duration) and (st := ds.string)): return await ctx.send("Please set a valid reminder.")
-        if d // 60 == 0:  return await ctx.send("Please set a valid duration.")
+        if d // 60 == 0: return await ctx.send("Please set a valid duration.")
         mpk = self.bot.usermpm[str(ctx.author.id)]
         mpk['reminders'].append({'len': d // 60, 'time': timestamp_to_int(datetime.utcnow() + timedelta(seconds=d)), 'msg': st, 'ch': ctx.channel.id})
         self.bot.usermpm.save()
         await ctx.send("Reminder set!")
 
-    @tasks.loop(minutes=1)
+    @trackedloop(minutes=1)
     async def remindloop(self):
         mpk = self.bot.usermpm
         changed = False
-        cp = copy(self.bot.usermpm)
+        cp = self.bot.usermpm.copy()
         for x in cp:
             if not (r := mpk[x]['reminders']): continue
             subtract = 0
-            cr = copy(r)
+            cr = r.copy()
             for reminder, i in iiterate(cr):
                 if reminder['time'] <= timestamp_now():
                     changed = True

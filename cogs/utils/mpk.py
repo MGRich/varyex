@@ -94,6 +94,10 @@ class DefaultContainer:
         if not self._data: return []
         if self._isdict: return self._data.values()
         return self._data
+
+    def copy(self):
+        if not self._data: return DefaultContainer()
+        return DefaultContainer(deepcopy(self._data))
     
 class MPKManager(DefaultContainer):
     def __init__(self, direct, gid = None):
