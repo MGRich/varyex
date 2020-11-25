@@ -69,8 +69,8 @@ class Main(commands.Bot):
         lh.BOT = self
 
     async def loopcheckup(self):
-        try:
-            while True:
+        while True:
+            try:   
                 await asyncio.sleep(300) #every 5 minutes preform a loop checkup
                 for loop in self.loops:
                     if not loop.next_iteration:
@@ -78,7 +78,8 @@ class Main(commands.Bot):
                             loop.start(bot.get_cog(loop.coro.__qualname__.split('.')[0]))
                         else: loop.start()
                         await self.owner.send(f"restarted loop `{loop.coro.__name__}`")
-        except asyncio.CancelledError: pass #lets just cancel
+            except asyncio.CancelledError: break
+            except: pass
 
     
 #fetch cogs
