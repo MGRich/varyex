@@ -28,10 +28,10 @@ class Starboard(commands.Cog):
         try: msg = await self.bot.get_channel(payl.channel_id).fetch_message(payl.message_id)
         except discord.NotFound: return
         mpk = mpku.getmpm('starboard', msg.guild)
-        mpk['count'] = (6,)
         if not mpku.testgiven(mpk, ['channel', 'emoji']) or not mpk['channel'] or (payl.channel_id in mpk['blacklist']): return
         if typ and ((payl.emoji.name if payl.emoji.is_unicode_emoji() else payl.emoji.id) != mpk['emoji']): return
-
+        LOG.debug(payl.guild_id)
+        mpk['count'] = (6,)
         chl = self.bot.get_channel(mpk['channel'])  
 
         try: sbmsg = await chl.fetch_message(mpk['messages'][str(msg.id)]['sbid'])
