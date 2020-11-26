@@ -181,7 +181,7 @@ class Garfield(commands.Cog):
             check = 's' if isSROMG else 'g'
             if (not mpk['garfield'][check]) or (ctx.guild and mpk['garfield'][check] != ctx.channel.id):
                 mpk['garfield'][check] = ctx.channel.id if ctx.guild else 1
-                mpk.save()
+                mpm.save()
                 return await ctx.send(f"{'This channel' if ctx.guild else 'You'} will now recieve {'SROMG' if isSROMG else 'Garfield'} strips daily!")
             mpk['garfield'][check] = 0
             mpm.save()
