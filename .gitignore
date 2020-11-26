@@ -3,7 +3,7 @@ __pycache__
 config*
 .vscode
 *.log
-funny.py
+funny.*
 cogs/*/
 !cogs/utils/
 !cogs/*.py

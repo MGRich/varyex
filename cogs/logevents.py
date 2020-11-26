@@ -5,7 +5,7 @@ from discord import AuditLogAction
 from cogs.utils.embeds import embeds
 import cogs.utils.mpk as mpku
 
-from typing import Union, List, Optional
+from typing import Union, List
 from datetime import datetime, timedelta
 from io import BytesIO
 

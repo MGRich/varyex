@@ -36,6 +36,7 @@ ACCOUNTS = {
         'type': 2,
         're': r'(?P<name>\w*) -',
         'color': 0x9146ff,
+        'used': 'https://www.twitch.tv/[]'
     },
     'steam': {
         'emoji': 777768944316579860,
@@ -64,7 +65,8 @@ ACCOUNTS = {
         'link': 'https://reddit.com/u/[]',
         'type': 1,
         're': REBASE,
-        'color': 0xff4500
+        'color': 0xff4500,
+        'used': 'https://www.reddit.com/user/[]'
     },
     'instagram': {
         'emoji': 777774500926324757,
@@ -529,7 +531,7 @@ class Profile(commands.Cog):
         mpm = self.bot.usermpm
         if (mpk := mpm[str(ctx.author.id)]['profile']).isblank:
             return await ctx.invoke(self.edit)
-        if not pretext: await ctx.send(prompts[0])
+        if not pretext: await ctx.send(prompts[0] + " You can type `cancel` to cancel, and `erase` to wipe the field clean.")
         def waitforcheck(m):
             return (m.author == ctx.author) and (m.channel == ctx.channel)
         while True:
@@ -539,6 +541,11 @@ class Profile(commands.Cog):
                 except: return
             if (ret.lower() == "cancel"):
                 await ctx.send(prompts[2])
+                return
+            if ret.lower() == "erase":
+                await ctx.send(prompts[3])
+                del mpk[key]
+                mpm.save()
                 return
             if (len(ret) > max): 
                 await (await ctx.send(f"Please keep it under {max} characters ({len(ret)}/{max}).")).delete(delay=5)
@@ -552,23 +559,23 @@ class Profile(commands.Cog):
 
     @edit.command(aliases = ('setrealname', 'rname'))
     async def realname(self, ctx, *, pretext: Optional[str]):
-        await self._edit(ctx, ["Please type your real name. Remember, everyone can see this, so I recommend a \"nickname\" of sorts.\nIt must be under 30 characters. You can type `cancel` to cancel.",
-            "Real name set!", "Cancelled name setting."], 30, 'realname', pretext)
+        await self._edit(ctx, ["Please type your real name. Remember, **everyone can see this.** It must be under 30 characters.",
+            "Real name set!", "Cancelled name setting.", "Erased real name."], 30, 'realname', pretext)
 
     @edit.command(aliases = ('setname',))
     async def name(self, ctx, *, pretext: Optional[str]):
-        await self._edit(ctx, ["Please type your preferred name. It must be under 30 characters. You can type `cancel` to cancel.",
-            "Name set!", "Cancelled name setting."], 30, 'name', pretext)
+        await self._edit(ctx, ["Please type your preferred name. It must be under 30 characters.",
+            "Name set!", "Cancelled name setting.", "Erased preferred name."], 30, 'name', pretext)
 
     @edit.command(aliases = ('setlocation', 'loc', 'setloc'))
     async def location(self, ctx, *, pretext: Optional[str]):
-        await self._edit(ctx, ["Please type your location. **Don't be specific.** It must be under 30 characters. You can type `cancel` to cancel.",
-            "Location set!", "Cancelled location setting."], 30, 'location', pretext)
+        await self._edit(ctx, ["Please type your location. **Don't be specific.** It must be under 30 characters.",
+            "Location set!", "Cancelled location setting.", "Erased location."], 30, 'location', pretext)
 
     @edit.command(aliases = ('setbio',))
     async def bio(self, ctx, *, pretext: Optional[str]):
-        await self._edit(ctx, ["Please type up a bio. It must be under 400 characters. You can type `cancel` to cancel.",
-            "Bio set!", "Cancelled bio setting."], 400, 'bio', pretext)
+        await self._edit(ctx, ["Please type up a bio. It must be under 400 characters.",
+            "Bio set!", "Cancelled bio setting.", 'Erased bio.'], 400, 'bio', pretext)
 
 
     @edit.command(aliases = ('setbday', 'bday', 'setbirthday'))
@@ -778,7 +785,7 @@ class Profile(commands.Cog):
             try: checkembed = data['embed']
             except: checkembed = True
             tocheck = ""
-            url = data['link'].replace('[]', ret)
+            url = (data['link'] if 'used' not in data else data['used']).replace('[]', ret)
             try:
                 async with aiohttp.request('HEAD', url) as resp:
                     if resp.status != 200 or (not str(resp.url).startswith(url)): raise Exception()
@@ -796,6 +803,10 @@ class Profile(commands.Cog):
                         await keepread.delete()
                         break
                     await asyncio.sleep(1)
+                #i actually despise steam
+                if tocheck and acctype == "steam" and not keepread.embeds[0].description:
+                    await (await ctx.send("Invalid URL. Please try again.")).delete(delay=5)
+                    continue
             else: 
                 try:
                     async with aiohttp.request('GET', url) as resp:
