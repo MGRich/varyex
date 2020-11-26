@@ -173,9 +173,10 @@ class Garfield(commands.Cog):
         elif date.startswith("sub"):
             if ctx.guild:
                 if not ctx.author.permissions_in(ctx.channel).manage_channels: raise commands.MissingPermissions(["manage_channel"])
-                mpk = mpku.getmpm("misc", ctx.guild)
+                mpk = mpm = mpku.getmpm("misc", ctx.guild)
             else:
-                mpk = self.bot.usermpm[str(ctx.author.id)]
+                mpm = self.bot.usermpm
+                mpk = mpm[str(ctx.author.id)]
             mpk['garfield'] = ({'g': 0, 's': 0},)
             check = 's' if isSROMG else 'g'
             if (not mpk['garfield'][check]) or (ctx.guild and mpk['garfield'][check] != ctx.channel.id):
@@ -183,7 +184,7 @@ class Garfield(commands.Cog):
                 mpk.save()
                 return await ctx.send(f"{'This channel' if ctx.guild else 'You'} will now recieve {'SROMG' if isSROMG else 'Garfield'} strips daily!")
             mpk['garfield'][check] = 0
-            mpk.save()
+            mpm.save()
             return await ctx.send(f"{'This channel' if ctx.guild else 'You'} will no longer recieve {'SROMG' if isSROMG else 'Garfield'} strips.")
         elif date == "random":
             if isSROMG:
