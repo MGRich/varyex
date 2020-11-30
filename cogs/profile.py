@@ -466,7 +466,6 @@ class Profile(commands.Cog):
                 date = dt.strftime("%m/%d/%y")
             try: tz = pytz.timezone(getfromprofile("tz").replace(' ', '_'))
             except: tz = pytz.timezone("UTC")
-            dt = dt.replace(tzinfo=tz)
             now = datetime.now(tz)
             if not hasy: dt = dt.replace(year=now.year)
             else: curr += f" ({timeago.format(dt, now).replace('ago', 'old')})"
