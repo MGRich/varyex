@@ -157,12 +157,15 @@ class MPKManager(DefaultContainer):
                 if r: d[k] = r
 
     def save(self, d=None):
-        shutil.copyfile(self.path, self.path[:-4] + ".mbu")
+        copied = True
+        try: shutil.copyfile(self.path, self.path[:-4] + ".mbu")
+        except: copied = False
         d = self._filter(True, d)
         try: 
             with open(self.path, "wb") as f: umsgpack.dump(d, f)
         except: shutil.copyfile(self.path[:-4] + ".mbu", self.path) #oh fuck.
-        else: os.unlink(self.path[:-4] + ".mbu") 
+        else: 
+            if copied: os.unlink(self.path[:-4] + ".mbu") 
 
 def testgiven(mpk, checks) -> bool:
     for x in checks:
