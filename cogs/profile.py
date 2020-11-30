@@ -471,6 +471,7 @@ class Profile(commands.Cog):
             else: curr += f" ({timeago.format(dt, now.replace(tzinfo=None)).replace('ago', 'old')})"
             LOG.debug(dt)
             LOG.debug(now)
+            dt.replace(year=now.year)
             if now.date() == dt.date(): curr += f" **(It's {pnb} birthday today! \U0001F389)**"
             pval += f"{date}{curr}\n"
         if (getfromprofile("location")):
