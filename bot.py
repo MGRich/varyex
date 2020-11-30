@@ -64,6 +64,7 @@ class Main(commands.Bot):
         self.loops: List[discord.ext.tasks.Loop] = []
         self.looptask = self.loop.create_task(self.loopcheckup())
         self.remove_command("help")
+        self.autostart = False
 
         self.owner = None
         lh.BOT = self
@@ -178,6 +179,7 @@ async def on_ready():
                     print("-----END   {}".format(cog), file=sys.stderr)
             await user.send(msg + "```")
     await bot.get_command("loop").callback(user, "start")
+    bot.autostart = True
 
 errored = []
 
@@ -252,9 +254,14 @@ async def mainloop():
         hourcounter += 1
         if hourcounter >= 3600:
             fd = {}
+            bcks = set(x.resolve() for x in Path("config").rglob('*.mbu'))
             for p in Path("config").rglob('*.mpk'):
                 if not (n := p.parent.name) in fd: fd[n] = {}
-                fd[n][p.stem] = open(p.resolve(), "rb").read()
+                read = p.resolve()
+                if (read[:-3] + "mbu") in bcks:
+                    read = read[:-3] + "mbu"
+                try: fd[n][p.stem] = open(read, "rb").read()
+                except FileNotFoundError: fd[n][p.stem] = open(p.resolve(), "rb").read()
             f = {'varyexbackup': github.InputFileContent(content=base64.a85encode(lzma.compress(umsgpack.packb(fd), format=lzma.FORMAT_ALONE)).decode('ascii'))}
             github.Github(os.getenv('KEY')).get_gist(os.getenv('GIST')).edit(files=f)
             glog.debug("backed up configs")

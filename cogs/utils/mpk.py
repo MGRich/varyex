@@ -86,6 +86,11 @@ class DefaultContainer:
     def clear(self):
         if not self._data: return
         self._data.clear()
+    def keys(self):
+        #iffy on this one but i'll allow it?
+        if not self._data: return []
+        if self._isdict: return self._data.keys()
+        return range(len(self._data))
     def items(self):
         #items can actually be used flexibily for both (after all, it's key-value, and list "keys" are ints)
         if not self._data: return []

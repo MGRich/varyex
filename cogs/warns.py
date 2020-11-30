@@ -38,7 +38,8 @@ class Warns(commands.Cog):
             mpk = mpku.getmpm('moderation', guild)
             if not mpku.testgiven(mpk, ['inwarn', 'offences', 'actions', 'users']): continue
             if not mpk['inwarn']: mpk['inwarn'] = {}
-            for uid in mpk['inwarn'].items():
+            for uid in mpk['inwarn'].copy().keys():
+                LOG.warning(uid)
                 if not mpk['inwarn'][uid]['time']: continue
                 inwarn = mpk['inwarn'][uid]
                 #LOG.debug(uid)
