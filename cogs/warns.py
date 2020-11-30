@@ -164,6 +164,7 @@ class Warns(commands.Cog):
                     act['dmmsg'] = act['dmmsg'].replace('[t]', ti)
                     act['msg'] = act['msg'].replace('[t]', ti)
                     if (typ) or (ofc['time']):
+                        if not mpk['inwarn']: mpk['inwarn'] = {}
                         mpk['inwarn'][uid] = {'left': 0, 
                             'time': timestamp_to_int(datetime.utcnow() + timedelta(seconds=(ofc['time'] * 60) if not typ else duration)), 
                             'type': 'warn' if not typ else 'mute'}
