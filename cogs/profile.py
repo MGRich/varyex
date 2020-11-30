@@ -469,9 +469,9 @@ class Profile(commands.Cog):
             now = datetime.now(tz)
             if not hasy: dt = dt.replace(year=now.year)
             else: curr += f" ({timeago.format(dt, now.replace(tzinfo=None)).replace('ago', 'old')})"
+            dt.replace(year=now.year)
             LOG.debug(dt)
             LOG.debug(now)
-            dt.replace(year=now.year)
             if now.date() == dt.date(): curr += f" **(It's {pnb} birthday today! \U0001F389)**"
             pval += f"{date}{curr}\n"
         if (getfromprofile("location")):
