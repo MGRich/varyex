@@ -16,7 +16,8 @@ class DefaultContainer:
         return isinstance(self._data, dict)
 
     def _settype(self, t):
-        if self._data is not None: 
+        if not self._data: self._data = None
+        elif self._data is not None: 
             if isinstance(t, str) and isinstance(self._data, list):
                 raise ValueError("data is not a dict")
             if isinstance(t, (int, slice)) and self._isdict:
