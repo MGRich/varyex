@@ -254,12 +254,12 @@ async def mainloop():
         hourcounter += 1
         if hourcounter >= 3600:
             fd = {}
-            bcks = [x.resolve() for x in Path("config").rglob('*.mbu')]
+            #bcks = [x.resolve() for x in Path("config").rglob('*.mbu')]
             for p in Path("config").rglob('*.mpk'):
                 if not (n := p.parent.name) in fd: fd[n] = {}
                 read = p.resolve()
-                if (read[:-3] + "mbu") in bcks:
-                    read = read[:-3] + "mbu"
+                #if (read[:-3] + "mbu") in bcks:
+                #    read = read[:-3] + "mbu"
                 try: fd[n][p.stem] = open(read, "rb").read()
                 except FileNotFoundError: fd[n][p.stem] = open(p.resolve(), "rb").read()
             f = {'varyexbackup': github.InputFileContent(content=base64.a85encode(lzma.compress(umsgpack.packb(fd), format=lzma.FORMAT_ALONE)).decode('ascii'))}
