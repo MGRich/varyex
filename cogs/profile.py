@@ -468,7 +468,7 @@ class Profile(commands.Cog):
             except: tz = pytz.timezone("UTC")
             now = datetime.now(tz)
             if not hasy: dt = dt.replace(year=now.year)
-            else: curr += f" ({timeago.format(dt, now).replace('ago', 'old')})"
+            else: curr += f" ({timeago.format(dt, now.replace(tzinfo=None)).replace('ago', 'old')})"
             LOG.debug(dt)
             LOG.debug(now)
             if now.date() == dt.date(): curr += f" **(It's {pnb} birthday today! \U0001F389)**"
