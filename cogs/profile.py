@@ -528,8 +528,7 @@ class Profile(commands.Cog):
         raise commands.UserInputError()
 
     async def _edit(self, ctx, prompts, max, key, pretext):
-        mpm = self.bot.usermpm
-        if (mpk := mpm[str(ctx.author.id)]['profile']).isblank:
+        if (mpk := self.bot.usermpm[str(ctx.author.id)]['profile']).isblank:
             return await ctx.invoke(self.edit)
         if not pretext: await ctx.send(prompts[0] + " You can type `cancel` to cancel, and `erase` to wipe the field clean.")
         def waitforcheck(m):
@@ -545,7 +544,7 @@ class Profile(commands.Cog):
             if ret.lower() == "erase":
                 await ctx.send(prompts[3])
                 del mpk[key]
-                mpm.save()
+                mpk.save()
                 return
             if (len(ret) > max): 
                 await (await ctx.send(f"Please keep it under {max} characters ({len(ret)}/{max}).")).delete(delay=5)
@@ -554,7 +553,7 @@ class Profile(commands.Cog):
                     await ctx.send(prompts[0])
                 continue
             mpk[key] = ret
-            mpm.save()
+            mpk.save()
             return await ctx.send(prompts[1])
 
     @edit.command(aliases = ('setrealname', 'rname'))
@@ -580,8 +579,7 @@ class Profile(commands.Cog):
 
     @edit.command(aliases = ('setbday', 'bday', 'setbirthday'))
     async def birthday(self, ctx):
-        mpm = self.bot.usermpm
-        if (mpk := mpm[str(ctx.author.id)]['profile']).isblank:
+        if (mpk := self.bot.usermpm[str(ctx.author.id)]['profile']).isblank:
             return await ctx.invoke(self.edit)
         await ctx.send("Please send your birthday. This can include year, but doesn't have to. Send `cancel` to cancel.")
         def waitforcheck(m):
@@ -606,18 +604,17 @@ class Profile(commands.Cog):
                 mpk['birthday'] = dt.strftime('%d%m')
             else:
                 mpk['birthday'] = dt.strftime('%d%m%y')
-            mpm.save()
+            mpk.save()
             return await ctx.send("Birthday set!")
 
     @edit.command(aliases = ('setpronouns', 'setpronoun', 'pronouns'))
     async def pronoun(self, ctx):
-        mpm = self.bot.usermpm
-        if (mpk := mpm[str(ctx.author.id)]['profile']).isblank:
+        if (mpk := self.bot.usermpm[str(ctx.author.id)]['profile']).isblank:
             return await ctx.invoke(self.edit)
         result = await PronounSelector(self.bot).prompt(ctx)
         if not result:
             return await ctx.send("Cancelled pronoun setting.")
-        elif result['custom']:
+        if result['custom']:
             await ctx.send("Please type out your preferred pronouns (under 50 chars). Type `cancel` to cancel.")
             def waitforcheck(m):
                 return (m.author == ctx.author) and (m.channel == ctx.channel)
@@ -630,21 +627,20 @@ class Profile(commands.Cog):
                     await (await ctx.send("Please keep it under 50 characters.")).delete(delay=5)
                     continue
                 result.update({'value': ret.content})
-                mpm.save()
+                mpk.save()
                 break
         mpk['pronoun'] = result
-        mpm.save()
+        mpk.save()
         return await ctx.send("Pronouns set!")
 
     @edit.command(aliases = ('settz', "timezone", "tz"))
     async def settimezone(self, ctx):
-        mpm = self.bot.usermpm
-        if (mpk := mpm[str(ctx.author.id)]['profile']).isblank:
+        if (mpk := self.bot.usermpm[str(ctx.author.id)]['profile']).isblank:
             return await ctx.invoke(self.edit)
         r = await TZMenu(self.tzd, discord.Color(self.bot.data['color'])).prompt(ctx)
         if r:
             mpk['tz'] = r
-            mpm.save()
+            mpk.save()
             return await ctx.send("Timezone set!")
         return await ctx.send("Timezone setting cancelled.")
 
@@ -713,8 +709,7 @@ class Profile(commands.Cog):
     @commands.guild_only()
     @edit.command(aliases = ('account', 'accounts', 'setaccount'))
     async def setaccounts(self, ctx: commands.Context):
-        mpm = self.bot.usermpm
-        if (mpk := mpm[str(ctx.author.id)]['profile']).isblank:
+        if (mpk := self.bot.usermpm[str(ctx.author.id)]['profile']).isblank:
             return await ctx.invoke(self.edit)
         accdict = mpk['accounts']
 
@@ -764,7 +759,7 @@ class Profile(commands.Cog):
             await msg.edit(embed=embed)
             a = await Choice(msg, em).prompt(ctx)
             del alist[a]
-            mpm.save()
+            mpk.save()
             return await ctx.send(f"Account #{a+1} removed!")
         if len(alist) >= 3: return await ctx.send(f"You can't add any more accounts for {aname}!")
         await ctx.send(f"Please send your {aname} handle (the text that goes in `[]` for `{data['link']}`.)")
@@ -839,10 +834,10 @@ class Profile(commands.Cog):
         if handle in existlist:
             index = existlist.index(handle)
             alist[index].update({'name': name})
-            mpm.save()
+            mpk.save()
             return await ctx.send(f"Updated account name for account #{index + 1}!")
         alist.append({'handle': handle, 'name': name})
-        mpm.save()
+        mpk.save()
         await ctx.send("Account added!")            
 
 

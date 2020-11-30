@@ -37,7 +37,8 @@ class Warns(commands.Cog):
             #if (guild == None): continue
             mpk = mpku.getmpm('moderation', guild)
             if not mpku.testgiven(mpk, ['inwarn', 'offences', 'actions', 'users']): continue
-            for uid in list(mpk['inwarn']):
+            if not mpk['inwarn']: mpk['inwarn'] = {}
+            for uid in mpk['inwarn'].items():
                 if not mpk['inwarn'][uid]['time']: continue
                 inwarn = mpk['inwarn'][uid]
                 #LOG.debug(uid)
@@ -62,7 +63,7 @@ class Warns(commands.Cog):
                         del mpk['inwarn'][uid]
                         changed = True
                         continue
-                    else: cnt = 1
+                    cnt = 1
                 else: cnt = len(majorWarns(mpk['users'][uid]))
 
                 #LOG.debug(uid)
@@ -161,9 +162,9 @@ class Warns(commands.Cog):
                 if (act['timed']):
                     act['dmmsg'] = act['dmmsg'].replace('[t]', ti)
                     act['msg'] = act['msg'].replace('[t]', ti)
-                    if (ofc['time']):
+                    if (typ) or (ofc['time']):
                         mpk['inwarn'][uid] = {'left': 0, 
-                            'time': timestamp_to_int(datetime.utcnow() + timedelta(minutes=ofc['time'])), 
+                            'time': timestamp_to_int(datetime.utcnow() + timedelta(seconds=(ofc['time'] * 60) if not typ else duration)), 
                             'type': 'warn' if not typ else 'mute'}
             if act['dmmsg']:
                 try: await user.send(act['dmmsg'])

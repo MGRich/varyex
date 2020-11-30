@@ -1,11 +1,12 @@
-import discord, umsgpack, os, zlib
+import discord, umsgpack, os, zlib, shutil
 from copy import deepcopy
 
 from typing import Union
 
 class DefaultContainer:
-    def __init__(self, data = None):
+    def __init__(self, data = None, parent = None):
         self._data: Union[list, dict] = data
+        self._parent = parent
 
     @property
     def isblank(self):
@@ -46,15 +47,15 @@ class DefaultContainer:
         self._settype(key)
         try: self._data[key]
         except KeyError: #no IndexError handling 
-            self._data[key] = DefaultContainer()
+            self._data[key] = DefaultContainer(parent=self)
             return self._data[key]
         if isinstance(self._data[key], (dict, list)):
-            self._data[key] = DefaultContainer(self._data[key])
+            self._data[key] = DefaultContainer(self._data[key], self)
         return self._data[key]
     def __setitem__(self, key, value):
         self._settype(key)
         if (isinstance(value, (dict, list))):
-            self._data[key] = DefaultContainer(value)
+            self._data[key] = DefaultContainer(value, self)
             return
         if isinstance(value, tuple):
             try: self._data[key]
@@ -96,8 +97,14 @@ class DefaultContainer:
         return self._data
 
     def copy(self):
+        #when we copy, it is its own seperate branch
+        #we will not recursively copy parents
         if not self._data: return DefaultContainer()
-        return DefaultContainer(deepcopy(self._data))
+        return DefaultContainer(deepcopy(self._data)) 
+
+    def save(self, d=None):
+        if not self._parent: raise ValueError("no parent to fall back to")
+        self._parent.save(d)
     
 class MPKManager(DefaultContainer):
     def __init__(self, direct, gid = None):
@@ -145,8 +152,12 @@ class MPKManager(DefaultContainer):
                 if r: d[k] = r
 
     def save(self, d=None):
+        shutil.copyfile(self.path, self.path[:-4] + ".mbu")
         d = self._filter(True, d)
-        with open(self.path, "wb") as f: umsgpack.dump(d, f)
+        try: 
+            with open(self.path, "wb") as f: umsgpack.dump(d, f)
+        except: shutil.copyfile(self.path[:-4] + ".mbu", self.path) #oh fuck.
+        else: os.unlink(self.path[:-4] + ".mbu") 
 
 def testgiven(mpk, checks) -> bool:
     for x in checks:
