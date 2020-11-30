@@ -254,7 +254,7 @@ async def mainloop():
         hourcounter += 1
         if hourcounter >= 3600:
             fd = {}
-            bcks = set(x.resolve() for x in Path("config").rglob('*.mbu'))
+            bcks = [x.resolve() for x in Path("config").rglob('*.mbu')]
             for p in Path("config").rglob('*.mpk'):
                 if not (n := p.parent.name) in fd: fd[n] = {}
                 read = p.resolve()
