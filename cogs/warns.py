@@ -39,10 +39,9 @@ class Warns(commands.Cog):
             if not mpku.testgiven(mpk, ['inwarn', 'offences', 'actions', 'users']): continue
             if not mpk['inwarn']: mpk['inwarn'] = {}
             for uid in mpk['inwarn'].copy().keys():
-                LOG.warning(uid)
                 if not mpk['inwarn'][uid]['time']: continue
                 inwarn = mpk['inwarn'][uid]
-                #LOG.debug(uid)
+                LOG.debug(uid)
                 if not inwarn['type']: inwarn['type'] = 'warn'
 
                 try: user = await guild.fetch_member(int(uid))
