@@ -288,8 +288,10 @@ async def retrieve(ctx):
     global upd
     c = Confirm("you sure? thisll backup config folder and run update")
     if not (await c.prompt(ctx)): return
-    await ctx.send("restarting")
-    await bot.logout()
+    if (sys.platform != 'linux'):
+        await ctx.send("restarting")
+        await bot.logout()
+        upd = True
     try: Path("config").rename("configold")
     except: pass
     Path("config").mkdir(exist_ok=True)
@@ -305,8 +307,7 @@ async def retrieve(ctx):
             Path(f"config/{x}").mkdir(exist_ok=True)
             open(f"config/{x}/{y}.mpk", "wb").write(result[x][y])
             glog.debug(f"config/{x}/{y}.mpk")
-    upd = True
-
+    
 
 
 @bot.event
@@ -485,6 +486,7 @@ async def nomore(ctx):
 @bot.command()
 @commands.is_owner()
 async def update(ctx):
+    if (sys.platform == 'linux'): return await ctx.send("no")
     global upd
     upd = True
     await ctx.send("updating")
