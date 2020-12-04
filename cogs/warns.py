@@ -157,7 +157,7 @@ class Warns(commands.Cog):
             act['msg'] = act['msg'].replace('[u]', user.mention)
             act['msg'] = act['msg'].replace('[r]', reason)
 
-            if (worked):
+            if (worked and (ofc['time'] if not typ else True)):
                 ti = timeint(ofc['time'] if not typ else duration, not typ)
                 if (act['timed']):
                     act['dmmsg'] = act['dmmsg'].replace('[t]', ti)
