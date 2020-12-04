@@ -13,6 +13,8 @@ import aiohttp, imghdr, io, os, asyncio
 from asyncio.locks import Semaphore
 from PIL import Image
 
+import psutil, humanize, platform
+
 import logging
 LOG = logging.getLogger('bot')
 
@@ -98,8 +100,24 @@ class Misc(commands.Cog):
         e = discord.Embed(title="Info", colour=discord.Colour(self.bot.data['color']))
         e.description = f"""**Version:** {self.bot.data['version']}
         **Owned by:** {self.bot.owner.mention}
-        **Stats:** {len(self.bot.guilds)} servers, unsharded
         __**[Invite link]({discord.utils.oauth_url(str(self.bot.user.id), permissions=discord.Permissions(permissions=268446911))})**__"""
+        members = []
+        humans = []
+        unique = set()
+        for x in self.bot.guilds:
+            a = [y.id for y in x.members if not y.bot]
+            humans += a
+            members += a + [y.id for y in x.members if y.bot]
+        unique.update(humans)
+        members = len(members)
+        humans = len(humans)
+        unique = len(unique)
+        e.add_field(inline=True, name="Stats", value=f"""**Servers:** {len(self.bot.guilds)}
+        **Members:**
+        > **Total:** {members}
+        > **Humans:** {humans}
+        > **Unique:** {unique}""")
+        e.add_field(inline=True, name="Details", value=f"**CPU:** {psutil.cpu_percent()}%\n**Memory:** {humanize.naturalsize(psutil.Process(os.getpid()).memory_info().rss, binary=True)}\n**Platform:** {platform.system()}")
         e.set_footer(text=f"Made using discord.py version {discord.__version__}", icon_url="https://cdn.discordapp.com/icons/336642139381301249/3aa641b21acded468308a37eef43d7b3.webp")
         await ctx.send(embed=e)
     
