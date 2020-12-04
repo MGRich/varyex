@@ -288,10 +288,9 @@ async def retrieve(ctx):
     global upd
     c = Confirm("you sure? thisll backup config folder and run update")
     if not (await c.prompt(ctx)): return
-    if (sys.platform != 'linux'):
-        await ctx.send("restarting")
-        await bot.logout()
-        upd = True
+    await ctx.send("restarting")
+    await bot.logout()
+    upd = True
     try: Path("config").rename("configold")
     except: pass
     Path("config").mkdir(exist_ok=True)
