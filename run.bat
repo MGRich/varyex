@@ -1,2 +1,2 @@
-pyw bot.py stable
+pyw runstable.py
 exit

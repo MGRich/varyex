@@ -1,1 +1,1 @@
-python3.8 bot.py stable
+python3.8 runstable.py

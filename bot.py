@@ -1,4 +1,4 @@
-import discord, subprocess
+import discord, subprocess, shutil
 from discord.ext import commands
 import cogs.utils.loophelper as loophelper
 
@@ -25,8 +25,6 @@ else: data = json.load(open("info.json"))
 
 stable = data['stable']
 usrout = StringIO()
-if stable:
-    pass#sys.stderr = usrout 
 
 t = os.getenv('STOKEN' if stable else 'DTOKEN')
 
@@ -68,6 +66,8 @@ class Main(commands.Bot):
 
         self.owner = None
         lh.BOT = self
+        if stable:
+            sys.stderr = usrout 
 
     async def loopcheckup(self):
         while True:
@@ -486,7 +486,6 @@ async def nomore(ctx):
 @bot.command()
 @commands.is_owner()
 async def update(ctx):
-    if (sys.platform == 'linux'): return await ctx.send("no")
     global upd
     upd = True
     await ctx.send("updating")
@@ -495,4 +494,14 @@ async def update(ctx):
 bot.run(t, bot=True, reconnect=True)
 
 if (upd): 
-    pid = subprocess.Popen([sys.executable, "updater.py"] + sys.argv[1:], creationflags=0x8).pid
+    stout = open("updateout.log", "w")
+    stdr = open("updateerr.log", "w")
+    sys.stdout = stout
+    sys.stderr = stdr
+    subprocess.run(['git', 'pull'], stdout=stout, stderr=stdr, check=False)
+    shutil.rmtree("cogs/__pycache__")
+    shutil.rmtree("cogs/utils/__pycache__")
+    stout.close()
+    stdr.close()
+    sys.exit(1)
+sys.exit(0)    
