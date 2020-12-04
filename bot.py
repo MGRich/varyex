@@ -26,7 +26,7 @@ else: data = json.load(open("info.json"))
 stable = data['stable']
 usrout = StringIO()
 if stable:
-    sys.stderr = usrout 
+    pass#sys.stderr = usrout 
 
 t = os.getenv('STOKEN' if stable else 'DTOKEN')
 
