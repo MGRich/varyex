@@ -497,7 +497,8 @@ if (upd):
     stdr = open("updateerr.log", "w")
     sys.stdout = stout
     sys.stderr = stdr
-    subprocess.run(['git', 'pull'], stdout=stout, stderr=stdr, check=False)
+    if (sys.platform == 'win32'): subprocess.run(['git', 'pull'], stdout=stout, stderr=stdr, check=False, creationflags=0x08000000)
+    else: subprocess.run(['git', 'pull'], stdout=stout, stderr=stdr, check=False)
     shutil.rmtree("cogs/__pycache__")
     shutil.rmtree("cogs/utils/__pycache__")
     stout.close()
