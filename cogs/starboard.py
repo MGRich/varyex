@@ -28,7 +28,7 @@ class Starboard(commands.Cog):
         try: msg = await self.bot.get_channel(payl.channel_id).fetch_message(payl.message_id)
         except discord.NotFound: return
         mpk = mpku.getmpm('starboard', msg.guild)
-        if not mpku.testgiven(mpk, ['channel', 'emoji']) or not mpk['channel'] or (payl.channel_id in mpk['blacklist']): return
+        if not mpku.testgiven(mpk, ['channel']) or not mpk['channel'] or (payl.channel_id in mpk['blacklist']): return
         if typ and ((payl.emoji.name if payl.emoji.is_unicode_emoji() else payl.emoji.id) != mpk['emoji']): return
         LOG.debug(payl.guild_id)
         mpk['amount'] = (6,)
