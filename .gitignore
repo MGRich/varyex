@@ -10,3 +10,4 @@ cogs/*/
 .env
 .swp
 fetchbk.py
+ignored/

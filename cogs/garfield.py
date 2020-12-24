@@ -132,7 +132,7 @@ class Garfield(commands.Cog):
                     ogstrips += f"\n*Original strip{'s' if len(js['originalStrips']) > 1 else ''}: "
                     for x in js['originalStrips'][:8]: 
                         formatted = re.sub(r'..([^-]*)-([^-]*)-(.*)', r'\2/\3/\1', x['strip'])
-                        if (formatted == "11/17/17"): 
+                        if (formatted == "11/17/17") and d: 
                             return discord.Embed(title="SROMG", description = f"it's a radish strip, who cares\n[here's the strip]({embed.url})", color=0xfe9701)
                         ogstrips += f"[{formatted}]({x['href']}), "
                     if js['originalStrips'][8:]:

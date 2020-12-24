@@ -4,6 +4,7 @@ import cogs.utils.loophelper as loophelper
 
 from cogs.utils.menus import Confirm
 import cogs.utils.mpk as mpku
+from typing import Union
 
 import logging, sys, traceback
 from io import StringIO
@@ -81,6 +82,14 @@ class Main(commands.Bot):
                         await self.owner.send(f"restarted loop `{loop.coro.__name__}`")
             except asyncio.CancelledError: break
             except: pass
+
+    #def has_permissions(self, where: Union[discord.abc.GuildChannel, commands.Context], perms):
+    #    if isinstance(where, discord.Channel)
+    #    if isinstance(where, commands.Context):
+    #        where = where.channel
+    #    where.permissions_for(where.guild.me)
+    #    where.
+        
 
     
 #fetch cogs
@@ -268,6 +277,7 @@ async def mainloop():
             hourcounter = 0
     ####REDIRECT
     global usrout
+    if usrout.closed: usrout = StringIO() 
     if not (s := usrout.getvalue()): return
     usrout.close()
     usrout = StringIO()

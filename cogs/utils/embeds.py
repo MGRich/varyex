@@ -9,7 +9,7 @@ class embeds:
         """
 
         if (stardata):
-            jsn = stardata[2]
+            mpk = stardata[2]
             count = stardata[0]
             spstate = stardata[1]
             dcolor = 0xFFAC33
@@ -48,7 +48,7 @@ class embeds:
         if (stardata):
             if spstate & 0b10:
                 embed.description = f"<#{msg.channel.id}>\n[{desc}]({msg.jump_url})"
-                ftxt = [f"{count} {jsn['emojiname']}{'s' if count != 1 else ''}"]
+                ftxt = [f"{count} {mpk['emojiname']}{'s' if count != 1 else ''}"]
             else: ftxt = [f"\U0001F4CC Pinned in #{msg.channel.name}"]
             if spstate == 0b11: ftxt.append("/\U0001F4CC Pinned")
 
@@ -56,7 +56,7 @@ class embeds:
         if compare:
             if (compare.description == embed.description) and (compare.author == embed.author):
                 ftxt.append(f" | ID: {msg.id}")
-                if (spstate & 0b10) and isinstance(jsn['emoji'], int): compare.set_footer(text=''.join(ftxt), icon_url=f"https://cdn.discordapp.com/emojis/{jsn['emoji']}.png")
+                if (spstate & 0b10) and isinstance(mpk['emoji'], int): compare.set_footer(text=''.join(ftxt), icon_url=f"https://cdn.discordapp.com/emojis/{mpk['emoji']}.png")
                 else: compare.set_footer(text = ''.join(ftxt))
                 return compare #we literally do not have to do anything
 
@@ -159,8 +159,8 @@ class embeds:
         #finalize
         ftxt.append(f" | ID: {msg.id}")
         if (stardata):
-            if (spstate & 0b10) and isinstance(jsn['emoji'], int): # and (jsn['emoji'] >= 0xFFFFFFFF)): # \UFFFFFFFF isn valid but covering bases anyway
-                embed.set_footer(text=''.join(ftxt), icon_url=f"https://cdn.discordapp.com/emojis/{jsn['emoji']}.png")
+            if (spstate & 0b10) and isinstance(mpk['emoji'], int): # and (jsn['emoji'] >= 0xFFFFFFFF)): # \UFFFFFFFF isn valid but covering bases anyway
+                embed.set_footer(text=''.join(ftxt), icon_url=f"https://cdn.discordapp.com/emojis/{mpk['emoji']}.png")
             else:
                 embed.set_footer(text = ''.join(ftxt))
         return embed

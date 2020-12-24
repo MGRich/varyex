@@ -4,6 +4,7 @@ from discord.ext import commands, menus
 import cogs.utils.mpk as mpku
 from cogs.utils.converters import UserLookup, MemberLookup, DurationString
 from cogs.utils.other import timeint, timestamp_to_int
+from cogs.utils.menus import Confirm 
 
 from typing import Optional
 from datetime import datetime, timedelta
@@ -206,6 +207,9 @@ class Moderation(commands.Cog):
             if member:
                 return msg.author == member
             return True
+        if count >= 100:
+            if not (await Confirm(f"Are you sure you want to purge {count} messages?", clear_reactions_after=True).prompt(ctx)):
+                return
         await ctx.message.delete()
         await ctx.channel.purge(limit=count, check=check)
         msg = await ctx.send(f"Purged {count} messages!")

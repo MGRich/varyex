@@ -51,6 +51,8 @@ class Logging(commands.Cog):
         return (guild.get_channel(mpk['log']['channel']) if mpk['log']['channel'] != 0 else None)
     
     async def send(self, chn: discord.TextChannel, e: discord.Embed):
+        return await self.finalizesend(chn, e)
+        #TODO: fix this shit
         from discord.embeds import EmptyEmbed
         m = None
         offset = None

@@ -81,6 +81,8 @@ class UserLookup(commands.Converter):
             #only handle mentions and ids
             try: return await ctx.bot.fetch_user(lookup)
             except:
+                raise commands.UserNotFound(argument)
+                #TODO: make this work better, same with members
                 if (ctx.guild):
                     mlist: List[discord.Member] = ctx.guild.members
                     fmlist = [x.display_name for x in mlist]
@@ -95,7 +97,6 @@ class UserLookup(commands.Converter):
                         try: return await ctx.bot.fetch_user(member.id)
                         except: pass #literally how in the fuck
 
-                raise commands.UserNotFound(argument)
 
 class MemberLookup(commands.Converter):
     async def convert(self, ctx: commands.Context, argument) -> discord.Member:
@@ -109,7 +110,7 @@ class MemberLookup(commands.Converter):
                 except: pass
             try: return ctx.guild.get_user(lookup)
             except:
-                ctx.guild: discord.Guild
+                raise commands.MemberNotFound(argument)
                 mlist: List[discord.Member] = ctx.guild.members
                 fmlist = [x.display_name for x in mlist]
                 matches = difflib.get_close_matches(argument, fmlist, n=1, cutoff=CUTOFF)
@@ -118,7 +119,7 @@ class MemberLookup(commands.Converter):
                     matches = difflib.get_close_matches(argument, fmlist, n=1, cutoff=CUTOFF)
                 if (matches):
                     return mlist[fmlist.index(matches[0])]
-                raise commands.MemberNotFound(argument)
+
 
 
 class DurationString:

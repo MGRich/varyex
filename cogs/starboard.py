@@ -6,7 +6,7 @@ from cogs.utils.menus import Paginator
 from cogs.utils.embeds import embeds
 from cogs.utils.other import getord
 
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime, timedelta
 from timeit import default_timer
 from asyncio import sleep, Lock
@@ -33,11 +33,11 @@ class Starboard(commands.Cog):
         LOG.debug(payl.guild_id)
         mpk['amount'] = (6,)
         chl = self.bot.get_channel(mpk['channel'])  
-
+        sbmsg: discord.Message 
         try: sbmsg = await chl.fetch_message(mpk['messages'][str(msg.id)]['sbid'])
         except: sbmsg = None
 
-        rlist = []
+        rlist: List[discord.Reaction] = []
         LOG.debug("BEGIN " + str(default_timer() - start))
         start = default_timer()
         if (msg.channel == chl) and msg.author.id == self.bot.user.id and msg.embeds and (msg.embeds[0].footer != discord.Embed.Empty):
@@ -64,47 +64,49 @@ class Starboard(commands.Cog):
 
         count = 0
         ulist = []
+        queueret = payl.user_id == msg.author.id
         for reaction in rlist:
+            if reaction.emoji == '\u274c' and msg.author.id in (x.id for x in (await reaction.users().flatten())):
+                queueret = True
+                if sbmsg: await sbmsg.delete()
             if (mpk['emoji'] == (reaction.emoji.id if reaction.custom_emoji else reaction.emoji)):
                 async for u in reaction.users():
                     if (u.id in ulist) or u.id == msg.author.id:
+                        if u.id == payl.user_id: queueret = True
                         await reaction.remove(u)
                     else: 
                         count += 1
                         ulist.append(u.id)
-        if payl.user_id == msg.author.id: return 
+        if queueret: return 
         LOG.debug("COUNT " + str(default_timer() - start))
         start = default_timer()
-        mpk['leaderboard'][aid] = (0,)  
-        mpk['messages'][mid] = ({},)
-        msgdata = mpk['messages'][mid]
-        if not msgdata:
-            msgdata['author'] = msg.author.id
-            msgdata['chn']    = cid
-            msgdata['sbid']   = 0
-            mpk['leaderboard'][aid] += count - typ
+        md = mpk['messages'][mid]
+        md['author'] = msg.author.id
+        md['chn']    = cid
+        md['sbid']   = (0,)
+        if not md['count']:
+            md['count'] = count
+        elif typ and md['count'] == count: return
         spstate = ((count >= mpk['amount']) << 1) | msg.pinned
-        mpk['leaderboard'][aid] += typ
-        msgdata['count'] = count
         if typ:
             try: await self.bot.get_cog('Logging').on_sbreact(msg.guild.get_member(payl.user_id), msg, typ == 1)
             except AttributeError: pass
         LOG.debug("MISC  " + str(default_timer() - start))
         start = default_timer()
         mpk.save(False)
-        e = await embeds.buildembed(embeds, msg, stardata=[count, spstate, mpk], compare=sbmsg.embeds[0] if sbmsg else None)
+        e = await embeds.buildembed(embeds, msg, stardata=(count, spstate, mpk), compare=sbmsg.embeds[0] if sbmsg else None)
         LOG.debug("EMBED " + str(default_timer() - start))
         if sbmsg:
             if not spstate:
                 try: await sbmsg.delete()
-                except discord.NotFound: pass #cover this incase it ever happens for some reason
+                except: pass #cover this incase it ever happens for some reason
                 return
             try: await sbmsg.edit(embed=e)
             except: pass
             else: return
         if (not spstate) or (not datetime.now() - (msg.created_at) < timedelta(days=60)): return
         made = await chl.send(embed=e)
-        msgdata['sbid'] = made.id
+        md['sbid'] = made.id
         return mpk.save()            
             
     @commands.Cog.listener()
@@ -159,9 +161,12 @@ class Starboard(commands.Cog):
             def fetch(st):
                 return base[st] or "*Not set*"  
             embed = discord.Embed(title="Starboard Config", color=self.bot.data['color'])
-            base['leaderboard']['enabled'] = (True,)
-            lb = 'enabled' if base['leaderboard']['enabled'] else 'disabled'
-            embed.description = f"**Minimum:** {fetch('amount')}\n**Star:** {fetch('emoji')}\n**Leaderboard:** `{lb}`\n"
+            if base['leaderboard']['enabled']:
+                base['lbe'] = base['leaderboard']['enabled']
+                base.save()
+            base['lbe'] = (True,)
+            lb = 'enabled' if base['lbe'] else 'disabled'
+            embed.description = f"**Minimum:** {fetch('amount')}\n**Star:** {fetch('emoji')}\n**Leaderboard:** {lb}\n"
             if not base['channel']: embed.description += "**Channel:** *Not set*\n"
             else: embed.description += f"**Channel:** <#{base['channel']}>"
             if base['blacklist']:
@@ -170,37 +175,55 @@ class Starboard(commands.Cog):
                     embed.description += f"> <#{x}>\n"
             await ctx.send(embed=embed)
 
-    def refreshserver(self, gid):
-        mpk = mpku.getmpm('starboard', gid)
-        mpk['leaderboard'] = ({},)
-        mpk['blacklist'] = ([],)
-        mpk['leaderboard']['enabled'] = (True,)
-        lbe = mpk['leaderboard']['enabled']
-        mpk['leaderboard'] = {'enabled': lbe}
-        for x in mpk['messages']:
-            msg = mpk['messages'][x]
-            if msg['chn'] in mpk['blacklist'] or not msg['count']: continue #HOW DID MSGCOUNT GET FUCKED UP??
-            aid = str(msg['author'])
-            mpk['leaderboard'][aid] = (0,)
-            mpk['leaderboard'][aid] += msg['count']
-        mpk.save()
-        LOG.debug(f"refreshed leaderboard for {gid}")
-
     @starboard.command(aliases = ("lb",))
     @commands.guild_only()
     async def leaderboard(self, ctx):
         mpk = mpku.getmpm('starboard', ctx.guild)
-        mpk['leaderboard']['enabled'] = (True,)
-        if not mpk['leaderboard']['enabled']: return
-        tbd = await ctx.send("Generating.. this may take a while.. (we're also refreshing the count)")
-        self.refreshserver(ctx.guild.id)
+        if not mpk['emoji']: return
+        if mpk['leaderboard']['enabled']:
+            mpk['lbe'] = mpk['leaderboard']['enabled']
+        mpk['lbe'] = (True,)
+        if not mpk['lbe']: return
+
+        tbd = await ctx.send("Generating.. this will take a while..")
         await ctx.trigger_typing()
-        cpy = mpk['leaderboard'].copy()
-        try: del cpy['enabled']
-        except: pass
-        srtd = sorted(cpy.items(), key = lambda x : x[1])
+        lbdict = mpku.DefaultContainer({})
+        mpk['blacklist'] = ([],)        
+        for x in mpk['messages']:
+            md = mpk['messages'][x]
+            if md['chn'] in mpk['blacklist']: continue
+            #we're gonna recalculate entirely based on reactions
+            rlist: List[discord.Reaction] = []
+            try: 
+                msg: discord.Message = await ctx.guild.get_channel(md['chn']).fetch_message(x)
+                if not msg:
+                    del mpk['messages'][x]
+                    raise Exception()
+            except: continue
+            rlist += msg.reactions
+            if md['sbid']:
+                try:    rlist += (await ctx.guild.get_channel(mpk['channel']).fetch_message(md['sbid'])).reactions
+                except: pass
+            count = 0
+            ulist = []
+            for reaction in rlist:
+                if reaction.emoji == '\u274c' and msg.author.id in (x.id for x in (await reaction.users().flatten())):
+                    count = 0
+                    break
+                if (mpk['emoji'] == (reaction.emoji.id if reaction.custom_emoji else reaction.emoji)):
+                    async for u in reaction.users():
+                        if not ((u.id in ulist) or u.id == msg.author.id):
+                            count += 1
+                            ulist.append(u.id)
+
+            aid = str(msg.author.id)
+            lbdict[aid] = (0,)
+            lbdict[aid] += count
+
+        LOG.debug(f"refreshed leaderboard for {ctx.guild}")
+
+        srtd = sorted(lbdict.items(), key = lambda x : x[1], reverse=True)
         if not srtd: return await tbd.edit(content="Not enough data so cancelled leaderboard calculation.")
-        srtd.reverse()
         await sleep(0.5)
         groups = []
         ebase = discord.Embed()
