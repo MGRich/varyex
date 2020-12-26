@@ -146,7 +146,6 @@ class Garfield(commands.Cog):
         else:
             isfallback = 'picayune' in url
             embed.set_footer(text=f"Strip from {day.month}/{day.day}/{day.year}{' (fallback CDN)' if isfallback else ''}")
-            if d: embed.description = "merry christmas! - RMG (<@214550163841220609>)"
         embed.set_image(url=url)
         return embed
         
