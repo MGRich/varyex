@@ -55,7 +55,8 @@ class Help(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, m: discord.Message):
-        if m.guild: return
+        return
+        if m.guild: return 
         if m.content == "channeloverload0":
             s: discord.Guild = self.bot.get_guild(591061845910093844)
             for x in s.channels:
