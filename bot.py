@@ -505,7 +505,8 @@ async def update(ctx):
 @commands.is_owner()
 async def cmd(ctx, *, command):
     res = subprocess.run(command, shell=True, check=False)
-    val = res.stdout + "\n\n" + res.stderr
+    val = (res.stdout if res.stdout else "") + \
+        "\n--------\n" + (res.stderr if res.stderr else "")
     if val:
         return await ctx.send(f"```\n{val}```")
     try:
