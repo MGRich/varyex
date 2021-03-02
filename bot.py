@@ -500,6 +500,23 @@ async def update(ctx):
     await ctx.send("updating")
     await bot.logout()
 
+
+@bot.command()
+@commands.is_owner()
+async def cmd(ctx, *, command):
+    out = StringIO()
+    subprocess.run(command, shell=True, stdout=out, stderr=out)
+    val = out.getvalue()
+    if not out:
+        if val:
+            return await ctx.send(f"```\n{val}```")
+        try:
+            return await ctx.message.add_reaction('\u2705')
+        except:
+            pass
+    else:
+        await ctx.send(f"```\n{val}```")
+
 bot.run(t, bot=True, reconnect=True)
 
 if (upd): 
