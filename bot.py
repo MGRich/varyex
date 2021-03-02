@@ -504,9 +504,9 @@ async def update(ctx):
 @bot.command()
 @commands.is_owner()
 async def cmd(ctx, *, command):
-    res = subprocess.run(command, shell=True, check=False)
+    res = subprocess.run(command, shell=True, check=False, capture_output=True)
     val = (res.stdout if res.stdout else "") + \
-        "\n--------\n" + (res.stderr if res.stderr else "")
+        (("\n----stderr----\n" + res.stderr) if res.stderr else "")
     if val:
         return await ctx.send(f"```\n{val}```")
     try:
