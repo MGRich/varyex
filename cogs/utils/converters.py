@@ -101,28 +101,27 @@ class UserLookup(commands.Converter):
 
 class MemberLookup(commands.Converter):
     async def convert(self, ctx: commands.Context, argument) -> discord.Member:
-        try: return await commands.MemberConverter().convert(ctx, argument)
-        except:
-            match = re.match(r'<@!?([0-9]+)>$', argument)
-            lookup = argument
-            if match: lookup = int(match.group(1))
-            else:
-                try: lookup = int(argument)
-                except:
-                    raise commands.MemberNotFound(argument)
-            try: return ctx.guild.get_user(lookup)
+        r = None
+        try: r = await commands.MemberConverter().convert(ctx, argument)
+        except: pass
+        match = re.match(r'<@!?([0-9]+)>$', argument)
+        lookup = argument
+        if match: lookup = int(match.group(1))
+        else:
+            try: lookup = int(argument)
             except:
                 raise commands.MemberNotFound(argument)
-                mlist: List[discord.Member] = ctx.guild.members
-                fmlist = [x.display_name for x in mlist]
+        try: return r if r else await ctx.guild.fetch_member(lookup)
+        except:
+            raise commands.MemberNotFound(argument)
+            mlist: List[discord.Member] = ctx.guild.members
+            fmlist = [x.display_name for x in mlist]
+            matches = difflib.get_close_matches(argument, fmlist, n=1, cutoff=CUTOFF)
+            if not matches:
+                fmlist = [x.name for x in mlist]
                 matches = difflib.get_close_matches(argument, fmlist, n=1, cutoff=CUTOFF)
-                if not matches:
-                    fmlist = [x.name for x in mlist]
-                    matches = difflib.get_close_matches(argument, fmlist, n=1, cutoff=CUTOFF)
-                if (matches):
-                    return mlist[fmlist.index(matches[0])]
-
-
+            if (matches):
+                return mlist[fmlist.index(matches[0])]
 
 class DurationString:
     def __init__(self, string="", duration=0):

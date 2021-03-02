@@ -22,9 +22,9 @@ class Choice(menus.Menu):
 
     async def send_initial_message(self, ctx, channel):
         if (isinstance(self.msg, discord.Message)):
-            self.msg = await self.msg.channel.fetch_message(self.msg.id)
+            self.msg: discord.Message = await self.msg.channel.fetch_message(self.msg.id)     
             try: 
-                for x in self.msg.reactions: await x.clear()
+                await self.msg.clear_reactions()
             except discord.Forbidden: 
                 await (await self.msg.channel.send("(I can't remove reactions. Please make sure I can manage messages!)")).delete(delay=5) 
             return self.msg
