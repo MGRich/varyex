@@ -1,3 +1,4 @@
+from cogs.utils.other import iiterate
 import discord, os, re
 
 class embeds:
@@ -137,7 +138,14 @@ class embeds:
                 if   (data['type'] == "Mods"): data['type'] = "Mod"
                 elif (data['type'] == "Requests"): data['type'] = "Request"
                 elif (data['type'] == "Works In Progress"): data['type'] = "WIP"
-                data['short'] = e.description.split(f"A {data['full']} (")[1].split(")")[0]
+                data['short'] = e.description.split(f"A {data['full']} (")[1].split(" in the ")[0]
+                v = 1
+                for x, i in iiterate(data['short']):
+                    if x == '(': v += 1
+                    if x == ')': v -= 1
+                    if not v: 
+                        data['short'] = data['short'][:i]
+                        break
                 data['category'] = e.description.split(" in the ")[1].split(" category")[0]
 
                 #####finally
