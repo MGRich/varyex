@@ -505,7 +505,7 @@ async def update(ctx):
 @commands.is_owner()
 async def cmd(ctx, *, command):
     out = StringIO()
-    subprocess.run(command, shell=True, stdout=out, stderr=out)
+    subprocess.run(command, shell=True, stdout=out, stderr=out, check=False)
     val = out.getvalue()
     if not out:
         if val:

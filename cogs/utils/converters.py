@@ -77,7 +77,8 @@ class UserLookup(commands.Converter):
             if match: lookup = int(match.group(1))
             else:
                 try: lookup = int(argument)
-                except: pass
+                except:
+                    raise commands.UserNotFound(argument)
             #only handle mentions and ids
             try: return await ctx.bot.fetch_user(lookup)
             except:
@@ -107,7 +108,8 @@ class MemberLookup(commands.Converter):
             if match: lookup = int(match.group(1))
             else:
                 try: lookup = int(argument)
-                except: pass
+                except:
+                    raise commands.MemberNotFound(argument)
             try: return ctx.guild.get_user(lookup)
             except:
                 raise commands.MemberNotFound(argument)
