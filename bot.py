@@ -504,18 +504,14 @@ async def update(ctx):
 @bot.command()
 @commands.is_owner()
 async def cmd(ctx, *, command):
-    out = StringIO()
-    subprocess.run(command, shell=True, stdout=out, stderr=out, check=False)
-    val = out.getvalue()
-    if not out:
-        if val:
-            return await ctx.send(f"```\n{val}```")
-        try:
-            return await ctx.message.add_reaction('\u2705')
-        except:
-            pass
-    else:
-        await ctx.send(f"```\n{val}```")
+    res = subprocess.run(command, shell=True, check=False)
+    val = res.stdout + "\n\n" + res.stderr
+    if val:
+        return await ctx.send(f"```\n{val}```")
+    try:
+        return await ctx.message.add_reaction('\u2705')
+    except:
+        pass
 
 bot.run(t, bot=True, reconnect=True)
 
