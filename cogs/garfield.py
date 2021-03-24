@@ -88,7 +88,7 @@ class SROMGParser(HTMLParser):
         if self.fetch:
             self.lasttag = (tag, attrs)
             if self.fetch == 'description': 
-                if tag == 'br':
+                if tag == 'div':
                     self.fetch = None
                     self.pcount += 1
                 elif tag != 'a':
