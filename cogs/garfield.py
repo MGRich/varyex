@@ -4,9 +4,10 @@ from cogs.utils.loophelper import trackedloop
 
 import cogs.utils.mpk as mpku
 
-from typing import Union, Optional
+from typing import Union, Optional, List, Tuple
 from datetime import datetime, timedelta
-import re, html
+import re
+from html.parser import HTMLParser
 import random
 import dateparser
 
@@ -15,37 +16,142 @@ LOG = logging.getLogger("bot")
 def limitdatetime(dt):
     return datetime.combine(dt.date(), datetime.min.time())
 
-def htmltomarkup(text):
-    text = re.sub(r"<a *href=\"([^\"]*)\">(.*?(?=</a>))</a>", r"[\2](\1)", text)
-    text = re.sub(r"<(i|cite|em)>([^<]*)</(i|cite|em)>", "*\\2*", text)
-    text = re.sub(r"<u>([^<]*)</u>", "__\\1__", text)
-    text = re.sub(r"<(b|strong)>([^<]*)</(b|strong)>", "**\\2**", text)
-    text = re.sub(r"<code>(.*?(?=</code>))</code>", "`\\1`", text)
-    coderebuild = []
-    addtilde = False
-    for x in text.splitlines():
-        if re.fullmatch(r"<code>", x): 
-            addtilde = True
-            continue
-        if re.fullmatch(r"</code>", x):
-            coderebuild[-1] += "`" 
-            continue
-        if addtilde:
-            x = "`" + x
-            addtilde = False
-        coderebuild.append(x)
-    text = '\n'.join(coderebuild)
-    text = re.sub("<br>\n*", "\n", text) 
-    #1st, lets handle those with an alt so we dont have to deal with them later
-    text = re.sub(r"<img.*src=\"([^\"]*)\"(.*(?=alt=))alt=\"([^\"]*)\"[^>]*>", r"[[IMG: \3]](\1)", text)
-    #now we can do ones without alt
-    text = re.sub(r"<img.*src=\"([^\"]*)\"[^>]*>", r"[[IMG]](\1)", text)
-    text = re.sub(r"\[([^\]]*)(\]*)\(\/([^\)]*)\)", "[\\1\\2(https://mezzacotta.net/\\3)", text) #should only be mezzacotta, we should be fine
-    text = re.sub(r"<iframe.*?>.*<\/iframe>", "[iframe]", text)
-    #lets try and move external markup to the outside
-    text = re.sub(r"\[((\*|_)*)([^\1\]]*)\1\](\([^\)]*\))", "\\1[\\3]\\4\\1", text)
-    #LOG.debug(text)
-    return html.unescape(text).strip()
+
+def getadditive(tag, attrs):
+    if tag in {'b', 'strong'}:
+        return '**'
+    if tag in {'i', 'cite', 'em'}:
+        return '*'
+    if tag in {'u'}:
+        return '__'
+    if tag in {'code'}:
+        return '`'
+    if tag == "img":
+        #check if there's alt
+        alt = None
+        img = None
+        for t, d in attrs:
+            if t == 'alt':
+                alt = d
+            elif t == 'src':
+                img = d
+        if alt:
+            return f"[[IMG: {alt}]]({img})"
+        return f"[[IMG]]({img})"
+    #as have to be handled seperately
+    if tag == 'iframe':
+        return '[iframe]'
+    return ""
+
+
+class SROMGParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.data = {'title': None, 'description': "", 'ogstrips': [],
+                     'author': None, 'transcript': "", 'image': None, 'number': 0}
+        self.fetch = None
+        self.pcount = 0
+        self.PS = {'author': 6, 'tscript': 7, 'desc': 9}
+        self.lasttag = None
+
+    def getdata(self, feed: str):
+        self.feed(feed)
+        if self.data['description'] and self.data['description'].splitlines()[-1].startswith("[["):
+            self.data['description'] = '\n'.join(
+                self.data['description'].splitlines()[:-1]).strip()
+        return self.data
+
+    def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]) -> None:
+        self.pcount += int(tag == 'p')
+        if tag == 'h2' and not self.data['title']:
+            self.fetch = 'title'
+        elif tag == 'img' and not self.data['image']:
+            for t, d in attrs:
+                if t != 'src':
+                    continue
+                if not d.startswith('/garfield/comics/'):
+                    break
+                self.data['image'] = "https://www.mezzacotta.net" + d
+        elif self.pcount == self.PS['tscript'] and tag == 'p':
+            self.fetch = 'transcript'
+        elif self.pcount == self.PS['author'] and tag == 'a':
+            self.fetch = 'author'
+            link = None
+            for t, d in attrs:
+                if t != 'href':
+                    continue
+                link = "https://www.mezzacotta.net" + d
+            self.data['author'] = {'link': link}
+        elif self.pcount == self.PS['desc']:
+            self.fetch = 'description'
+
+        if self.fetch:
+            self.lasttag = (tag, attrs)
+            if self.fetch == 'description': 
+                if tag == 'br':
+                    self.fetch = None
+                    self.pcount += 1
+                elif tag != 'a':
+                    self.data['description'] += getadditive(tag, attrs)
+
+    def handle_endtag(self, tag: str) -> None:
+        if self.fetch == 'description':
+            if tag in {'a', 'img'}:
+                return
+            self.data['description'] += getadditive(tag, None)
+        elif self.fetch == 'ogstrips' and tag == 'p':
+            self.fetch = None
+
+    def handle_data(self, data: str) -> None:
+        if not self.fetch:
+            if (self.pcount == self.PS['tscript']):
+                self.data['transcript'] += data
+            return
+        if self.fetch == 'ogstrips':
+            if self.lasttag[0] != 'a':
+                return
+            link = None
+            for t, d in self.lasttag[1]:
+                if t != 'href':
+                    continue
+                link = d
+            self.data['ogstrips'].append({'date': data, 'link': link})
+            self.lasttag = ('b',)
+            return
+        elif self.fetch == 'author':
+            self.data['author']['name'] = data.strip()
+        elif self.fetch == 'description':
+            #print(self.getpos(), data, self.lasttag)
+            if data.startswith("Original strip"):
+                self.fetch = 'ogstrips'
+            else:
+                data = discord.utils.escape_markdown(data)
+                if self.lasttag[0] != 'a':
+                    self.data['description'] += data
+                else:
+                    link = None
+                    for t, d in self.lasttag[1]:
+                        if t != 'href':
+                            continue
+                        if d.startswith("/"):
+                            link = "https://www.mezzacotta.net" + d
+                        else:
+                            link = d
+                    self.data['description'] += f"[{data}]({link})"
+                    self.lasttag = ('b',)
+            return  # todo
+        elif self.fetch == 'title':
+            self.data['title'] = data
+            self.data['number'] = int(data.split()[1][:-1])
+        else:
+            if self.data[self.fetch]:
+                self.data[self.fetch] += data
+            else:
+                self.data[self.fetch] = data
+        self.fetch = None
+
+    def error(self, message: str) -> None:
+        return
 
 async def getcode(url):
     try: 
@@ -95,22 +201,26 @@ class Garfield(commands.Cog):
     
     async def formatembed(self, url, s, d, day=None):
         embed = discord.Embed(title=f"{'Daily ' if d else ''}{'SROMG' if s else 'Garfield'} Comic", colour=0xfe9701)
+        embed.set_image(url=url)
         if s: 
             num = url.split('/')[-1][:-4]
             embed.set_footer(text=f"Strip #{int(num)}")
-            js = None
-            try:
-                async with aiohttp.request('GET', f"https://garfield-comics.glitch.me/~SRoMG/?comic={num}") as resp:
-                    js = (await resp.json())['data']
-            except: pass
-            if not js:
+            r = None
+            headers = {"Connection": "Upgrade", "Upgrade": "http/1.1"}
+            async with aiohttp.request('GET', f"https://www.mezzacotta.net/garfield/?comic={num}", headers=headers) as resp:
+                r = (await resp.read()).decode('utf-8')
+            if not r:
                 embed.description = f"View the details of the strip [here.](https://www.mezzacotta.net/garfield/?comic={num})"
             else:
-                embed.title = f"{'Daily ' if d else ''}SROMG | {js['name']}"
+                js = SROMGParser().getdata(r)
+                embed.title = f"{'Daily ' if d else ''}SROMG | {js['title']}"
+                if num == '0': 
+                    num = str(js['number'])
+                    embed.set_footer(text=f"Strip #{int(num)}")
+                    embed.set_image(url=js['image'])
                 embed.url = f"http://www.mezzacotta.net/garfield/?comic={num}"
-                authordesc = htmltomarkup(js['authorWrites'].split("Original strip")[0])
-                tr = re.sub("<br>\n*", "\n", js['transcription'].replace("*", "\\*").replace("\n", "")) 
-                tr = htmltomarkup('\n'.join(tr.splitlines()[:11]))
+                authordesc = js['description']
+                tr = '\n'.join(js['transcript'].splitlines()[:11])
                 tl = []
                 toadd = "*[visit SROMG page for rest]*" #keep here just in case
                 linecount = 0
@@ -126,27 +236,26 @@ class Garfield(commands.Cog):
                         break
                     tl.append(t)
                 embed.add_field(name="Transcription", value='\n'.join(tl))
-                embed.set_author(name=js['author']['name'], url=f"https://www.mezzacotta.net/garfield/author.php?author={js['author']['number']}'")
+                embed.set_author(name=js['author']['name'], url=js['author']['link'])
                 ogstrips = toadd = ""
-                if (js['originalStrips']):
-                    ogstrips += f"\n*Original strip{'s' if len(js['originalStrips']) > 1 else ''}: "
-                    for x in js['originalStrips'][:8]: 
-                        formatted = re.sub(r'..([^-]*)-([^-]*)-(.*)', r'\2/\3/\1', x['strip'])
+                if (js['ogstrips']):
+                    ogstrips += f"\n*Original strip{'s' if len(js['ogstrips']) > 1 else ''}: "
+                    for x in js['ogstrips'][:8]: 
+                        formatted = re.sub(r'..([^-]*)-([^-]*)-(.*)', r'\2/\3/\1', x['date'])
                         if (formatted == "11/17/17") and d: 
                             return discord.Embed(title="SROMG", description = f"it's a radish strip, who cares\n[here's the strip]({embed.url})", color=0xfe9701)
-                        ogstrips += f"[{formatted}]({x['href']}), "
-                    if js['originalStrips'][8:]:
-                        ogstrips += f"{len(js['originalStrips'][8:])} more  "
+                        ogstrips += f"[{formatted}]({x['link']}), "
+                    if js['ogstrips'][8:]:
+                        ogstrips += f"{len(js['ogstrips'][8:])} more  "
                     ogstrips = ogstrips[:-2] + "*"
                 if len(authordesc) > (2048 - len(ogstrips)):
                     toadd = "*[visit SROMG page for rest]*"
                     authordesc = ''.join(tuple((x + ".") for x in (authordesc[:(2048 - len(ogstrips) - len(toadd)) - 2].split('.'))[:-1]))
                 embed.description = authordesc + (("\n" + toadd) if toadd else "") + "\n" + ogstrips
-                embed.set_footer(text=f"Strip #{int(num)} | API by LiquidZulu")
+                embed.set_footer(text=f"Strip #{int(num)}")
         else:
             isfallback = 'picayune' in url
             embed.set_footer(text=f"Strip from {day.month}/{day.day}/{day.year}{' (fallback CDN)' if isfallback else ''}")
-        embed.set_image(url=url)
         return embed
         
     @commands.Cog.listener()
@@ -167,7 +276,7 @@ class Garfield(commands.Cog):
         `g/sromg random`"""
         await ctx.trigger_typing()
         isSROMG = ctx.message.content.startswith(f"{ctx.prefix}sromg")
-        num = 0
+        num = None
         if not date:
             date = limitdatetime((datetime.utcnow() + timedelta(days=1)))
         elif date.startswith("sub"):
@@ -187,7 +296,7 @@ class Garfield(commands.Cog):
             return await ctx.send(f"{'This channel' if ctx.guild else 'You'} will no longer recieve {'SROMG' if isSROMG else 'Garfield'} strips.")
         elif date == "random":
             if isSROMG:
-                num = random.randrange(1, self.lastsromg + 1)
+                num = 0
             else:
                 start = datetime(1978, 6, 19)
                 delt = datetime.utcnow() - start #https://stackoverflow.com/questions/553303/
@@ -206,9 +315,11 @@ class Garfield(commands.Cog):
                 await msg.delete()
                 if not date: return await ctx.send("Could not parse the date given.")
                 if date > datetime.utcnow() + timedelta(days=1): return await ctx.send("Please send a date that is not in the far future (1 day max).")
-        if not num: 
+        if num is None: 
             while (date > (datetime.utcnow() + timedelta(days=1))): date -= timedelta(days=1)
         else: date = num
+        if not date:
+            return await ctx.send(embed=await self.formatembed("0XXXX", isSROMG, False, date))
         url, date = await self.calcstripfromdate(date, isSROMG)
         if (url == -1):
             return await ctx.send("Could not find that strip.")
