@@ -1,4 +1,5 @@
 import discord, subprocess, shutil
+from discord.abc import Messageable
 from discord.ext import commands
 import cogs.utils.loophelper as loophelper
 
@@ -77,11 +78,50 @@ class Main(commands.Bot):
                 for loop in self.loops:
                     if not loop.next_iteration:
                         if '.' in loop.coro.__qualname__:
-                            loop.start(bot.get_cog(loop.coro.__qualname__.split('.')[0]))
+                            loop.start(self.get_cog(loop.coro.__qualname__.split('.')[0]))
                         else: loop.start()
                         await self.owner.send(f"restarted loop `{loop.coro.__name__}`")
             except asyncio.CancelledError: break
             except: pass
+
+async def sendoverride(self: Messageable, content=None, *, embed: discord.Embed = None, **kwargs):
+    #TODO: more than just desc
+    if not embed: return await self.ogsend(content, **kwargs)
+    embeds = [embed]
+    while len(embed.description) > 2048:
+        copy = discord.Embed(color=embed.color, timestamp=embed.timestamp)
+        copy.set_image(url=embed.image.url)
+        copy.set_footer(text=embed.footer.text, icon_url=embed.footer.icon_url)
+        for field in embed.fields:
+            copy.add_field(name=field.name, value=field.value, inline=field.inline)
+        embed.set_footer()
+        embed.set_image(url=embed.Empty)
+        embed.clear_fields()
+        embed.timestamp = embed.Empty
+        desc: str = embed.description
+        count = 0
+        for x in desc.splitlines():
+            if count + len(x) > 2048:
+                break
+            count += len(x)
+        copy.description = embed.description[count:]
+        embed.description = embed.description[:count]
+        embeds.append(copy)
+        embed = embeds[-1]
+    files = kwargs.pop('file', None) or kwargs.pop('files', None)
+    await self.ogsend(content, embed=embeds[0], **kwargs)
+    if len(embeds) == 1: return
+    for e in embeds[1:-1]:
+        await self.ogsend(embed=e)
+    if files:
+        if isinstance(files, (list, tuple, set)):
+            return await self.ogsend(embed=embeds[-1], files=files)
+        return await self.ogsend(embed=embeds[-1], file=files)
+    return await self.ogsend(embed=embeds[-1])
+            
+Messageable.ogsend = Messageable.send
+Messageable.send = sendoverride
+
 
     #def has_permissions(self, where: Union[discord.abc.GuildChannel, commands.Context], perms):
     #    if isinstance(where, discord.Channel)
