@@ -158,12 +158,15 @@ class Main(commands.Bot):
             out[0] = cmddata['name'].split("cfg")[0]
             out.append('cfg' if out[0] == "warn" else 'edit')
                 
+        wasstring = False
         def appender(option):
+            nonlocal wasstring
             if option['type'] == 3:
                 out.append(f"\"{option['value']}\"")
+                wasstring = True
             else:
                 out.append(str(option['value']))
-
+                wasstring = False
 
         for x in cmddata.get('options', []):
             if x['type'] in {1, 2}:
@@ -176,12 +179,16 @@ class Main(commands.Bot):
                     else: appender(y)
             else: appender(x)
 
+        if wasstring:
+            out[-1] = out[-1][1:-1]
+
 
         fakemsg = discord.Message(state=channel._state, channel=channel, data={'content': '', 'id': discord.utils.time_snowflake(datetime.now()), 'attachments': [], 'embeds': [], 'pinned': False, 'mention_everyone': False, 'tts': False, 'type': 0, 'edited_timestamp': None})
         try: fakemsg._handle_author(data['user'])
         except KeyError: fakemsg._handle_author(data['member']['user'])
 
         out = prefix(self, fakemsg)[0] + ' '.join(out)
+        print(out)
         fakemsg._handle_content(out)
 
         ctx = await self.get_context(fakemsg, cls=InteractionsContext)
