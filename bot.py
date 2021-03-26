@@ -1,11 +1,14 @@
+from inspect import Parameter
+import aiohttp
 import discord, subprocess, shutil
 from discord.abc import Messageable
 from discord.ext import commands
+from discord.ext.commands.core import Command, Group
 import cogs.utils.loophelper as loophelper
 
 from cogs.utils.menus import Confirm
 import cogs.utils.mpk as mpku
-from typing import Union
+from typing import Union, get_origin, get_args
 
 import logging, sys, traceback
 from io import StringIO
@@ -18,8 +21,12 @@ import base64, lzma, umsgpack, github
 import difflib, asyncio, textwrap, contextlib
 from typing import List
 
+from datetime import datetime
+
 from dotenv import load_dotenv
 load_dotenv()
+
+#from .slashlist import slashlist
 
 stable = False
 if (len(sys.argv) > 1 and sys.argv[1] == "stable"): data = json.load(open("stable.json"))
@@ -32,15 +39,22 @@ t = os.getenv('STOKEN' if stable else 'DTOKEN')
 
 dlog = logging.getLogger('discord')
 glog = logging.getLogger('bot')
-dlog.setLevel('ERROR')
+dlog.setLevel('WARN')
 glog.setLevel('WARN')
 for x, y in zip(dlog.handlers, glog.handlers):
     dlog.removeHandler(x)
     glog.removeHandler(y)
+
+if not stable:
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(logging.Formatter(
+        "[%(name)s - %(levelname)s] [%(filename)s/%(lineno)d] %(message)s"))
+    dlog.addHandler(handler)
 handler = logging.StreamHandler(usrout)
 handler.setFormatter(logging.Formatter("[%(name)s - %(levelname)s] [%(filename)s/%(lineno)d] %(message)s"))
-dlog.addHandler(handler)
+#dlog.addHandler(handler)
 glog.addHandler(handler)
+
 
 def prefix(bot, message):
     prf = data['prefix'].copy()
@@ -56,6 +70,50 @@ def prefix(bot, message):
     return prf
 
 
+class InteractionsContext(commands.Context):
+    def __init__(self, idata: dict = None, **attrs):
+        #assert channel
+        try: super().__init__(**attrs)
+        except AttributeError: pass #i THINK all gets caught
+        #self.channel: discord.TextChannel = channel
+        self._state = self.channel._state #steal the state so i can send shit
+        self.idata = idata
+        self.sent = False
+        self.thinking = False
+
+    async def reply(self, content=None, **kwargs): #no replies
+        return await self.send(content, **kwargs)
+
+    async def send(self, content=None, **kwargs):
+        if self.sent:
+            return await super().send(content, **kwargs)
+        self.sent = True
+        d: dict = await sendoverride(self, content, embed=kwargs.pop('embed', None), returndata=True, **kwargs)
+        for x in d.copy():
+            if x not in {'content', 'embeds', 'allowed_mentions'}:
+                del d[x]
+        
+        for i in range(len(d['embeds'])):
+            d['embeds'][i] = d['embeds'][i].to_dict()
+        
+        async with aiohttp.ClientSession() as session:
+            if self.thinking:
+                url = f"https://discord.com/api/v8/webhooks/{self.me.id}/{self.idata['token']}/messages/@original"
+                r = await session.patch(url, json=d)
+            else: 
+                url = f"https://discord.com/api/v8/interactions/{self.idata['id']}/{self.idata['token']}/callback"
+                r = await session.post(url, json={'type': 4, 'data': d})
+        if r.status in {200, 201}:
+            return discord.Message(state=self._state, channel=self.channel, data=await r.json())
+        raise discord.errors.HTTPException(r, await r.json())
+
+    async def trigger_typing(self):
+        self.thinking = True
+        url = f"https://discord.com/api/v8/interactions/{self.idata['id']}/{self.idata['token']}/callback"
+        async with aiohttp.ClientSession() as session:
+            await session.post(url, json={'type': 5})
+
+
 class Main(commands.Bot):
     def __init__(self, data, userdata, lh, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -69,7 +127,10 @@ class Main(commands.Bot):
         self.owner = None
         lh.BOT = self
         if stable:
-            sys.stderr = usrout 
+            sys.stderr = usrout
+
+        #assign a custom parser
+        self._connection.parsers["INTERACTION_CREATE"] = self.recieve_interaction
 
     async def loopcheckup(self):
         while True:
@@ -84,9 +145,59 @@ class Main(commands.Bot):
             except asyncio.CancelledError: break
             except: pass
 
-async def sendoverride(self: Messageable, content=None, *, embed: discord.Embed = None, **kwargs):
+    def recieve_interaction(self, data):
+        asyncio.ensure_future(self.handle_interaction(data), loop=self.loop)
+    
+    async def handle_interaction(self, data):
+        #pylint: disable=protected-access
+        channel: discord.TextChannel = await self.fetch_channel(data['channel_id']) or await (await self.fetch_user(data['user']['id'])).create_dm()
+        
+        cmddata = data['data']
+        out = [cmddata['name']]
+        if cmddata['name'] in {"warncfg", "profilecfg"}:
+            out[0] = cmddata['name'].split("cfg")[0]
+            out.append('cfg' if out[0] == "warn" else 'edit')
+                
+        def appender(option):
+            if option['type'] == 3:
+                out.append(f"\"{option['value']}\"")
+            else:
+                out.append(str(option['value']))
+
+
+        for x in cmddata.get('options', []):
+            if x['type'] in {1, 2}:
+                out.append(x['name'])
+                for y in x.get('options', []):
+                    if y['type'] == 1:
+                        out.append(y['name'])
+                        for z in y.get('options', []):
+                            appender(z)
+                    else: appender(y)
+            else: appender(x)
+
+
+        fakemsg = discord.Message(state=channel._state, channel=channel, data={'content': '', 'id': discord.utils.time_snowflake(datetime.now()), 'attachments': [], 'embeds': [], 'pinned': False, 'mention_everyone': False, 'tts': False, 'type': 0, 'edited_timestamp': None})
+        try: fakemsg._handle_author(data['user'])
+        except KeyError: fakemsg._handle_author(data['member']['user'])
+
+        out = prefix(self, fakemsg)[0] + ' '.join(out)
+        fakemsg._handle_content(out)
+
+        ctx = await self.get_context(fakemsg, cls=InteractionsContext)
+        ctx.idata = data
+        await ctx.trigger_typing()
+        await self.invoke(ctx)
+
+            
+
+async def sendoverride(self: Messageable, content=None, *, embed: discord.Embed = None, returndata = False, **kwargs):
     #TODO: more than just desc
-    if not embed: return await self.ogsend(content, **kwargs)
+    if not embed: 
+        if not returndata: return await self.ogsend(content, **kwargs)
+        else: 
+            kwargs.update({'content': content, 'embeds': []})
+            return kwargs
     embeds = [embed]
     while len(embed.description) > 2048:
         copy = discord.Embed(color=embed.color, timestamp=embed.timestamp)
@@ -108,6 +219,9 @@ async def sendoverride(self: Messageable, content=None, *, embed: discord.Embed 
         embed.description = embed.description[:count]
         embeds.append(copy)
         embed = embeds[-1]
+    if returndata:
+        kwargs.update({'content': content, 'embeds': embeds})
+        return kwargs
     files = kwargs.pop('file', None) or kwargs.pop('files', None)
     await self.ogsend(content, embed=embeds[0], **kwargs)
     if len(embeds) == 1: return
@@ -191,6 +305,7 @@ async def loops(ctx, *loopnames):
     else: return await ctx.send(f"unknown action `{action}`")
     return await ctx.send(r + "```")
 
+
 @bot.event
 async def on_ready():
     print(f'\n\nin as: {bot.user.name} - {bot.user.id}\non version: {discord.__version__}\n')
@@ -243,7 +358,7 @@ async def on_command_error(ctx: commands.Context, error):
     #if isinstance(error, commands.DisabledCommand):
     #    return await ctx.send(f'{ctx.command} has been disabled.')
     if isinstance(error, commands.NoPrivateMessage):
-        try: await ctx.message.author.send('This command cannot be used in Private Messages.')
+        try: await ctx.send('This command cannot be used in Private Messages.')
         except: pass
         return
     if isinstance(error, commands.MissingPermissions):

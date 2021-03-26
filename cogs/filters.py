@@ -59,15 +59,18 @@ class Filters(commands.Cog):
 
     @filter.group(name = "config", aliases = ('cfg',))
     async def configf(self, ctx):
+        """Configure filters."""
         if not (ctx.invoked_subcommand):
             return await ctx.invoke(self.filter)
     @filterping.group(name = "config", aliases = ('cfg',))
     async def configfp(self, ctx):
+        """Configure filterpings."""
         if not (ctx.invoked_subcommand):
             return await ctx.invoke(self.filterping)
 
     @configf.command(name="add")
     async def addf(self, ctx, *strs: str):
+        """Add a filter. View help for regex."""
         if not strs: return
         mpk = mpku.getmpm("filters", ctx.guild.id)
         strs = [(x[1:-1] if ((x[0] == x[-1] == '`') and len(x) > 2) else x) for x in strs] #incase we wanna use ``
@@ -82,6 +85,7 @@ class Filters(commands.Cog):
         await ctx.send(f"Added {', '.join(added)} to filters!") 
     @configfp.command(name="add")
     async def addfp(self, ctx, phrase: str, *memb: MemberLookup):
+        """Add a filterping. View help for regex."""
         if not memb: return
         memb = list(memb)
         mpk = mpku.getmpm("filters", ctx.guild.id)
@@ -101,6 +105,7 @@ class Filters(commands.Cog):
             return await ctx.send(f"Added {', '.join(pings)} to {phrase}!")
     @configfp.command(name = "remove", aliases = ('delete',))
     async def removefp(self, ctx, phrase: str, *memb: UserLookup):
+        """Remove a filterping."""
         if not memb: return
         memb = [x.id for x in memb]
         mpk = mpku.getmpm("filters", ctx.guild.id)
@@ -129,6 +134,7 @@ class Filters(commands.Cog):
             await ctx.send(f"Removed {', '.join(pings)} from {phrase}!")  
     @configf.command(name = "remove", aliases = ('delete',))
     async def removef(self, ctx, *strs: str):
+        """Remove a filter."""
         if not strs: return
         mpk = mpku.getmpm("filters", ctx.guild.id)
         if not mpk['filter']: return await ctx.send("There's nothing to delete!")
@@ -146,6 +152,7 @@ class Filters(commands.Cog):
 
     @configfp.command(aliases = ('channel',))
     async def setchannel(self, ctx, chn: discord.TextChannel):
+        """Set the filterping channel."""
         mpk = mpku.getmpm("filters", ctx.guild.id)
         mpk['channel'] = chn.id
         mpk.save()

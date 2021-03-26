@@ -285,6 +285,7 @@ class Warns(commands.Cog):
     @warn.group(aliases = ('cfg',), invoke_without_command=True)
     @commands.has_permissions(manage_guild=True, ban_members=True) 
     async def config(self, ctx, action: Optional[str]):
+        """Configures warnings."""
         if ctx.invoked_subcommand: return
         mpk = mpku.getmpm('moderation', ctx.guild)
         embed = discord.Embed(title="Warning Config", color=self.bot.data['color'], description="")
@@ -325,6 +326,7 @@ class Warns(commands.Cog):
     @config.command(name="add", aliases = ('addaction', 'a'))
     @commands.has_permissions(manage_guild=True, ban_members=True) 
     async def aaction(self, ctx, name, typ: Optional[str]):
+        """Adds a new action to be used in the track."""
         if name == "mute": typ = 'gr'
         elif name == "verbal": typ = None
         if (name != "verbal") and typ not in {'gr', 'giverole', 'ban', 'b', 'kick', 'k'}:
@@ -424,6 +426,7 @@ class Warns(commands.Cog):
     @config.command(aliases=('removeaction', 'remove', 'r'))
     @commands.has_permissions(manage_guild=True, ban_members=True) 
     async def rmaction(self, ctx, action):
+        """Removes an action."""
         mpk = mpku.getmpm('moderation', ctx.guild)
         if not action in mpk['actions']:
             return await ctx.send("This action doesn't exist!")
@@ -435,6 +438,7 @@ class Warns(commands.Cog):
     @config.command(aliases=('track',))
     @commands.has_permissions(manage_guild=True, ban_members=True) 
     async def settrack(self, ctx):
+        """Configures the warning track."""
         if ctx.invoked_with == "track": return await ctx.invoke(self.config, None)
         mpk = mpku.getmpm('moderation', ctx.guild)
         #valid = [x for x in mpk['actions'] if x != 'verbal']

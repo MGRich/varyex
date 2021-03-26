@@ -516,6 +516,7 @@ class Profile(commands.Cog):
 
     @profile.group(aliases = ("set",))
     async def edit(self, ctx: commands.Context):
+        """Edit parts of your profile."""
         if ctx.invoked_subcommand: return
         if self.bot.usermpm[str(ctx.author.id)]['profile'].isblank:
             a = await Confirm("Do you want to create a profile? This cannot be undone. (Remember, anyone can view your profile at any time.)", delete_message_after=False).prompt(ctx)
@@ -558,27 +559,32 @@ class Profile(commands.Cog):
 
     @edit.command(aliases = ('setrealname', 'rname'))
     async def realname(self, ctx, *, pretext: Optional[str]):
+        """Sets your real name."""
         await self._edit(ctx, ["Please type your real name. Remember, **everyone can see this.** It must be under 30 characters.",
             "Real name set!", "Cancelled name setting.", "Erased real name."], 30, 'realname', pretext)
 
     @edit.command(aliases = ('setname',))
     async def name(self, ctx, *, pretext: Optional[str]):
+        """Sets your name."""
         await self._edit(ctx, ["Please type your preferred name. It must be under 30 characters.",
             "Name set!", "Cancelled name setting.", "Erased preferred name."], 30, 'name', pretext)
 
     @edit.command(aliases = ('setlocation', 'loc', 'setloc'))
     async def location(self, ctx, *, pretext: Optional[str]):
+        """Sets your location."""
         await self._edit(ctx, ["Please type your location. **Don't be specific.** It must be under 30 characters.",
             "Location set!", "Cancelled location setting.", "Erased location."], 30, 'location', pretext)
 
     @edit.command(aliases = ('setbio',))
     async def bio(self, ctx, *, pretext: Optional[str]):
+        """Sets your bio."""
         await self._edit(ctx, ["Please type up a bio. It must be under 400 characters.",
             "Bio set!", "Cancelled bio setting.", 'Erased bio.'], 400, 'bio', pretext)
 
 
     @edit.command(aliases = ('setbday', 'bday', 'setbirthday'))
     async def birthday(self, ctx):
+        """Set your birthday."""
         if (mpk := self.bot.usermpm[str(ctx.author.id)]['profile']).isblank:
             return await ctx.invoke(self.edit)
         await ctx.send("Please send your birthday. This can include year, but doesn't have to. Send `cancel` to cancel.")
@@ -609,6 +615,7 @@ class Profile(commands.Cog):
 
     @edit.command(aliases = ('setpronouns', 'setpronoun', 'pronouns'))
     async def pronoun(self, ctx):
+        """Set your pronouns."""
         if (mpk := self.bot.usermpm[str(ctx.author.id)]['profile']).isblank:
             return await ctx.invoke(self.edit)
         result = await PronounSelector(self.bot).prompt(ctx)
@@ -635,6 +642,7 @@ class Profile(commands.Cog):
 
     @edit.command(aliases = ('settz', "timezone", "tz"))
     async def settimezone(self, ctx):
+        """Set your timezone."""
         if (mpk := self.bot.usermpm[str(ctx.author.id)]['profile']).isblank:
             return await ctx.invoke(self.edit)
         r = await TZMenu(self.tzd, discord.Color(self.bot.data['color'])).prompt(ctx)
@@ -709,6 +717,7 @@ class Profile(commands.Cog):
     @commands.guild_only()
     @edit.command(aliases = ('account', 'accounts', 'setaccount'))
     async def setaccounts(self, ctx: commands.Context):
+        """Setup accounts on your profile."""
         if (mpk := self.bot.usermpm[str(ctx.author.id)]['profile']).isblank:
             return await ctx.invoke(self.edit)
         accdict = mpk['accounts']

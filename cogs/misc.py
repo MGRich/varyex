@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 
 import cogs.utils.mpk as mpku
-from cogs.utils.converters import UserLookup
+from cogs.utils.converters import UserLookup, MemberLookup
 from typing import Optional
 from asyncio import sleep 
 from numpy import clip
@@ -17,6 +17,10 @@ import psutil, humanize, platform
 
 import logging
 LOG = logging.getLogger('bot')
+
+from inspect import Parameter
+import json
+from typing import List, Union, get_args, get_origin
 
 class Misc(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -100,7 +104,7 @@ class Misc(commands.Cog):
         e = discord.Embed(title="Info", colour=discord.Colour(self.bot.data['color']))
         e.description = f"""**Version:** {self.bot.data['version']}
         **Owned by:** {self.bot.owner.mention}
-        __**[Invite link]({discord.utils.oauth_url(str(self.bot.user.id), permissions=discord.Permissions(permissions=268446911))})**__"""
+        __**[Invite link](https://discord.com/oauth2/authorize?client_id={str(self.bot.user.id)}&permissions=268446911&scope=bot%20applications.commands)**__"""
         members = []
         humans = []
         unique = set()
@@ -139,7 +143,7 @@ class Misc(commands.Cog):
         except discord.Forbidden: return
 
     @commands.command()
-    async def imgfilter(self, ctx, filter, *links):
+    async def imgfilter(self, ctx: commands.Context, filter, *links):
         """Applies a filter to images.
         You can send images as links or attachments.
         GIFs are not supported.
@@ -221,7 +225,56 @@ class Misc(commands.Cog):
         await ctx.send(files=files)
         for x in range(done):
             os.remove(f"{ctx.message.id}{x}.png")
-        await ctx.send(f"Finished {done} images with {len(invalid)} invalid images.")
+        await ctx.reply(f"Finished {done} images with {len(invalid)} invalid images.")
+
+
+    @commands.command()
+    @commands.is_owner()
+    async def dumptime(self, ctx):
+        exp = []
+
+        def recur(cmdlist: List[Union[commands.Command, commands.Group]], explist: list, subdepth):
+            for cmd in cmdlist:
+                if cmd.hidden or (not cmd.enabled):
+                    continue
+                if not subdepth and not cmd.help:
+                    continue
+                j = {'name': cmd.name, 'description': cmd.help.splitlines()[
+                    0] if cmd.help else "", 'options': []}
+                for x in list(cmd.params.values())[2:]:
+                    p = {'name': x if type(
+                        x) != Parameter else x.name, 'type': 3, 'description': "", 'required': True}
+                    param: Parameter = x
+                    if param.kind in {param.KEYWORD_ONLY, param.VAR_POSITIONAL}:
+                        #print(param.name, param.default)
+                        p.update({'required': False})
+                        if param.name[-1] == 's':
+                            param = param.replace(name=param.name[:-1])
+                    
+                    if get_origin(param.annotation) == Union:
+                        if get_args(param.annotation)[1] == type(None):
+                            p.update({'required': False})
+                        param = param.replace(annotation = get_args(param.annotation)[0])
+                        #print(param.annotation, p['required'])
+                    elif type(param.annotation) is type(commands.Greedy):
+                        param = param.replace(annotation = param.annotation.converter, name=param.name[:-1] if param.name[-1] == 's' else param.name)
+
+                    if param.annotation == int:
+                        p.update({'type': 4})
+                    elif isinstance(param.annotation, discord.abc.User) or param.annotation in {UserLookup, MemberLookup}:
+                        p.update({'type': 6}) 
+                    elif isinstance(param.annotation, discord.abc.GuildChannel):
+                        p.update({'type': 7}) 
+
+                    j['options'].append(p)
+                if subdepth:
+                    j.update({'type': 3 - subdepth})
+                if isinstance(cmd, commands.Group):
+                    recur(cmd.commands, j['options'], subdepth + 1)
+                explist.append(j)
+
+        recur(self.bot.commands, exp, 0)
+        json.dump(exp, open("out.json", 'w'), indent=2)
 
 def setup(bot):
     bot.add_cog(Misc(bot))

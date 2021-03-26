@@ -1,0 +1,675 @@
+[
+  {
+    "name": "garfield",
+    "description": "Shows a Garfield strip. You can also subscribe to daily strips (including DMs).",
+    "options": [
+      {
+        "name": "date",
+        "type": 3,
+        "description": "The date of the strip you want to see (or \"sub/subscribe\" to subscribe to daily strips.)",
+        "required": false
+      }
+    ]
+  },
+  {
+    "name": "sromg",
+    "description": "Shows an SROMG strip. You can also subscribe to daily strips (including DMs).",
+    "options": [{
+      "name": "number",
+      "type": 4,
+      "description": "The number of the strip you want to see (or \"sub/subscribe\" to subscribe to daily strips.)",
+      "required": false
+    }]
+  },
+  {
+    "name": "profile",
+    "description": "Edit or get your own or someone else's profile.",
+    "options": [
+      {
+        "name": "user",
+        "type": 6,
+        "description": "The user of the profile you want to look at.",
+        "required": false
+      }
+    ]
+  },
+  {
+    "name": "profilecfg",
+    "description": "Edit parts of your profile.",
+    "options": [
+      {
+        "name": "settimezone",
+        "description": "Set your timezone.",
+        "options": [],
+        "type": 1
+      },
+      {
+        "name": "setaccounts",
+        "description": "Setup accounts on your profile.",
+        "options": [],
+        "type": 1
+      },
+      {
+        "name": "realname",
+        "description": "Sets your real name.",
+        "options": [
+          {
+            "name": "pretext",
+            "type": 3,
+            "description": "Your real name.",
+            "required": false
+          }
+        ],
+        "type": 1
+      },
+      {
+        "name": "name",
+        "description": "Sets your name.",
+        "options": [
+          {
+            "name": "pretext",
+            "type": 3,
+            "description": "Your preferred name.",
+            "required": false
+          }
+        ],
+        "type": 1
+      },
+      {
+        "name": "location",
+        "description": "Sets your location.",
+        "options": [
+          {
+            "name": "pretext",
+            "type": 3,
+            "description": "Your location.",
+            "required": false
+          }
+        ],
+        "type": 1
+      },
+      {
+        "name": "bio",
+        "description": "Sets your bio.",
+        "options": [
+          {
+            "name": "pretext",
+            "type": 3,
+            "description": "Your bio text.",
+            "required": false
+          }
+        ],
+        "type": 1
+      },
+      {
+        "name": "birthday",
+        "description": "Set your birthday.",
+        "options": [],
+        "type": 1
+      },
+      {
+        "name": "pronoun",
+        "description": "Set your pronouns.",
+        "options": [],
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "filter",
+    "description": "Manage filters.",
+    "options": [
+      {
+        "name": "config",
+        "description": "Configure filters.",
+        "options": [
+          {
+            "name": "remove",
+            "description": "Remove a filter.",
+            "options": [
+              {
+                "name": "phrase",
+                "type": 3,
+                "description": "The phrase or regex you want remove from the filter list.",
+                "required": false
+              }
+            ],
+            "type": 1
+          },
+          {
+            "name": "add",
+            "description": "Add a filter. View help for regex.",
+            "options": [
+              {
+                "name": "phrase",
+                "type": 3,
+                "description": "The phrase or regex you want to filter.",
+                "required": false
+              }
+            ],
+            "type": 1
+          }
+        ],
+        "type": 2
+      }
+    ]
+  },
+  {
+    "name": "ban",
+    "description": "Bans a user.",
+    "options": [
+      {
+        "name": "member",
+        "type": 6,
+        "description": "The member you want to ban.",
+        "required": true
+      },
+      {
+        "name": "reason",
+        "type": 3,
+        "description": "The ban's reason.",
+        "required": false
+      }
+    ]
+  },
+  {
+    "name": "unban",
+    "description": "Unbans a user.",
+    "options": [
+      {
+        "name": "member",
+        "type": 6,
+        "description": "The member you want to unban.",
+        "required": true
+      },
+      {
+        "name": "reason",
+        "type": 3,
+        "description": "The unban reason.",
+        "required": false
+      }
+    ]
+  },
+  {
+    "name": "kick",
+    "description": "Kicks a user.",
+    "options": [
+      {
+        "name": "member",
+        "type": 6,
+        "description": "The member you want to kick.",
+        "required": true
+      },
+      {
+        "name": "reason",
+        "type": 3,
+        "description": "The kick reason.",
+        "required": false
+      }
+    ]
+  },
+  {
+    "name": "editwarn",
+    "description": "Edits a warn from a user.",
+    "options": [
+      {
+        "name": "user",
+        "type": 6,
+        "description": "The user you want to edit.",
+        "required": true
+      },
+      {
+        "name": "case",
+        "type": 4,
+        "description": "The warn case # you want to edit.",
+        "required": true
+      },
+      {
+        "name": "newreason",
+        "type": 3,
+        "description": "The new reason for the warn.",
+        "required": true
+      }
+    ]
+  },
+  {
+    "name": "purge",
+    "description": "Purges messages.",
+    "options": [
+      {
+        "name": "count",
+        "type": 3,
+        "description": "The amount of messages you want to purge.",
+        "required": true
+      },
+      {
+        "name": "member",
+        "type": 6,
+        "description": "The member you want to specifically purge.",
+        "required": false
+      }
+    ]
+  },
+  {
+    "name": "prefix",
+    "description": "Sets/views the prefix for the server.",
+    "options": [
+      {
+        "name": "prefix",
+        "type": 3,
+        "description": "The servers new prefix.",
+        "required": false
+      }
+    ]
+  },
+  {
+    "name": "userprefix",
+    "description": "Sets/views the prefix for yourself.",
+    "options": [{
+      "name": "prefix",
+      "type": 3,
+      "description": "Your new prefix.",
+      "required": false
+    }]
+  },
+
+  {
+    "name": "log",
+    "description": "Sets up logging.",
+    "options": [
+      {
+        "name": "config",
+        "description": "Sets up logging.",
+        "options": [
+          {
+            "name": "channel",
+            "description": "Set the channel for logs.",
+            "options": [
+              {
+                "name": "channel",
+                "type": 3,
+                "description": "The new channel to send logs to.",
+                "required": false
+              }
+            ],
+            "type": 1
+          },
+          {
+            "name": "toggle",
+            "description": "Toggle certain parts of logging.",
+            "options": [],
+            "type": 1
+          }
+        ],
+        "type": 2
+      }
+    ]
+  },
+  {
+    "name": "avatar",
+    "description": "Fetches your own or a user's avatar.",
+    "options": [
+      {
+        "name": "user",
+        "type": 6,
+        "description": "Show this specified user's avatar.",
+        "required": false
+      }
+    ]
+  },
+  {
+    "name": "filterping",
+    "description": "Manage filterpings.",
+    "options": [
+      {
+        "name": "config",
+        "description": "Configure filterpings.",
+        "options": [
+          {
+            "name": "setchannel",
+            "description": "Set the filterping channel.",
+            "options": [
+              {
+                "name": "channel",
+                "type": 3,
+                "description": "The channel to set it to.",
+                "required": true
+              }
+            ],
+            "type": 1
+          },
+          {
+            "name": "add",
+            "description": "Add a filterping. View help for regex.",
+            "options": [
+              {
+                "name": "phrase",
+                "type": 3,
+                "description": "The phrase or regex you want to set/modify.",
+                "required": true
+              },
+              {
+                "name": "member",
+                "type": 6,
+                "description": "The member to ping when this phrase is said.",
+                "required": true
+              }
+            ],
+            "type": 1
+          },
+          {
+            "name": "remove",
+            "description": "Remove a filterping.",
+            "options": [
+              {
+                "name": "phrase",
+                "type": 3,
+                "description": "The phrase or regex to modify.",
+                "required": true
+              },
+              {
+                "name": "member",
+                "type": 6,
+                "description": "The member you want to remove.",
+                "required": true
+              }
+            ],
+            "type": 1
+          }
+        ],
+        "type": 2
+      }
+    ]
+  },
+  {
+    "name": "starboard",
+    "description": "Sets up the starboard/views the leaderboard if enabled.",
+    "options": [
+      {
+        "name": "leaderboard",
+        "description": "Gets the starboard's leaderboard (if it's enabled.)",
+        "options": [],
+        "type": 1
+      },
+      {
+        "name": "config",
+        "description": "Configures the starboard.",
+        "options": [
+          {
+            "name": "blacklist",
+            "description": "Add/remove channels to the blacklist. Channels in the blacklist won't get stars.",
+            "options": [
+              {
+                "name": "act",
+                "type": 3,
+                "description": "Whether to add or remove the channel.",
+                "required": true,
+                "choices": [
+                  {
+                    "name": "add",
+                    "value": "add"
+                  },
+                  {
+                    "name": "remove",
+                    "value": "remove"
+                  }
+                ]
+              },
+              {
+                "name": "channel",
+                "type": 3,
+                "description": "The channel you want to add/remove to the blacklist.",
+                "required": true
+              }
+            ],
+            "type": 1
+          },
+          {
+            "name": "setchannel",
+            "description": "Sets the channel to be used.",
+            "options": [
+              {
+                "name": "channel",
+                "type": 3,
+                "description": "The channel to set it to.",
+                "required": true
+              }
+            ],
+            "type": 1
+          },
+          {
+            "name": "leaderboard",
+            "description": "Toggles the leaderboard on/off.",
+            "options": [],
+            "type": 1
+          },
+          {
+            "name": "setemoji",
+            "description": "Sets the emoji to be used for starboard.",
+            "options": [],
+            "type": 1
+          },
+          {
+            "name": "count",
+            "description": "Sets the minimum amount of stars needed to get on the starboard.",
+            "options": [
+              {
+                "name": "count",
+                "type": 4,
+                "description": "The amount to set it to.",
+                "required": false
+              }
+            ],
+            "type": 1
+          }
+        ],
+        "type": 2
+      }
+    ]
+  },
+  {
+    "name": "ping",
+    "description": "Checks latency.",
+    "options": []
+  },
+  {
+    "name": "say",
+    "description": "Says something in a channel.",
+    "options": [
+      {
+        "name": "channel",
+        "type": 3,
+        "description": "The channel to say it in.",
+        "required": true
+      },
+      {
+        "name": "text",
+        "type": 3,
+        "description": "The text to say.",
+        "required": true
+      }
+    ]
+  },
+  {
+    "name": "info",
+    "description": "Shows information about me.",
+    "options": []
+  },
+  {
+    "name": "removewarn",
+    "description": "Removes a warn from a user.",
+    "options": [
+      {
+        "name": "user",
+        "type": 6,
+        "description": "The user to remove the warn from.",
+        "required": true
+      },
+      {
+        "name": "case",
+        "type": 4,
+        "description": "The case # to remove.",
+        "required": false
+      }
+    ]
+  },
+  {
+    "name": "clearwarn",
+    "description": "Removes all warns from a user.",
+    "options": [{
+        "name": "user",
+        "type": 6,
+        "description": "The user to remove the warns from.",
+        "required": true
+      }
+    ]
+  },
+  {
+    "name": "mute",
+    "description": "Mutes users for a durarion. Must be setup.",
+    "options": [
+      {
+        "name": "users",
+        "type": 6,
+        "description": "The user to mute.",
+        "required": true
+      },
+      {
+        "name": "reason",
+        "type": 3,
+        "description": "The reason to mute for.",
+        "required": true
+      }
+    ]
+  },
+  {
+    "name": "verbalwarn",
+    "description": "Verbally warns users. Must be setup.",
+    "options": [
+      {
+        "name": "user",
+        "type": 6,
+        "description": "The user to warn.",
+        "required": true
+      },
+      {
+        "name": "reason",
+        "type": 3,
+        "description": "The reason to warn the user.",
+        "required": false
+      }
+    ]
+  },
+  {
+    "name": "warn",
+    "description": "Warns a user. Must be setup.",
+    "options": [
+      {
+        "name": "user",
+        "type": 6,
+        "description": "The user to warn.",
+        "required": true
+      },
+      {
+        "name": "reason",
+        "type": 3,
+        "description": "The reason to warn.",
+        "required": true
+      }
+    ]
+  },
+  {
+    "name": "warncfg",
+    "description": "Configures warnings.",
+    "options": [
+      {
+        "name": "remove",
+        "description": "Removes an action.",
+        "options": [
+          {
+            "name": "action",
+            "type": 3,
+            "description": "The action to remove.",
+            "required": true
+          }
+        ],
+        "type": 1
+      },
+      {
+        "name": "add",
+        "description": "Adds a new action to be used in the track.",
+        "options": [
+          {
+            "name": "name",
+            "type": 3,
+            "description": "The action to add.",
+            "required": true
+          },
+          {
+            "name": "type",
+            "type": 3,
+            "description": "The type of the action. This is not needed for verbals.",
+            "required": false,
+            "choices": [ 
+              {
+                "name": "ban",
+                "value": "b"
+              },
+              {
+                "name": "give role",
+                "value": "gr"
+              },
+              {
+                "name": "kick",
+                "value": "k"
+              }
+            ]
+          }
+        ],
+        "type": 1
+      },
+      {
+        "name": "settrack",
+        "description": "Configures the warning track.",
+        "options": [],
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "help",
+    "description": "Get help for all commands or a seperate command.",
+    "options": [
+      {
+        "name": "command",
+        "type": 3,
+        "description": "The command to search for.",
+        "required": false
+      }
+    ]
+  },
+  {
+    "name": "warns",
+    "description": "Check warns.",
+    "options": [
+      {
+        "name": "user",
+        "type": 3,
+        "description": "The user to look at. Leave this blank for yourself.",
+        "required": false
+      }
+    ]
+  },
+  {
+    "name": "remindme",
+    "description": "Sets a reminder that (tries) to DM you.",
+    "options": [
+      {
+        "name": "reminder",
+        "type": 3,
+        "description": "The time to wait + the reminder.",
+        "required": true
+      }
+    ]
+  }
+]

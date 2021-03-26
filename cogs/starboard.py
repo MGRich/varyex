@@ -32,7 +32,7 @@ class Starboard(commands.Cog):
         if typ and ((payl.emoji.name if payl.emoji.is_unicode_emoji() else payl.emoji.id) != mpk['emoji']): return
         LOG.debug(payl.guild_id)
         mpk['amount'] = (6,)
-        chl = self.bot.get_channel(mpk['channel'])  
+        chl: discord.TextChannel = self.bot.get_channel(mpk['channel'])  
         sbmsg: discord.Message 
         try: sbmsg = await chl.fetch_message(mpk['messages'][str(msg.id)]['sbid'])
         except: sbmsg = None
@@ -156,6 +156,7 @@ class Starboard(commands.Cog):
     @commands.has_permissions(manage_messages=True, manage_guild=True)
     @commands.guild_only()
     async def config(self, ctx):
+        """Configures the starboard."""
         if (ctx.invoked_subcommand == None):
             base = mpku.getmpm('starboard', ctx.guild)
             def fetch(st):
@@ -178,6 +179,7 @@ class Starboard(commands.Cog):
     @starboard.command(aliases = ("lb",))
     @commands.guild_only()
     async def leaderboard(self, ctx):
+        """Gets the starboard's leaderboard (if it's enabled.)"""
         mpk = mpku.getmpm('starboard', ctx.guild)
         if not mpk['emoji']: return
         if mpk['leaderboard']['enabled']:
@@ -270,6 +272,7 @@ class Starboard(commands.Cog):
     @commands.has_permissions(manage_guild=True)
     @commands.guild_only()
     async def setchannel(self, ctx, chn: Optional[discord.TextChannel]):
+        """Sets the channel to be used."""
         if not chn: return await ctx.invoke(self.config)
         mpk = mpku.getmpm('starboard', ctx.guild)
         mpk['channel'] = chn.id
@@ -279,6 +282,7 @@ class Starboard(commands.Cog):
     @config.command(name = "leaderboard", aliases = ('lb',))
     @commands.guild_only()
     async def lbcfg(self, ctx):
+        """Toggles the leaderboard on/off."""
         mpk = mpku.getmpm('starboard', ctx.guild)
         mpk['leaderboard']['enabled'] = (False, not mpk['leaderboard']['enabled'])
         mpk.save()
@@ -287,6 +291,7 @@ class Starboard(commands.Cog):
     @config.command(aliases = ('setstar',))
     @commands.has_permissions(manage_guild=True)
     async def setemoji(self, ctx):
+        """Sets the emoji to be used for starboard."""
         def check(_r, u):
             return u.id == ctx.message.author.id
         
@@ -301,9 +306,10 @@ class Starboard(commands.Cog):
         mpk.save()
         await ctx.send("Starboard emoji set!")
     
-    @config.command(aliases = ('setcount',))
+    @config.command(aliases = ('setcount', 'minimum', 'setminimum'))
     @commands.has_permissions(manage_guild=True)
     async def count(self, ctx, count: Optional[int]):
+        """Sets the minimum amount of stars needed to get on the starboard."""
         if not count: return await ctx.invoke(self.config)
         mpk = mpku.getmpm('starboard', ctx.guild)
         mpk['amount'] = count
@@ -313,6 +319,7 @@ class Starboard(commands.Cog):
     @config.command()
     @commands.has_permissions(manage_guild=True)
     async def blacklist(self, ctx, act, *channel: discord.TextChannel):
+        """Add/remove channels to the blacklist. Channels in the blacklist won't get stars."""
         if (len(channel) == 0): return
         mpk = mpku.getmpm('starboard', ctx.guild)
         channel = list(channel)

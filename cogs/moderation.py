@@ -236,17 +236,26 @@ class Moderation(commands.Cog):
     
     @log.group(aliases = ('cfg',))
     async def config(self, ctx):
+        """Sets up logging."""
         if not ctx.invoked_subcommand:
             await LogMenu(ctx.guild.id, self.bot.data, ctx.prefix).prompt(ctx)
 
     @config.command(aliases = ('setchannel',))
     @commands.has_permissions(manage_guild=True)
     async def channel(self, ctx, channel: Optional[discord.TextChannel]):
+        """Set the channel for logs."""
         if not channel: return await ctx.invoke(self.log)
         mpk = mpku.getmpm("moderation", ctx.guild.id)
         mpk['log']['channel'] = channel.id
         mpk.save()
         await ctx.send(f"Log channel set to {channel.mention}!")
+
+    @config.command()
+    @commands.has_permissions(manage_guild=True)
+    async def toggle(self, ctx):
+        """Toggle certain parts of logging."""
+        ctx.invoked_subcommand = None
+        await self.config(ctx)
 
 def setup(bot):
     bot.add_cog(Moderation(bot))
