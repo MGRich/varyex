@@ -164,8 +164,8 @@ class TZMenu(menus.Menu):
 
     async def send_initial_message(self, ctx, channel):
         if not ctx.guild:
-            await channel.send("Please note that since this is in DMS, you must remove the reactions yourself.")
-        m = await channel.send(embed=self.ebase)
+            await ctx.send("Please note that since this is in DMS, you must remove the reactions yourself.")
+        m = await ctx.send(embed=self.ebase)
         fakep = discord.RawReactionActionEvent({'message_id': 0, 'channel_id': 0, 'user_id': 0}, discord.PartialEmoji(name='\u25C0'), "REACTION_ADD")
         self.message = m
         await self.handler(fakep)
@@ -247,7 +247,7 @@ class PronounSelector(menus.Menu):
         self.add_button(menus.Button('\u2754', self.otherstop))
 
     async def send_initial_message(self, ctx, channel):
-        return await channel.send(embed=self.embed)
+        return await ctx.send(embed=self.embed)
 
     async def prompt(self, ctx):
         await self.start(ctx, wait=True)

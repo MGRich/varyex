@@ -29,8 +29,8 @@ class Choice(menus.Menu):
                 await (await self.msg.channel.send("(I can't remove reactions. Please make sure I can manage messages!)")).delete(delay=5) 
             return self.msg
         if (isinstance(self.msg, str)):
-            return await channel.send(self.msg)
-        return await channel.send(embed=self.msg)        
+            return await ctx.send(self.msg)
+        return await ctx.send(embed=self.msg)        
 
     async def onpick(self, payload: discord.RawReactionActionEvent):
         try: 
@@ -60,7 +60,7 @@ class Paginator(menus.Menu):
         return self.loop
 
     async def send_initial_message(self, ctx, channel):
-        return await channel.send(embed=self.embeds[0])
+        return await ctx.send(embed=self.embeds[0])
     async def edit(self):
         await self.message.edit(embed=self.embeds[self.page])
 

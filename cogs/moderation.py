@@ -65,7 +65,7 @@ class LogMenu(menus.Menu):
         await self.start(ctx)
         
     async def send_initial_message(self, ctx, channel):
-        ret = self.message = await channel.send("Please wait..")
+        ret = self.message = await ctx.send("Please wait..")
         await self.editmessage()
         return ret
 
@@ -210,7 +210,8 @@ class Moderation(commands.Cog):
         if count >= 100:
             if not (await Confirm(f"Are you sure you want to purge {count} messages?", clear_reactions_after=True).prompt(ctx)):
                 return
-        await ctx.message.delete()
+        try: await ctx.message.delete()
+        except: pass
         await ctx.channel.purge(limit=count, check=check)
         msg = await ctx.send(f"Purged {count} messages!")
         await msg.delete(delay=3)
