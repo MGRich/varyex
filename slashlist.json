@@ -1,5 +1,10 @@
 [
   {
+    "name": "birthdays",
+    "description": "Gets a list of birthdays in the server.",
+    "options": []
+  },
+  {
     "name": "garfield",
     "description": "Shows a Garfield strip. You can also subscribe to daily strips (including DMs).",
     "options": [
