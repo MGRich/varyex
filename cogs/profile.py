@@ -888,6 +888,7 @@ class Profile(commands.Cog):
     @commands.guild_only()
     @commands.command(aliases = ('bdays', 'bdayboard', 'birthdayboard'))
     async def birthdays(self, ctx: commands.Context):
+        """Get a list of birthdays in the server."""
         bdays = []
         for i in range(12): bdays.append([])
         for m in ctx.guild.members:
