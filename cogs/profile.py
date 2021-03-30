@@ -113,6 +113,19 @@ ACCOUNTS = {
 }
 
 def isdst(tz): bool(datetime.now(tz).dst()) #https://stackoverflow.com/a/19968515
+def calcyears(dt: datetime, now):
+    c = -1  # ALWAYS hits once, this is easier management
+    if dt.day == 29 and dt.month == 2:
+        # treat good ol leap year as march for the unfortunate out there
+        dt = dt.replace(day=1, month=3)
+    def daterange():
+        for n in range(int((now - dt).days)):
+            yield dt + timedelta(n)
+    for x in daterange():
+        if x.date() == dt.replace(year=x.year).date(): c += 1
+    if now.date() == dt.replace(year=now.year).date(): c += 1
+    return c
+
 
 class TZMenu(menus.Menu):
     #this is gonna be the weirdest, most disgusting 
@@ -471,18 +484,10 @@ class Profile(commands.Cog):
             if hasy:
                 dt = dt.replace(tzinfo=tz)
                 invalid = now < dt
-                c = -1 #ALWAYS hits once, this is easier management
-                def daterange():
-                    for n in range(int((now - dt).days)):
-                        yield dt + timedelta(n)
-                for x in daterange():
-                    if x.day == dt.day and x.month == dt.month: 
-                        c += 1
+                c = 0 if invalid else calcyears(dt, now)
                 invalid = invalid or c < 13
-                dt = dt.replace(year=now.year)
-                if now.date() == dt.date(): c += 1
                 curr += f" ({c} years old)" 
-            else: dt = dt.replace(year=now.year)
+            dt = dt.replace(year=now.year)
             LOG.debug(dt)
             LOG.debug(now)
             if now.date() == dt.date(): curr += f"\n> **(It's {pnb} birthday today! \U0001F389)**"
@@ -909,19 +914,10 @@ class Profile(commands.Cog):
             if hasy:
                 dt = dt.replace(tzinfo=tz)
                 invalid = now < dt
-                c = -1  # ALWAYS hits once, this is easier management
-
-                def daterange():
-                    for n in range(int((now - dt).days)):
-                        yield dt + timedelta(n)
-                for i in daterange():
-                    if i.day == dt.day and i.month == dt.month:
-                        c += 1
+                c = 0 if invalid else calcyears(dt, now)
                 invalid = invalid or c < 13
-                dt = dt.replace(year=now.year)
-                if now.date() == dt.date():
-                    c += 1
-            else: dt = dt.replace(year=now.year)
+            if invalid: hasy = False
+            dt = dt.replace(year=now.year)
             out = f"<@{m.id}> - {getord(dt.day)}"
             if hasy:
                 out += f" ({c}yrs)"
