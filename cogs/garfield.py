@@ -198,24 +198,6 @@ class Garfield(commands.Cog):
                 attempts += 1
         return (-1, datetime.utcnow())
 
-    async def calcsromg(self, di: Union[datetime, int]):
-        direct = type(di) == int
-        if not direct:
-            stripnum = (di - datetime(2010, 1, 25)).days + 251
-        else: stripnum = di
-        maxnum = (datetime.utcnow() - datetime(2010, 1, 25)).days + 251
-        headers = {"Connection": "Upgrade", "Upgrade": "http/1.1"}
-        attempts = 0
-        while attempts <= 10:
-            async with aiohttp.request('GET', f"https://www.mezzacotta.net/garfield/?comic={stripnum}", headers=headers) as resp:
-                r = (await resp.read()).decode('utf-8')
-            if direct and SROMGParser().getdata(r)['number'] != stripnum:
-                return (-1, -1)
-            url = f"https://www.mezzacotta.net/garfield/comics/{stripnum:04}.{x}"
-            if (await getcode(url)) == 200:
-                return (url, limitdatetime(datetime.utcnow()) - timedelta(days=(maxnum - stripnum)))
-            stripnum -= 1
-            attempts += 1
     
     async def formatembed(self, url, s, d, day=None):
         embed = discord.Embed(title=f"{'Daily ' if d else ''}{'SROMG' if s else 'Garfield'} Comic", colour=0xfe9701)
@@ -224,6 +206,9 @@ class Garfield(commands.Cog):
             num = url.split('/')[-1][:-4]
             embed.set_footer(text=f"Strip #{int(num)}")
             r = None
+            headers = {"Connection": "Upgrade", "Upgrade": "http/1.1"}
+            async with aiohttp.request('GET', f"https://www.mezzacotta.net/garfield/?comic={num}", headers=headers) as resp:
+                r = (await resp.read()).decode('utf-8')
             if not r:
                 embed.description = f"View the details of the strip [here.](https://www.mezzacotta.net/garfield/?comic={num})"
             else:
