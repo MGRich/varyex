@@ -26,7 +26,7 @@ class Choice(menus.Menu):
             try: 
                 await self.msg.clear_reactions()
             except discord.Forbidden: 
-                await (await self.msg.channel.send("(I can't remove reactions. Please make sure I can manage messages!)")).delete(delay=5) 
+                await self.msg.channel.send("(I can't remove reactions. Please make sure I can manage messages!)", delete_after=5) 
             return self.msg
         if (isinstance(self.msg, str)):
             return await ctx.send(self.msg)

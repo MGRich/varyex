@@ -6,7 +6,7 @@ from cogs.utils.converters import UserLookup, DurationString
 from cogs.utils.menus import Confirm, Choice
 from cogs.utils.other import getord, timestamp_to_int, timestamp_now, iiterate
 
-from typing import Union, Optional
+from typing import Mapping, Union, Optional
 from datetime import datetime, timedelta
 import timeago
 import pytz
@@ -454,6 +454,7 @@ class Profile(commands.Cog):
         if not last:
             pval += "*Not set*\n"
         else:
+            invalid = False
             hasy = True
             curr = ""
             date = ""
@@ -467,13 +468,31 @@ class Profile(commands.Cog):
             try: tz = pytz.timezone(getfromprofile("tz").replace(' ', '_'))
             except: tz = pytz.timezone("UTC")
             now = datetime.now(tz)
-            if not hasy: dt = dt.replace(year=now.year)
-            else: curr += f" ({timeago.format(dt, now.replace(tzinfo=None)).replace('ago', 'old')})"
-            dt = dt.replace(year=now.year)
+            if hasy:
+                dt = dt.replace(tzinfo=tz)
+                invalid = now < dt
+                c = -1 #ALWAYS hits once, this is easier management
+                def daterange():
+                    for n in range(int((now - dt).days)):
+                        yield dt + timedelta(n)
+                for x in daterange():
+                    if x.day == dt.day and x.month == dt.month: 
+                        c += 1
+                invalid = invalid or c < 13
+                dt = dt.replace(year=now.year)
+                if now.date() == dt.date(): c += 1
+                curr += f" ({c} years old)" 
+            else: dt = dt.replace(year=now.year)
             LOG.debug(dt)
             LOG.debug(now)
-            if now.date() == dt.date(): curr += f" **(It's {pnb} birthday today! \U0001F389)**"
+            if now.date() == dt.date(): curr += f"\n> **(It's {pnb} birthday today! \U0001F389)**"
+            if invalid:
+                date = dt.strftime("%m/%d")
+                mpk['birthday'] = mpk['birthday'][:-2]
+                mpk.save()
+                curr = "\n> *(Your birthyear was invalid, so it has been removed.)*"
             pval += f"{date}{curr}\n"
+
         if (getfromprofile("location")):
             pval += f"**Location**: {last}\n"
         pval += "**Timezone**: "
@@ -481,10 +500,9 @@ class Profile(commands.Cog):
             pval += "*Not set*\n"
         else:
             now = datetime.now(pytz.timezone(last.replace(' ', '_')))
-            pval += f"{last} (Currently {now.strftime('%m/%d/%y %I:%M%p')})\n"
+            pval += f"{last} (Currently `{now.strftime('%m/%d/%y %I:%M%p')}`)\n"
 
         getfromprofile("accounts")
-        #last = {'twitter': [{'handle': 'rmg_rich', 'name': 'RMGRich'}, {'handle': 'rmgrich', 'name': 'rmgrich'}], 'twitch': [{'name': 'RMGBread', 'handle': 'rmgbread'}], 'youtube': [{'handle': 'UC9ecwl3FTG66jIKA9JRDtmg', 'name': 'SiIvaGunner'}]}
         if last:
             aval = ""
             for acc in last:
@@ -548,7 +566,7 @@ class Profile(commands.Cog):
                 mpk.save()
                 return
             if (len(ret) > max): 
-                await (await ctx.send(f"Please keep it under {max} characters ({len(ret)}/{max}).")).delete(delay=5)
+                await ctx.send(f"Please keep it under {max} characters ({len(ret)}/{max}).", delete_after=5)
                 if pretext: 
                     pretext = None
                     await ctx.send(prompts[0])
@@ -599,16 +617,32 @@ class Profile(commands.Cog):
             tod = await ctx.send("Parsing date...")
             dt = dateparser.parse(ret.content)
             if not dt: 
-                await tod.delete()
-                await (await ctx.send("Could not parse date given. Please try again.")).delete(delay=5)
+                await ctx.send("Could not parse date given. Please try again.", delete_after=5)
                 continue
             a = await Confirm(f"Is {dt.strftime('%B')} {getord(dt.day)} correct?", timeout=None).prompt(ctx)
             if not a:
-                await (await ctx.send("Please try again with a different format.")).delete(delay=5)
+                await ctx.send("Please try again with a different format.", delete_after=5)
+                await tod.delete()
                 continue
-            if (dt.year >= dt.utcnow().year):
+
+            if (dt.year >= datetime.utcnow().year):
                 mpk['birthday'] = dt.strftime('%d%m')
             else:
+                #gonna count to be sure 
+                tz = pytz.timezone(mpk['tz'].replace(" ", "_") if mpk['tz'] else "UTC")
+                now = datetime.now(tz)
+                dt = dt.replace(tzinfo=tz)
+                c = 0
+                def daterange():
+                    for n in range(int((now - dt).days)):
+                        yield dt + timedelta(n)
+                for x in daterange():
+                    if x.day == dt.day and x.month == dt.month:
+                        c += 1
+                if c < 13:
+                    await ctx.send("This birthday is under 13 years old. Please try again.", delete_after=5)
+                    await tod.delete()
+                    continue
                 mpk['birthday'] = dt.strftime('%d%m%y')
             mpk.save()
             return await ctx.send("Birthday set!")
@@ -631,7 +665,7 @@ class Profile(commands.Cog):
                 if (ret.content.lower() == "cancel"):
                     return await ctx.send("Cancelled pronoun setting.")
                 if (len(ret.content) > 50): 
-                    await (await ctx.send("Please keep it under 50 characters.")).delete(delay=5)
+                    await ctx.send("Please keep it under 50 characters.", delete_after=5)
                     continue
                 result.update({'value': ret.content})
                 mpk.save()
@@ -782,7 +816,7 @@ class Profile(commands.Cog):
             except: td = None
             ret = (await self.bot.wait_for('message', check=waitforcheck, timeout=20.0)).content
             if re.search(r'\s', ret):
-                await (await ctx.send("There should be no spaces. Please try again.")).delete(delay=5)
+                await ctx.send("There should be no spaces. Please try again.", delete_after=5)
                 continue
             td = await ctx.send("Verifying...")
             await ctx.channel.trigger_typing()
@@ -794,7 +828,7 @@ class Profile(commands.Cog):
                 async with aiohttp.request('HEAD', url) as resp:
                     if resp.status != 200 or (not str(resp.url).startswith(url)): raise Exception()
             except: 
-                await (await ctx.send("Invalid URL. Please try again.")).delete(delay=5)
+                await ctx.send("Invalid URL. Please try again.", delete_after=5)
                 continue
             if checkembed: 
                 dump = self.bot.get_channel(DUMPCHANNEL)                
@@ -809,7 +843,7 @@ class Profile(commands.Cog):
                     await asyncio.sleep(1)
                 #i actually despise steam
                 if tocheck and acctype == "steam" and not keepread.embeds[0].description:
-                    await (await ctx.send("Invalid URL. Please try again.")).delete(delay=5)
+                    await ctx.send("Invalid URL. Please try again.", delete_after=5)
                     continue
             else: 
                 try:
@@ -828,7 +862,7 @@ class Profile(commands.Cog):
             except: pass
             match = re.search(res, tocheck)
             if (not match): 
-                await (await ctx.send("Verification failed. Please try again and check your account spelling.")).delete(delay=5)
+                await ctx.send("Verification failed. Please try again and check your account spelling.", delete_after=5)
                 continue
             try: name = match.group("name")
             except: name = ret
@@ -848,6 +882,58 @@ class Profile(commands.Cog):
         alist.append({'handle': handle, 'name': name})
         mpk.save()
         await ctx.send("Account added!")            
+
+    MONTHS = ['January', 'Febuary', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+    @commands.guild_only()
+    @commands.command(aliases = ('bdays', 'bdayboard', 'birthdayboard'))
+    async def birthdays(self, ctx: commands.Context):
+        bdays = []
+        for i in range(12): bdays.append([])
+        for m in ctx.guild.members:
+            m: discord.Member
+            if self.bot.usermpm[str(m.id)]['profile'].isblank:
+                continue
+            mpk = self.bot.usermpm[str(m.id)]['profile']
+            bs = mpk['birthday']
+            if not bs: continue
+            hasy = True
+            if (len(bs) == 4):
+                hasy = False
+                dt = datetime.strptime(bs, "%d%m")
+            else:
+                dt = datetime.strptime(bs, "%d%m%y")
+            tz = pytz.timezone(mpk['tz'].replace(" ", "_") if mpk['tz'] else "UTC")
+            now = datetime.now(tz)
+            if hasy:
+                dt = dt.replace(tzinfo=tz)
+                invalid = now < dt
+                c = -1  # ALWAYS hits once, this is easier management
+
+                def daterange():
+                    for n in range(int((now - dt).days)):
+                        yield dt + timedelta(n)
+                for i in daterange():
+                    if i.day == dt.day and i.month == dt.month:
+                        c += 1
+                invalid = invalid or c < 13
+                dt = dt.replace(year=now.year)
+                if now.date() == dt.date():
+                    c += 1
+            else: dt = dt.replace(year=now.year)
+            out = f"<@{m.id}> - {getord(dt.day)}"
+            if hasy:
+                out += f" ({c}yrs)"
+            if now.date() == dt.date():
+                out = f"**{out} \U0001F389**"
+            bdays[dt.month - 1].append((out, dt.day))
+
+        embed = discord.Embed(title="Birthdays", color=self.bot.data['color'])
+        for x, i in iiterate(bdays):
+            x: list
+            if not x: continue
+            embed.add_field(name=self.MONTHS[i], value='\n'.join(y[0] for y in sorted(x, key=lambda z: z[1])))
+        await ctx.send(embed=embed)
 
 
 def setup(bot):

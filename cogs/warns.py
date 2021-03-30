@@ -370,7 +370,7 @@ class Warns(commands.Cog):
             while True:
                 try: role = await commands.RoleConverter().convert(ctx, await waitfor())
                 except commands.BadArgument:
-                    await (await ctx.send("Please enter a valid role.")).delete(delay=5)
+                    await ctx.send("Please enter a valid role.", delete_after=5)
                     continue
                 actdict.update({'role': role.id})
                 embed.description = pre + f"**Role:** {role.mention}\n"
@@ -479,7 +479,7 @@ class Warns(commands.Cog):
             embed.description = pre + tracks + (" (keeps repeating last offence)" if track else "")
             await msg.edit(embed=embed)
             if (r := await waitfor()) == "stop": break
-            if not r in valid: await (await ctx.send("Please send a valid action.")).delete(delay=5)
+            if not r in valid: await ctx.send("Please send a valid action.", delete_after=5)
             else:
                 track.append({'action': r})
                 try:
@@ -489,7 +489,7 @@ class Warns(commands.Cog):
                             try: 
                                 if (not (v := pytimeparse.parse(await waitfor()))): raise ValueError()
                                 elif v // 60 < 5: raise ValueError()
-                            except ValueError: await (await ctx.send("Please send a valid value.")).delete(delay=5)
+                            except ValueError: await ctx.send("Please send a valid value.", delete_after=5)
                             else:
                                 track[-1].update({'time': v // 60})
                                 await td.delete()

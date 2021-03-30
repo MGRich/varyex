@@ -230,7 +230,7 @@ class Misc(commands.Cog):
 
     @commands.command()
     @commands.is_owner()
-    async def dumptime(self, ctx):
+    async def dumptime(self, _ctx):
         exp = []
 
         def recur(cmdlist: List[Union[commands.Command, commands.Group]], explist: list, subdepth):
