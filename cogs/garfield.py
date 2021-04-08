@@ -54,8 +54,9 @@ class SROMGParser(HTMLParser):
         self.PS = {'author': 6, 'tscript': 7, 'desc': 9}
         self.lasttag = None
 
-    def getdata(self, feed: str):
-        self.feed(feed)
+    async def getdata(self, url):
+        async with aiohttp.request('GET', url, headers={"Connection": "Upgrade", "Upgrade": "http/1.1"}) as resp:
+            self.feed(await resp.text())
         if self.data['description'] and self.data['description'].splitlines()[-1].startswith("[["):
             self.data['description'] = '\n'.join(
                 self.data['description'].splitlines()[:-1]).strip()
@@ -171,100 +172,90 @@ class Garfield(commands.Cog):
         # pylint: disable=no-member
         self.garfloop.cancel()
         
-    async def calcstripfromdate(self, date: Union[datetime, int], sromg): 
+    async def calcstripfromdate(self, date: Union[datetime, int]) -> Tuple[int, datetime]: 
         attempts = 0
-        if not sromg: 
-            while attempts <= 5:
-                url = f"https://d1ejxu6vysztl5.cloudfront.net/comics/garfield/{date.year}/{date.strftime('%Y-%m-%d')}.gif"
+        while attempts <= 5:
+            url = f"https://d1ejxu6vysztl5.cloudfront.net/comics/garfield/{date.year}/{date.strftime('%Y-%m-%d')}.gif"
+            if (await getcode(url)) == 200: return (url, limitdatetime(date))
+            #url = f"http://strips.garfield.com/iimages1200/{date.year}/ga{date.strftime('%y%m%d')}.gif"
+            #if (await getcode(url)) == 200: return (url, limitdatetime(date)) #currently frozen
+            for fn in {'gif', 'jpg', 'png'}:
+                url = f"http://picayune.uclick.com/comics/ga/{date.year}/ga{date.strftime('%y%m%d')}.{fn}"
                 if (await getcode(url)) == 200: return (url, limitdatetime(date))
-                #url = f"http://strips.garfield.com/iimages1200/{date.year}/ga{date.strftime('%y%m%d')}.gif"
-                #if (await getcode(url)) == 200: return (url, limitdatetime(date)) #currently frozen
-                for fn in {'gif', 'jpg', 'png'}:
-                    url = f"http://picayune.uclick.com/comics/ga/{date.year}/ga{date.strftime('%y%m%d')}.{fn}"
-                    if (await getcode(url)) == 200: return (url, limitdatetime(date))
-                date -= timedelta(days=1)
-                attempts += 1
-        else:
-            #this is the day it started being consistent (i hope)
-            if not isinstance(date, int):
-                stripnum = (date - datetime(2010, 1, 25)).days + 251
-            else: stripnum = date
-            maxnum = (datetime.utcnow() - datetime(2010, 1, 25)).days + 251
-            while attempts <= 10:
-                for x in {'png', 'gif', 'jpg'}:
-                    url = f"https://www.mezzacotta.net/garfield/comics/{stripnum:04}.{x}"
-                    if (await getcode(url)) == 200: return (url, limitdatetime(datetime.utcnow()) - timedelta(days=(maxnum - stripnum)))
-                stripnum -= 1
-                attempts += 1
+            date -= timedelta(days=1)
+            attempts += 1
         return (-1, datetime.utcnow())
 
-    
+    async def calcsromg(self, di: Union[datetime, int]):
+        direct = type(di) == int
+        if not direct:
+            stripnum = (di - datetime(2010, 1, 25)).days + 251
+        else: stripnum = di
+        if stripnum == -1:
+            return await SROMGParser().getdata(f"https://www.mezzacotta.net/garfield/")
+        d = await SROMGParser().getdata(f"https://www.mezzacotta.net/garfield/?comic={stripnum}")
+        if stripnum and direct and d['number'] != stripnum: return -1
+        return d
+
     async def formatembed(self, url, s, d, day=None):
         embed = discord.Embed(title=f"{'Daily ' if d else ''}{'SROMG' if s else 'Garfield'} Comic", colour=0xfe9701)
-        embed.set_image(url=url)
         if s: 
-            num = url.split('/')[-1][:-4]
+            js: dict = url
+            num = str(js['number'])
             embed.set_footer(text=f"Strip #{int(num)}")
-            r = None
-            headers = {"Connection": "Upgrade", "Upgrade": "http/1.1"}
-            async with aiohttp.request('GET', f"https://www.mezzacotta.net/garfield/?comic={num}", headers=headers) as resp:
-                r = (await resp.read()).decode('utf-8')
-            if not r:
-                embed.description = f"View the details of the strip [here.](https://www.mezzacotta.net/garfield/?comic={num})"
-            else:
-                js = SROMGParser().getdata(r)
-                embed.title = f"{'Daily ' if d else ''}SROMG | {js['title']}"
-                if num == '0': 
-                    num = str(js['number'])
-                    embed.set_footer(text=f"Strip #{int(num)}")
-                    embed.set_image(url=js['image'])
-                embed.url = f"http://www.mezzacotta.net/garfield/?comic={num}"
-                authordesc = js['description']
-                tr = '\n'.join(js['transcript'].splitlines()[:11])
-                tl = []
-                toadd = "*[visit SROMG page for rest]*" #keep here just in case
-                linecount = 0
-                for x in tr.splitlines():
-                    if re.fullmatch(r"({|\().*(}|\))", x): 
-                        t = "*" + x[1:-1] + "*" 
-                    else: t = re.sub(r"^([^:]*):", r"**\1**:", x, 1)
-                    linecount += 1
-                    over = (len('\n'.join(tl)) > 1024 - len(toadd))
-                    if (linecount > 10) or over:
-                        if (over): tl = tl[:-1]
-                        tl.append(toadd)
-                        break
-                    tl.append(t)
-                embed.add_field(name="Transcription", value='\n'.join(tl))
-                embed.set_author(name=js['author']['name'], url=js['author']['link'])
-                ogstrips = toadd = ""
-                if (js['ogstrips']):
-                    ogstrips += f"\n*Original strip{'s' if len(js['ogstrips']) > 1 else ''}: "
-                    for x in js['ogstrips'][:8]: 
-                        formatted = re.sub(r'..([^-]*)-([^-]*)-(.*)', r'\2/\3/\1', x['date'])
-                        if (formatted == "11/17/17") and d: 
-                            return discord.Embed(title="SROMG", description = f"it's a radish strip, who cares\n[here's the strip]({embed.url})", color=0xfe9701)
-                        ogstrips += f"[{formatted}]({x['link']}), "
-                    if js['ogstrips'][8:]:
-                        ogstrips += f"{len(js['ogstrips'][8:])} more  "
-                    ogstrips = ogstrips[:-2] + "*"
-                if len(authordesc) > (2048 - len(ogstrips)):
-                    toadd = "*[visit SROMG page for rest]*"
-                    authordesc = ''.join(tuple((x + ".") for x in (authordesc[:(2048 - len(ogstrips) - len(toadd)) - 2].split('.'))[:-1]))
-                embed.description = authordesc + (("\n" + toadd) if toadd else "") + "\n" + ogstrips
-                embed.set_footer(text=f"Strip #{int(num)}")
+            embed.set_image(url=js['image'])
+            embed.title = f"{'Daily ' if d else ''}SROMG | {js['title']}"
+            embed.url = f"http://www.mezzacotta.net/garfield/?comic={num}"
+            authordesc = js['description']
+            tr = '\n'.join(js['transcript'].splitlines()[:11])
+            tl = []
+            toadd = "*[visit SROMG page for rest]*" #keep here just in case
+            linecount = 0
+            for x in tr.splitlines():
+                if re.fullmatch(r"({|\().*(}|\))", x): 
+                    t = "*" + x[1:-1] + "*" 
+                else: t = re.sub(r"^([^:]*):", r"**\1**:", x, 1)
+                linecount += 1
+                over = (len('\n'.join(tl)) > 1024 - len(toadd))
+                if (linecount > 10) or over:
+                    if (over): tl = tl[:-1]
+                    tl.append(toadd)
+                    break
+                tl.append(t)
+            embed.add_field(name="Transcription", value='\n'.join(tl))
+            embed.set_author(name=js['author']['name'], url=js['author']['link'])
+            ogstrips = toadd = ""
+            if (js['ogstrips']):
+                ogstrips += f"\n*Original strip{'s' if len(js['ogstrips']) > 1 else ''}: "
+                for x in js['ogstrips'][:8]: 
+                    formatted = re.sub(r'..([^-]*)-([^-]*)-(.*)', r'\2/\3/\1', x['date'])
+                    if (formatted == "11/17/17") and d: 
+                        return discord.Embed(title="SROMG", description = f"it's a radish strip, who cares\n[here's the strip]({embed.url})", color=0xfe9701)
+                    ogstrips += f"[{formatted}]({x['link']}), "
+                if js['ogstrips'][8:]:
+                    ogstrips += f"{len(js['ogstrips'][8:])} more  "
+                ogstrips = ogstrips[:-2] + "*"
+            if len(authordesc) > (2048 - len(ogstrips)):
+                toadd = "*[visit SROMG page for rest]*"
+                authordesc = ''.join(tuple((x + ".") for x in (authordesc[:(2048 - len(ogstrips) - len(toadd)) - 2].split('.'))[:-1]))
+            embed.description = authordesc + (("\n" + toadd) if toadd else "") + "\n" + ogstrips
+            embed.set_footer(text=f"Strip #{int(num)}")
         else:
+            embed.set_image(url=url)
             isfallback = 'picayune' in url
             embed.set_footer(text=f"Strip from {day.month}/{day.day}/{day.year}{' (fallback CDN)' if isfallback else ''}")
         return embed
         
     @commands.Cog.listener()
-    async def on_message(self, m):
-        if re.fullmatch("show (comic|sromg|strip)", m.content):
-            await m.channel.trigger_typing()
-            s = m.content.split()[1] == "sromg"
-            url, date = await self.calcstripfromdate(datetime.utcnow() + timedelta(days=1), s)
-            await m.channel.send(embed=await self.formatembed(url, s, False, date))    
+    async def on_message(self, m: discord.Message):
+        if not re.fullmatch("show (comic|sromg|strip)", m.content.lower()): return
+        await m.channel.trigger_typing()
+        s = m.content.split()[1] == "sromg"
+        if not s: url, date = await self.calcstripfromdate(datetime.utcnow() + timedelta(days=1))
+        else: 
+            url = await self.calcsromg(-1)
+            date = None
+        await m.channel.send(embed=await self.formatembed(url, s, False, date))    
             
     @commands.command(aliases=('gstrip', 'garf', 'sromg'))
     async def garfield(self, ctx: commands.Context, *, date: Optional[str]):
@@ -275,10 +266,10 @@ class Garfield(commands.Cog):
         `g/sromg sub/subscribe`
         `g/sromg random`"""
         await ctx.trigger_typing()
-        isSROMG = ctx.message.content.startswith(f"{ctx.prefix}sromg")
+        isSROMG = ctx.invoked_with == "sromg"
         num = None
         if not date:
-            date = limitdatetime((datetime.utcnow() + timedelta(days=1)))
+            if not isSROMG: date = limitdatetime((datetime.utcnow() + timedelta(days=1)))
         elif date.startswith("sub"):
             if ctx.guild:
                 if not ctx.author.permissions_in(ctx.channel).manage_channels: raise commands.MissingPermissions(["manage_channel"])
@@ -315,12 +306,13 @@ class Garfield(commands.Cog):
                 await msg.delete()
                 if not date: return await ctx.send("Could not parse the date given.")
                 if date > datetime.utcnow() + timedelta(days=1): return await ctx.send("Please send a date that is not in the far future (1 day max).")
-        if num is None: 
+        if num is None and date: 
             while (date > (datetime.utcnow() + timedelta(days=1))): date -= timedelta(days=1)
         else: date = num
-        if not date:
-            return await ctx.send(embed=await self.formatembed("0XXXX", isSROMG, False, date))
-        url, date = await self.calcstripfromdate(date, isSROMG)
+        if isSROMG:
+            return await ctx.send(embed=await self.formatembed(await self.calcsromg(-1 if date is None else date), True, False))
+            #except: return await ctx.send("Could not find that SROMG strip.")
+        url, date = await self.calcstripfromdate(date)
         if (url == -1):
             return await ctx.send("Could not find that strip.")
         await ctx.send(embed=await self.formatembed(url, isSROMG, False, date))
@@ -328,13 +320,13 @@ class Garfield(commands.Cog):
     @trackedloop(minutes=5, reconnect=True)
     async def garfloop(self):
         LOG.debug("gstart")
-        gurl, gdate = await self.calcstripfromdate(datetime.utcnow() + timedelta(days=1), False)
-        surl, _sdate = await self.calcstripfromdate(datetime.utcnow() + timedelta(days=1), True)
+        gurl, gdate = await self.calcstripfromdate(datetime.utcnow() + timedelta(days=1))
+        sdata = await self.calcsromg(-1)
         gembed = sembed = None
         if self.firstrun:
-            if -1 in {surl, gurl}: return
+            if -1 == gurl or (type(sdata) == int and sdata == -1): return
             self.lastdate = gdate
-            self.lastsromg = int(surl.split('/')[-1][:-4])
+            self.lastsromg = sdata['number']
             self.firstrun = False
             return
         shown = 0
@@ -342,10 +334,10 @@ class Garfield(commands.Cog):
             shown |= 1
             gembed = await self.formatembed(gurl, False, True, gdate)
             self.lastdate = gdate
-        if (surl != -1):
-            if (snum := int(surl.split('/')[-1][:-4])) > self.lastsromg:
+        if (sdata != -1):
+            if (snum := sdata['number']) > self.lastsromg:
                 shown |= 2
-                sembed = await self.formatembed(surl, True, True)
+                sembed = await self.formatembed(sdata, True, True)
                 self.lastsromg = snum
         LOG.debug(shown)
         #if not shown: return
