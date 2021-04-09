@@ -1,14 +1,11 @@
-from inspect import Parameter
 import aiohttp
 import discord, subprocess, shutil
 from discord.abc import Messageable
 from discord.ext import commands
-from discord.ext.commands.core import Command, Group
 import cogs.utils.loophelper as loophelper
 
 from cogs.utils.menus import Confirm
 import cogs.utils.mpk as mpku
-from typing import Union, get_origin, get_args
 
 import logging, sys, traceback
 from io import StringIO
@@ -230,8 +227,8 @@ async def sendoverride(self: Messageable, content=None, *, embed: discord.Embed 
         kwargs.update({'content': content, 'embeds': embeds})
         return kwargs
     files = kwargs.pop('file', None) or kwargs.pop('files', None)
-    await self.ogsend(content, embed=embeds[0], **kwargs)
-    if len(embeds) == 1: return
+    r = await self.ogsend(content, embed=embeds[0], **kwargs)
+    if len(embeds) == 1: return r
     for e in embeds[1:-1]:
         await self.ogsend(embed=e)
     if files:
