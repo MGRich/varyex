@@ -4,5 +4,13 @@
     "stable": true,
     "version": "1.4",
     "color": 8663508,
-    "status": "[ch] | v!info | v!profile"
+    "status": "[ch] | v!info | v!profile",
+    "special": {
+        "server": {
+            "id": 829541524433928232,
+            "invite": "vhmktNV4xk"
+        },
+        "emojirole": [829542280208580629, 370155052112936961],
+        "profilechannel": 829543689222357052
+    }
 }

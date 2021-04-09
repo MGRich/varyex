@@ -18,12 +18,12 @@ from lxml import html
 
 import logging
 LOG = logging.getLogger('bot')
-DUMPCHANNEL = 777709381931892766
+dumpchannel = 777709381931892766
 
 REBASE = r'(?P<name>.*) \(%P%(?P<handle>.*)\)'
 ACCOUNTS = {
     'twitter': {
-        'emoji': 777705359535636481,
+        'emoji': 829807521593557052,
         'prefix': '@',
         'link': 'https://twitter.com/[]',
         'type': 0,
@@ -31,7 +31,7 @@ ACCOUNTS = {
         'color': 0x1da1f2,
     },
     'twitch': {
-        'emoji': 777763562222911509,
+        'emoji': 829807522348269668,
         'link': 'https://twitch.tv/[]',
         'type': 2,
         're': r'(?P<name>\w*) -',
@@ -39,28 +39,28 @@ ACCOUNTS = {
         'used': 'https://www.twitch.tv/[]'
     },
     'steam': {
-        'emoji': 777768944316579860,
+        'emoji': 829807523984965632,
         'link': 'https://steamcommunity.com/id/[]',
         'type': 2,
         're': r':: (?P<name>\w*)',
         'color': 0x231f20
     },
     'github': {
-        'emoji': 777770141416685588,
+        'emoji': 829807524596678687,
         'link': 'https://github.com/[]',
         'type': 2,
         're': r'(?P<name>\w*) -',
         'color': 0x171516
     },
     'youtube': {
-        'emoji': 777766517700821023,
+        'emoji': 829807523208101929,
         'link': 'https://www.youtube.com/channel/[]',
         'type': 2,
         're': r'(?P<name>.*)',
         'color': 0xff0000
     },
     'reddit': {
-        'emoji': 777771510311026688,
+        'emoji': 829807525687590962,
         'prefix': 'u/',
         'link': 'https://reddit.com/u/[]',
         'type': 1,
@@ -69,7 +69,7 @@ ACCOUNTS = {
         'used': 'https://www.reddit.com/user/[]'
     },
     'instagram': {
-        'emoji': 777774500926324757,
+        'emoji': 829807526735380491,
         'prefix': '@',
         'link': 'https://instagram.com/[]',
         'type': 0,
@@ -78,14 +78,14 @@ ACCOUNTS = {
         'color': 0xdf4176
     },
     'soundcloud': {
-        'emoji': 777775128448073729,
+        'emoji': 829807528128282695,
         'link': 'https://soundcloud.com/[]',
         'type': 2,
         're': r'(?P<name>.*)',
         'color': 0xff5500
     },
     'lastfm': {
-        'emoji': 778092674581790720,
+        'emoji': 829807530976477194,
         'link': 'https://www.last.fm/user/[]',
         'type': 2,
         're': r'(?P<name>\w*).s Music',
@@ -93,7 +93,7 @@ ACCOUNTS = {
         'name': 'Last.fm'
     },
     'tumblr': {
-        'emoji': 777911052456689684,
+        'emoji': 829807528845770825,
         'link': 'https://[].tumblr.com',
         'prefix': '@',
         'type': 0,
@@ -102,13 +102,24 @@ ACCOUNTS = {
         'color': 0x001935
     },
     'deviantart': {
-        'emoji': 777913856444989440,
+        'emoji': 829807530003660889,
         'link': 'https://deviantart.com/[]',
         'type': 2,
         're': r'(?P<name>\w*) User Profile \|',
         'embed': False,
         'name': 'DeviantArt',
         'color': 0x06cc47
+    },
+    'pronounspage': {
+        'emoji': 829807531915345920,
+        'link': 'https://en.pronouns.page/@[]',
+        'prefix': '@',
+        'type': 1,
+        're': r'@(?P<name>\w*)', #unique! we fetch, not read embed
+        'embed': False,
+        'name': 'PronounsPage',
+        'color': 0xc71585,
+        'embed': False
     }
 }
 
@@ -333,8 +344,10 @@ def pronounstrings(d):
 class Profile(commands.Cog):
     def __init__(self, bot: commands.Bot):
         # pylint: disable=no-member
+        global dumpchannel
         self.bot = bot
         self.tzd = {}
+        dumpchannel = bot.data['special']['profilechannel']
         def rec(cur, startswith):
             stack = '/'.join(startswith)
             for x in cur:
@@ -836,7 +849,7 @@ class Profile(commands.Cog):
                 await ctx.send("Invalid URL. Please try again.", delete_after=5)
                 continue
             if checkembed: 
-                dump = self.bot.get_channel(DUMPCHANNEL)                
+                dump = self.bot.get_channel(dumpchannel)                
                 keepread = await dump.send(url)
                 await asyncio.sleep(.5)
                 for i in range(5):
