@@ -140,7 +140,7 @@ class SROMGParser(HTMLParser):
                             link = d
                     self.data['description'] += f"[{data}]({link})"
                     self.lasttag = ('b',)
-            return  # todo
+            return
         elif self.fetch == 'title':
             self.data['title'] = data
             self.data['number'] = int(data.split()[1][:-1])
@@ -192,7 +192,7 @@ class Garfield(commands.Cog):
             stripnum = (di - datetime(2010, 1, 25)).days + 251
         else: stripnum = di
         if stripnum == -1:
-            return await SROMGParser().getdata(f"https://www.mezzacotta.net/garfield/")
+            return await SROMGParser().getdata("https://www.mezzacotta.net/garfield/")
         d = await SROMGParser().getdata(f"https://www.mezzacotta.net/garfield/?comic={stripnum}")
         if stripnum and direct and d['number'] != stripnum: return -1
         return d
