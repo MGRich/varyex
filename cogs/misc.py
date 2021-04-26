@@ -104,7 +104,8 @@ class Misc(commands.Cog):
         e = discord.Embed(title="Info", colour=discord.Colour(self.bot.data['color']))
         e.description = f"""**Version:** {self.bot.data['version']}
         **Owned by:** {self.bot.owner.mention}
-        __**[Invite link](https://discord.com/oauth2/authorize?client_id={str(self.bot.user.id)}&permissions=268446911&scope=bot%20applications.commands)**__"""
+        __**[Invite link](https://discord.com/oauth2/authorize?client_id={str(self.bot.user.id)}&permissions=268446911&scope=bot%20applications.commands)**__
+        **[Support server](https://discord.gg/{self.bot.data['special']['server']['invite']})"""
         members = []
         humans = []
         unique = set()

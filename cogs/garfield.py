@@ -1,8 +1,9 @@
-import discord, aiohttp, logging
+import discord, logging
 from discord.ext import commands
 from cogs.utils.loophelper import trackedloop
 
 import cogs.utils.mpk as mpku
+from cogs.utils.other import httpfetch, urlisOK
 
 from typing import Union, Optional, List, Tuple
 from datetime import datetime, timedelta
@@ -55,8 +56,7 @@ class SROMGParser(HTMLParser):
         self.lasttag = None
 
     async def getdata(self, url):
-        async with aiohttp.request('GET', url, headers={"Connection": "Upgrade", "Upgrade": "http/1.1"}) as resp:
-            self.feed(await resp.text())
+        self.feed(await httpfetch(url, headers={"Connection": "Upgrade", "Upgrade": "http/1.1"}))
         if self.data['description'] and self.data['description'].splitlines()[-1].startswith("[["):
             self.data['description'] = '\n'.join(
                 self.data['description'].splitlines()[:-1]).strip()
@@ -154,11 +154,6 @@ class SROMGParser(HTMLParser):
     def error(self, message: str) -> None:
         return
 
-async def getcode(url):
-    try: 
-        async with aiohttp.request('HEAD', url) as resp:
-            return resp.status
-    except: return 408
 
 
 class Garfield(commands.Cog):
@@ -176,12 +171,12 @@ class Garfield(commands.Cog):
         attempts = 0
         while attempts <= 5:
             url = f"https://d1ejxu6vysztl5.cloudfront.net/comics/garfield/{date.year}/{date.strftime('%Y-%m-%d')}.gif"
-            if (await getcode(url)) == 200: return (url, limitdatetime(date))
+            if (await urlisOK(url)): return (url, limitdatetime(date))
             #url = f"http://strips.garfield.com/iimages1200/{date.year}/ga{date.strftime('%y%m%d')}.gif"
             #if (await getcode(url)) == 200: return (url, limitdatetime(date)) #currently frozen
             for fn in {'gif', 'jpg', 'png'}:
                 url = f"http://picayune.uclick.com/comics/ga/{date.year}/ga{date.strftime('%y%m%d')}.{fn}"
-                if (await getcode(url)) == 200: return (url, limitdatetime(date))
+                if (await urlisOK(url)): return (url, limitdatetime(date))
             date -= timedelta(days=1)
             attempts += 1
         return (-1, datetime.utcnow())
@@ -329,41 +324,33 @@ class Garfield(commands.Cog):
             self.lastsromg = sdata['number']
             self.firstrun = False
             return
-        shown = 0
         if (gurl != -1) and gdate > self.lastdate:
-            shown |= 1
             gembed = await self.formatembed(gurl, False, True, gdate)
             self.lastdate = gdate
         if (sdata != -1):
             if (snum := sdata['number']) > self.lastsromg:
-                shown |= 2
                 sembed = await self.formatembed(sdata, True, True)
                 self.lastsromg = snum
-        LOG.debug(shown)
-        #if not shown: return
+        if not (gembed or sembed): return
         #first we check guilds cause thats easy
         for guild in self.bot.guilds:
             guild: discord.Guild
-            try: mpk = mpku.getmpm('misc', guild)['garfield']
-            except: continue
-            if (shown & 0b01) and mpk['g']:
-                chn = guild.get_channel(mpk['g'])
-                try: await chn.send(embed=gembed)
-                except: pass
-            if (shown & 0b10) and mpk['s']:
-                chn = guild.get_channel(mpk['s'])
-                try: await chn.send(embed=sembed)
+            if not (mpk := mpku.getmpm('misc', guild)['garfield']): continue
+            if gembed and mpk['g']:
+                try: await guild.get_channel(mpk['g']).send(embed=gembed)
+                except: pass #pass because diff channels
+            if sembed and mpk['s']:
+                try: await guild.get_channel(mpk['s']).send(embed=sembed)
                 except: pass
         mpkr = self.bot.usermpm.copy()
         for uid in mpkr:
             mpk = mpkr[uid]['garfield']
-            user: discord.User = self.bot.get_user(uid)
-            if not user: user = await self.bot.fetch_user(uid)
+            user: discord.User = self.bot.get_user(uid) or await self.bot.fetch_user(uid)
             if not user: continue
-            if (shown & 0b01) and mpk['g']:
+            if gembed and mpk['g']:
                 try: await user.send(embed=gembed)
-                except: continue
-            if (shown & 0b10) and mpk['s']:
+                except: continue #continue because 1 channel
+            if sembed and mpk['s']:
                 try: await user.send(embed=sembed)
                 except: continue
 

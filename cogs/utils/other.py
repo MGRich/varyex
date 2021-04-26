@@ -1,6 +1,6 @@
 import humanize
 from datetime import timedelta, datetime
-
+from aiohttp import request as aioreq
 
 def getord(num):
     st = "th"
@@ -25,3 +25,17 @@ def datetime_from_int(dt):
 def iiterate(i, iafter = True):
     if iafter: return zip(i, range(len(i)))
     return zip(range(len(i)), i)
+
+async def httpfetch(url, json=False, headers=None):
+    async with aioreq('GET', url, headers=headers) as r:
+        return (await r.json()) if json else (await r.text())
+    
+async def getcode(url):
+    try:
+        async with aioreq('HEAD', url) as resp:
+            return resp.status
+    except:
+        return 408
+
+async def urlisOK(url):
+    return (await getcode(url)) in {200, 201}
