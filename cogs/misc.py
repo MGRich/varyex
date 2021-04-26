@@ -105,7 +105,7 @@ class Misc(commands.Cog):
         e.description = f"""**Version:** {self.bot.data['version']}
         **Owned by:** {self.bot.owner.mention}
         __**[Invite link](https://discord.com/oauth2/authorize?client_id={str(self.bot.user.id)}&permissions=268446911&scope=bot%20applications.commands)**__
-        **[Support server](https://discord.gg/{self.bot.data['special']['server']['invite']})"""
+        __**[Support server](https://discord.gg/{self.bot.data['special']['server']['invite']})**__"""
         members = []
         humans = []
         unique = set()
