@@ -1,0 +1,14 @@
+python-dotenv 
+discord.py 
+git+https://github.com/Rapptz/discord-ext-menus 
+u-msgpack-python 
+aiohttp 
+timeago 
+number-parser 
+dateparser 
+pillow 
+numpy 
+pytimeparse 
+pygithub 
+pytz 
+humanize

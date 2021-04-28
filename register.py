@@ -1,3 +1,5 @@
+#TO BE REMOVED IN DISCORD.PY v2.0
+
 import json, requests, os, time
 from dotenv import load_dotenv
 load_dotenv()
@@ -7,7 +9,7 @@ if not STABLE: url = "https://discord.com/api/v8/applications/619011194141016064
 else: url = "https://discord.com/api/v8/applications/619009622593896478/commands"
 
 t = os.getenv('STOKEN' if STABLE else 'DTOKEN')
-if t is None: exit()
+if t is None: raise ValueError("no token found, can't authorize")
 
 j = json.load(open("slashlist.json"))
 headers = {"Authorization": f"Bot {t}"}
