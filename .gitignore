@@ -11,3 +11,5 @@ cogs/*/
 config*
 .env
 .swp
+
+venvs/
