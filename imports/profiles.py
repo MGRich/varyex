@@ -236,7 +236,7 @@ async def get_pnounspage(handle) -> List[Pronouns]:
 
 @umsgpack.ext_serializable(0x20)
 class UserProfile():
-    _VERSION = 1
+    _VERSION = 2
 
     name = ""
     realname = ""
@@ -316,6 +316,9 @@ class UserProfile():
     def save(self):
         assert self.uid and BOT
         BOT.usermpm[str(self.uid)]['profile'] = self
+        for x in self.pronouns:
+            if x not in PLIST:
+                PLIST.append(x)
         BOT.usermpm.save()
 
     def packb(self):
@@ -330,9 +333,9 @@ class UserProfile():
             out.extend(tw)
         for x in ('name', 'realname', 'location', 'bio'):
             writestring(getattr(self, x))
-        pn = umsgpack.packb(self.pronouns)
-        out.extend(len(pn).to_bytes(2, 'little'))
-        out.extend(pn)
+        out.extend(len(self.pronouns).to_bytes(1, 'little'))
+        for x in self.pronouns:
+            out.extend(PLIST.index(x).to_bytes(2, 'little'))
         accs = umsgpack.packb(self.accounts)
         out.extend(len(accs).to_bytes(2, 'little'))
         out.extend(accs)
@@ -351,8 +354,14 @@ class UserProfile():
             return reader.read(len).decode('utf-8')
         for x in ('name', 'realname', 'location', 'bio'):
             setattr(res, x, readstring())
-        btr = int.from_bytes(reader.read(2), 'little')
-        res.pronouns = umsgpack.unpackb(reader.read(btr))
+        if ver == 1:
+            btr = int.from_bytes(reader.read(2), 'little')
+            res.pronouns = umsgpack.unpackb(reader.read(btr))
+        else:
+            l = reader.read(1)[0]
+            for _ in range(l):
+                res.pronouns.append(
+                    PLIST[int.from_bytes(reader.read(2), 'little')])
         btr = int.from_bytes(reader.read(2), 'little')
         res.accounts = umsgpack.unpackb(reader.read(btr))
         try: res.timezone = pytz.timezone(readstring())
