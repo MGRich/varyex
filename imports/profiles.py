@@ -332,14 +332,18 @@ class UserProfile():
             out.extend(tw)
         for x in ('name', 'realname', 'location', 'bio'):
             writestring(getattr(self, x))
-        if isinstance(self.pronouns[0], str):
-            out.append(1)
-            writestring(self.pronouns[0])
+        if self.pronouns:
+            if isinstance(self.pronouns[0], str):
+                out.append(1)
+                writestring(self.pronouns[0])
+            else:
+                out.append(0)
+                out.extend(len(self.pronouns).to_bytes(1, 'little'))
+                for x in self.pronouns:
+                    out.extend(PMPK['list'].index(x).to_bytes(2, 'little'))
         else:
             out.append(0)
-            out.extend(len(self.pronouns).to_bytes(1, 'little'))
-            for x in self.pronouns:
-                out.extend(PMPK['list'].index(x).to_bytes(2, 'little'))
+            out.append(0)
         accs = umsgpack.packb(self.accounts)
         out.extend(len(accs).to_bytes(2, 'little'))
         out.extend(accs)
