@@ -29,9 +29,6 @@ if TYPE_CHECKING:
     from imports.main import Main
     BOT: Main 
 
-PLIST: List[Pronouns] = None
-
-
 def isdst(tz): bool(datetime.now(tz).dst())
 
 REBASE = r'(?P<name>.*) \(%P%(?P<handle>.*)\)'
@@ -139,7 +136,6 @@ ACCOUNTS = {
 PAIRS = ("he/him", "she/her", "they/them")
 FULLS = ("he/him/his/his/himself", "she/her/her/hers/herself",
          "they/them/their/theirs/themselves")
-
 @umsgpack.ext_serializable(0x21)
 class Pronouns():
     __slots__ = ('subject', 'object', 'pos_d', 'pos_p', 'reflex')
@@ -171,6 +167,7 @@ class Pronouns():
     def __str__(self) -> str:
         return self.pair
 
+PMPK = mpk.getmpm("pronouns", None)
 @umsgpack.ext_serializable(0x22)
 class UserAccount():
     __slots__ = ('type', 'handle', 'name')
@@ -236,7 +233,7 @@ async def get_pnounspage(handle) -> List[Pronouns]:
 
 @umsgpack.ext_serializable(0x20)
 class UserProfile():
-    _VERSION = 2
+    _VERSION = 1
 
     name = ""
     realname = ""
@@ -316,9 +313,12 @@ class UserProfile():
     def save(self):
         assert self.uid and BOT
         BOT.usermpm[str(self.uid)]['profile'] = self
+        new = False
         for x in self.pronouns:
-            if x not in PLIST:
-                PLIST.append(x)
+            if x not in PMPK['list']:
+                new = True
+                PMPK['list'].append(x)
+        if new: PMPK.save()
         BOT.usermpm.save()
 
     def packb(self):
@@ -335,7 +335,7 @@ class UserProfile():
             writestring(getattr(self, x))
         out.extend(len(self.pronouns).to_bytes(1, 'little'))
         for x in self.pronouns:
-            out.extend(PLIST.index(x).to_bytes(2, 'little'))
+            out.extend(PMPK['list'].index(x).to_bytes(2, 'little'))
         accs = umsgpack.packb(self.accounts)
         out.extend(len(accs).to_bytes(2, 'little'))
         out.extend(accs)
@@ -354,22 +354,18 @@ class UserProfile():
             return reader.read(len).decode('utf-8')
         for x in ('name', 'realname', 'location', 'bio'):
             setattr(res, x, readstring())
-        if ver == 1:
-            btr = int.from_bytes(reader.read(2), 'little')
-            res.pronouns = umsgpack.unpackb(reader.read(btr))
-        else:
-            l = reader.read(1)[0]
-            for _ in range(l):
-                res.pronouns.append(
-                    PLIST[int.from_bytes(reader.read(2), 'little')])
+        l = reader.read(1)[0]
+        for _ in range(l):
+            res.pronouns.append(PMPK['list'][int.from_bytes(reader.read(2), 'little')])
         btr = int.from_bytes(reader.read(2), 'little')
         res.accounts = umsgpack.unpackb(reader.read(btr))
         try: res.timezone = pytz.timezone(readstring())
         except: pass
         bd = readstring()
-        res.birthday = datetime.strptime(bd, "%d%m" if len(bd) == 4 else "%d%m%y")
-        if res.timezone:
-            res.birthday = res.birthday.replace(tzinfo=res.timezone)
+        if bd:
+            res.birthday = datetime.strptime(bd, "%d%m" if len(bd) == 4 else "%d%m%y")
+            if res.timezone:
+                res.birthday = res.birthday.replace(tzinfo=res.timezone)
         return res
 
     @classmethod

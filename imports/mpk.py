@@ -5,7 +5,6 @@ from copy import deepcopy
 from typing import Union, Iterator, Literal
 from traceback import format_exc
 import logging
-import imports.profiles #just to be safe
 
 LOG = logging.getLogger('bot')
 class DefaultContainer:
@@ -143,7 +142,8 @@ class MPKManager(DefaultContainer):
             return d
 
     def _recur(self, s, d):
-        #pylint: disable=protected-access
+        #pylint: disable=protected-
+        #TODO: get rid of this? probably?
         if isinstance(d, (dict, DefaultContainer)): t = d.items()
         else: t = zip(range(len(d)), d)
         for k, v in t:
@@ -184,4 +184,3 @@ def getmpm(typ, gid) -> MPKManager:
     if isinstance(gid, discord.Guild): gid = gid.id
     mpm = MPKManager(typ, gid)
     return mpm
-

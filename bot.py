@@ -67,7 +67,6 @@ i = discord.Intents.default()
 i.members = True
 bot = Main(data, mpku.getmpm('users', None), loophelper, owner_id=data['owner'], intents=i)
 p.BOT = bot
-p.PLIST = bot.usermpm['pronous']
 
 first = False
 print(bot.data)
