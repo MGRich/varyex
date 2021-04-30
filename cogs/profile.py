@@ -239,15 +239,18 @@ class Profile(commands.Cog):
     async def edit(self, ctx: commands.Context):
         """Edit parts of your profile."""
         if ctx.invoked_subcommand: return
-        if self.bot.usermpm[str(ctx.author.id)]['profile'].isblank:
-            a = await Confirm("Do you want to create a profile? You can delete it later. Remember, anyone can view your profile at any time.", delete_message_after=False).prompt(ctx)
-            if not a: return await ctx.send("Profile declined.")
-            mpk = self.bot.usermpm
-            mpk[str(ctx.author.id)]['profile'] = UserProfile()
-            mpk.save()
-            return await ctx.reinvoke(restart=True)
-            
-        raise commands.UserInputError()
+        try:
+            if self.bot.usermpm[str(ctx.author.id)]['profile'].isblank:
+                a = await Confirm("Do you want to create a profile? You can delete it later. Remember, anyone can view your profile at any time.", delete_message_after=False).prompt(ctx)
+                if not a: return await ctx.send("Profile declined.")
+                mpk = self.bot.usermpm
+                mpk[str(ctx.author.id)]['profile'] = UserProfile()
+                mpk.save()
+                return await ctx.reinvoke(restart=True)
+                
+            raise commands.UserInputError()
+        except AttributeError: pass
+        except: raise
 
     @profile.command(aliases=('erase',))
     async def delete(self, ctx):
@@ -491,7 +494,9 @@ class Profile(commands.Cog):
                         if x.tag == 'head': head = x
                     if head is None: raise Exception()
                     for x in head:
-                        if x.tag == 'title': tocheck = x.text
+                        if x.tag == 'title': 
+                            tocheck = x.text
+                            break
                     raise Exception()
                 except: pass
             res = data['re']

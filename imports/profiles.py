@@ -235,19 +235,18 @@ async def get_pnounspage(handle) -> List[Pronouns]:
 class UserProfile():
     _VERSION = 1
 
-    name = ""
-    realname = ""
-    location = ""
-    bio = ""
-    pronouns: List[Union[Pronouns, str]] = []
-    accounts: List[UserAccount] = []
-    birthday: datetime = None
-    timezone: dt.tzinfo = None
-
-    _initialized = True
-    uid = 0
-
     def __init__(self, data: Union[mpk.DefaultContainer, UserProfile] = None, forceinit = False, uid=0) -> None:
+        self.name = ""
+        self.realname = ""
+        self.location = ""
+        self.bio = ""
+        self.pronouns: List[Union[Pronouns, str]] = []
+        self.accounts: List[UserAccount] = []
+        self.birthday: datetime = None
+        self.timezone: dt.tzinfo = None
+
+        self._initialized = True
+        self.uid = 0
         if uid: self.uid = uid
         if data is None: return
         if data.isblank:
@@ -333,9 +332,14 @@ class UserProfile():
             out.extend(tw)
         for x in ('name', 'realname', 'location', 'bio'):
             writestring(getattr(self, x))
-        out.extend(len(self.pronouns).to_bytes(1, 'little'))
-        for x in self.pronouns:
-            out.extend(PMPK['list'].index(x).to_bytes(2, 'little'))
+        if isinstance(self.pronouns[0], str):
+            out.append(1)
+            writestring(self.pronouns[0])
+        else:
+            out.append(0)
+            out.extend(len(self.pronouns).to_bytes(1, 'little'))
+            for x in self.pronouns:
+                out.extend(PMPK['list'].index(x).to_bytes(2, 'little'))
         accs = umsgpack.packb(self.accounts)
         out.extend(len(accs).to_bytes(2, 'little'))
         out.extend(accs)
@@ -354,9 +358,13 @@ class UserProfile():
             return reader.read(len).decode('utf-8')
         for x in ('name', 'realname', 'location', 'bio'):
             setattr(res, x, readstring())
-        l = reader.read(1)[0]
-        for _ in range(l):
-            res.pronouns.append(PMPK['list'][int.from_bytes(reader.read(2), 'little')])
+        t = reader.read(1)[0]
+        if t:
+            res.pronouns = [readstring()]
+        else:
+            l = reader.read(1)[0]
+            for _ in range(l):
+                res.pronouns.append(PMPK['list'][int.from_bytes(reader.read(2), 'little')])
         btr = int.from_bytes(reader.read(2), 'little')
         res.accounts = umsgpack.unpackb(reader.read(btr))
         try: res.timezone = pytz.timezone(readstring())

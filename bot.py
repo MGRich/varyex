@@ -416,7 +416,7 @@ async def update(ctx):
     global upd
     upd = True
     await ctx.send("updating")
-    await bot.logout()
+    await bot.close()
 
 
 @bot.command()
