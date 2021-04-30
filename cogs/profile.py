@@ -239,18 +239,16 @@ class Profile(commands.Cog):
     async def edit(self, ctx: commands.Context):
         """Edit parts of your profile."""
         if ctx.invoked_subcommand: return
-        try:
-            if self.bot.usermpm[str(ctx.author.id)]['profile'].isblank:
-                a = await Confirm("Do you want to create a profile? You can delete it later. Remember, anyone can view your profile at any time.", delete_message_after=False).prompt(ctx)
-                if not a: return await ctx.send("Profile declined.")
-                mpk = self.bot.usermpm
-                mpk[str(ctx.author.id)]['profile'] = UserProfile()
-                mpk.save()
-                return await ctx.reinvoke(restart=True)
-                
-            raise commands.UserInputError()
-        except AttributeError: pass
-        except: raise
+        p = self.bot.usermpm[str(ctx.author.id)]['profile']
+        if isinstance(p, DefaultContainer) and p.isblank:
+            a = await Confirm("Do you want to create a profile? You can delete it later. Remember, anyone can view your profile at any time.", delete_message_after=False).prompt(ctx)
+            if not a: return await ctx.send("Profile declined.")
+            mpk = self.bot.usermpm
+            mpk[str(ctx.author.id)]['profile'] = UserProfile()
+            mpk.save()
+            return await ctx.reinvoke(restart=True)
+            
+        raise commands.UserInputError()
 
     @profile.command(aliases=('erase',))
     async def delete(self, ctx):
