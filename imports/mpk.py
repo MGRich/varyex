@@ -1,8 +1,13 @@
+from __future__ import annotations
 import discord, umsgpack, os, zlib, shutil
 from copy import deepcopy
 
-from typing import Union
+from typing import Union, Iterator, Literal
+from traceback import format_exc
+import logging
+import imports.profiles #just to be safe
 
+LOG = logging.getLogger('bot')
 class DefaultContainer:
     def __init__(self, data = None, parent = None):
         self._data: Union[list, dict] = data
@@ -33,18 +38,18 @@ class DefaultContainer:
             return
         raise KeyError(f"invalid type ({type(t).__name__} is not str, int, or slice obj)")
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return bool(self._data)
-    def __len__(self):
+    def __len__(self) -> int:
         if not self._data: return 0
         return len(self._data)
-    def __contains__(self, value):
+    def __contains__(self, value) -> bool:
         if not self._data: return False
         return self._data.__contains__(value)
-    def __iter__(self):
+    def __iter__(self) -> Iterator:
         return iter(self._data or ())
     
-    def __getitem__(self, key):
+    def __getitem__(self, key) -> Union[DefaultContainer, Literal]:
         self._settype(key)
         try: self._data[key]
         except KeyError: #no IndexError handling 
@@ -164,7 +169,9 @@ class MPKManager(DefaultContainer):
         d = self._filter(True, d)
         try: 
             with open(self.path, "wb") as f: umsgpack.dump(d, f)
-        except: shutil.copyfile(self.path[:-4] + ".mbu", self.path) #oh fuck.
+        except: 
+            LOG.warn(f"unable to save {self.path}:\n{format_exc()}")
+            shutil.copyfile(self.path[:-4] + ".mbu", self.path) #oh fuck.
         else: 
             if copied: os.unlink(self.path[:-4] + ".mbu") 
 

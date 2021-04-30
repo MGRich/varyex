@@ -26,8 +26,12 @@ def iiterate(i, iafter = True):
     if iafter: return zip(i, range(len(i)))
     return zip(range(len(i)), i)
 
+def fixml(st):
+    return '\n'.join([x.strip() for x in st.split('\n')])
+
 async def httpfetch(url, json=False, headers=None):
     async with aioreq('GET', url, headers=headers) as r:
+        if (json == 2): return r
         return (await r.json()) if json else (await r.text())
     
 async def getcode(url):

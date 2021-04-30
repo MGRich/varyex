@@ -1,9 +1,9 @@
 import discord, re
 from discord.ext import commands
 
-import cogs.utils.mpk as mpku
-from cogs.utils.embeds import embeds
-from cogs.utils.converters import MemberLookup, UserLookup
+import imports.mpk as mpku
+import imports.embeds as embeds
+from imports.converters import MemberLookup, UserLookup
 
 from datetime import datetime, timedelta
 

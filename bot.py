@@ -1,36 +1,45 @@
-import aiohttp
-import discord, subprocess, shutil
+import discord
 from discord.abc import Messageable
 from discord.ext import commands
-import cogs.utils.loophelper as loophelper
+import imports.loophelper as loophelper
 
-from cogs.utils.menus import Confirm
-import cogs.utils.mpk as mpku
+from imports.menus import Confirm
+import imports.mpk as mpku
 
-import logging, sys, traceback
+from logging import _nameToLevel as levels
+import logging
+from traceback import format_exc
+import sys
 from io import StringIO
+from subprocess import run as subprun
+from shutil import rmtree
 
-import os, json
+import os
 from pathlib import Path
 
 import base64, lzma, umsgpack, github
 
-import difflib, asyncio, textwrap, contextlib
-from typing import List
+import difflib, textwrap, contextlib
 
-from datetime import datetime
-
+from json import load as jload
 from dotenv import load_dotenv
 load_dotenv()
 
-#from .slashlist import slashlist
+from imports.main import sendoverride, Main
+#override discord
+Messageable.ogsend = Messageable.send
+Messageable.send = sendoverride
+
 
 stable = False
-if (len(sys.argv) > 1 and sys.argv[1] == "stable"): data = json.load(open("stable.json"))
-else: data = json.load(open("info.json"))
+
+try:    data = jload(open("stable.json" if sys.argv[1] == "stable" else "info.json"))
+except: data = jload(open("info.json"))
 
 stable = data['stable']
-usrout = StringIO()
+
+if stable: usrout = StringIO()
+else: usrout = sys.stderr
 
 t = os.getenv('STOKEN' if stable else 'DTOKEN')
 
@@ -38,230 +47,71 @@ dlog = logging.getLogger('discord')
 glog = logging.getLogger('bot')
 dlog.setLevel('ERROR')
 glog.setLevel('WARN')
-for x, y in zip(dlog.handlers, glog.handlers):
-    dlog.removeHandler(x)
-    glog.removeHandler(y)
 
-if not stable:
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(logging.Formatter(
-        "[%(name)s - %(levelname)s] [%(filename)s/%(lineno)d] %(message)s"))
-    dlog.addHandler(handler)
+for x in dlog.handlers: 
+    dlog.removeHandler(x)
+for x in glog.handlers:
+    glog.removeHandler(x)
+
 handler = logging.StreamHandler(usrout)
-handler.setFormatter(logging.Formatter("[%(name)s - %(levelname)s] [%(filename)s/%(lineno)d] %(message)s"))
-#dlog.addHandler(handler)
+handler.setFormatter(logging.Formatter(
+    "[%(name)s - %(levelname)s] [%(filename)s/%(lineno)d] %(message)s"))
+dlog.addHandler(handler)
 glog.addHandler(handler)
 
 
-def prefix(bot, message):
-    prf = data['prefix'].copy()
-    if message.guild:
-        con = mpku.getmpm("misc", message.guild)
-        if con['prefix']:
-            prf.clear()
-            prf.append(con['prefix'])
-    
-    users = bot.usermpm
-    if users[str(message.author.id)]['prefix']:
-        prf.insert(0, users[str(message.author.id)]['prefix'])
-    return prf
-
-
-class InteractionsContext(commands.Context):
-    def __init__(self, idata: dict = None, **attrs):
-        #assert channel
-        try: super().__init__(**attrs)
-        except AttributeError: pass #i THINK all gets caught
-        #self.channel: discord.TextChannel = channel
-        self._state = self.channel._state #steal the state so i can send shit
-        self.idata = idata
-        self.sent = False
-        self.thinking = False
-
-    async def reply(self, content=None, **kwargs): #no replies
-        return await self.send(content, **kwargs)
-
-    async def send(self, content=None, **kwargs):
-        if self.sent:
-            return await super().send(content, **kwargs)
-        self.sent = True
-        d: dict = await sendoverride(self, content, embed=kwargs.pop('embed', None), returndata=True, **kwargs)
-        for x in d.copy():
-            if x not in {'content', 'embeds', 'allowed_mentions'}:
-                del d[x]
-        
-        for i in range(len(d['embeds'])):
-            d['embeds'][i] = d['embeds'][i].to_dict()
-        
-        async with aiohttp.ClientSession() as session:
-            if self.thinking:
-                url = f"https://discord.com/api/v8/webhooks/{self.me.id}/{self.idata['token']}/messages/@original"
-                r = await session.patch(url, json=d)
-            else: 
-                url = f"https://discord.com/api/v8/interactions/{self.idata['id']}/{self.idata['token']}/callback"
-                r = await session.post(url, json={'type': 4, 'data': d})
-        if r.status in {200, 201}:
-            return discord.Message(state=self._state, channel=self.channel, data=await r.json())
-        raise discord.errors.HTTPException(r, await r.json())
-
-    async def trigger_typing(self):
-        self.thinking = True
-        url = f"https://discord.com/api/v8/interactions/{self.idata['id']}/{self.idata['token']}/callback"
-        async with aiohttp.ClientSession() as session:
-            await session.post(url, json={'type': 5})
-
-
-class Main(commands.Bot):
-    def __init__(self, data, userdata, lh, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.data = data
-        self.usermpm = userdata
-        self.loops: List[discord.ext.tasks.Loop] = []
-        self.looptask = self.loop.create_task(self.loopcheckup())
-        self.remove_command("help")
-        self.autostart = False
-
-        self.owner = None
-        lh.BOT = self
-        if stable:
-            sys.stderr = usrout
-
-        #assign a custom parser
-        self._connection.parsers["INTERACTION_CREATE"] = self.recieve_interaction
-
-    async def loopcheckup(self):
-        while True:
-            try:   
-                await asyncio.sleep(300) #every 5 minutes preform a loop checkup
-                for loop in self.loops:
-                    if not loop.next_iteration:
-                        if '.' in loop.coro.__qualname__:
-                            loop.start(self.get_cog(loop.coro.__qualname__.split('.')[0]))
-                        else: loop.start()
-                        await self.owner.send(f"restarted loop `{loop.coro.__name__}`")
-            except asyncio.CancelledError: break
-            except: pass
-
-    def recieve_interaction(self, data):
-        asyncio.ensure_future(self.handle_interaction(data), loop=self.loop)
-    
-    async def handle_interaction(self, data):
-        #pylint: disable=protected-access
-        channel: discord.TextChannel = await self.fetch_channel(data['channel_id']) or await (await self.fetch_user(data['user']['id'])).create_dm()
-        
-        cmddata = data['data']
-        out = [cmddata['name']]
-        if cmddata['name'] in {"warncfg", "profilecfg"}:
-            out[0] = cmddata['name'].split("cfg")[0]
-            out.append('cfg' if out[0] == "warn" else 'edit')
-                
-        wasstring = False
-        def appender(option):
-            nonlocal wasstring
-            if option['type'] == 3:
-                out.append(f"\"{option['value']}\"")
-                wasstring = True
-            else:
-                out.append(str(option['value']))
-                wasstring = False
-
-        for x in cmddata.get('options', []):
-            if x['type'] in {1, 2}:
-                out.append(x['name'])
-                for y in x.get('options', []):
-                    if y['type'] == 1:
-                        out.append(y['name'])
-                        for z in y.get('options', []):
-                            appender(z)
-                    else: appender(y)
-            else: appender(x)
-
-        if wasstring:
-            out[-1] = out[-1][1:-1]
-
-
-        fakemsg = discord.Message(state=channel._state, channel=channel, data={'content': '', 'id': discord.utils.time_snowflake(datetime.now()), 'attachments': [], 'embeds': [], 'pinned': False, 'mention_everyone': False, 'tts': False, 'type': 0, 'edited_timestamp': None})
-        try: fakemsg._handle_author(data['user'])
-        except KeyError: fakemsg._handle_author(data['member']['user'])
-
-        out = prefix(self, fakemsg)[0] + ' '.join(out)
-        print(out)
-        fakemsg._handle_content(out)
-
-        ctx = await self.get_context(fakemsg, cls=InteractionsContext)
-        ctx.idata = data
-        await ctx.trigger_typing()
-        await self.invoke(ctx)
-
-            
-
-async def sendoverride(self: Messageable, content=None, *, embed: discord.Embed = None, returndata = False, **kwargs):
-    #TODO: more than just desc
-    if not embed: 
-        if not returndata: return await self.ogsend(content, **kwargs)
-        else: 
-            kwargs.update({'content': content, 'embeds': []})
-            return kwargs
-    embeds = [embed]
-    while len(embed.description) > 2048:
-        copy = discord.Embed(color=embed.color, timestamp=embed.timestamp)
-        copy.set_image(url=embed.image.url)
-        copy.set_footer(text=embed.footer.text, icon_url=embed.footer.icon_url)
-        for field in embed.fields:
-            copy.add_field(name=field.name, value=field.value, inline=field.inline)
-        embed.set_footer()
-        embed.set_image(url=embed.Empty)
-        embed.clear_fields()
-        embed.timestamp = embed.Empty
-        desc: str = embed.description
-        count = 0
-        for x in desc.splitlines():
-            if count + len(x) > 2048:
-                break
-            count += len(x)
-        copy.description = embed.description[count:]
-        embed.description = embed.description[:count]
-        embeds.append(copy)
-        embed = embeds[-1]
-    if returndata:
-        kwargs.update({'content': content, 'embeds': embeds})
-        return kwargs
-    files = kwargs.pop('file', None) or kwargs.pop('files', None)
-    r = await self.ogsend(content, embed=embeds[0], **kwargs)
-    if len(embeds) == 1: return r
-    for e in embeds[1:-1]:
-        await self.ogsend(embed=e)
-    if files:
-        if isinstance(files, (list, tuple, set)):
-            return await self.ogsend(embed=embeds[-1], files=files)
-        return await self.ogsend(embed=embeds[-1], file=files)
-    return await self.ogsend(embed=embeds[-1])
-            
-Messageable.ogsend = Messageable.send
-Messageable.send = sendoverride
-
-
-    #def has_permissions(self, where: Union[discord.abc.GuildChannel, commands.Context], perms):
-    #    if isinstance(where, discord.Channel)
-    #    if isinstance(where, commands.Context):
-    #        where = where.channel
-    #    where.permissions_for(where.guild.me)
-    #    where.
-        
-
-    
-#fetch cogs
-cgs = []
-for x in os.listdir("cogs"):
-    if os.path.isfile("cogs/" + x):
-        cgs.append(f"cogs.{x[:-3]}")
-intents = discord.Intents.default()
-intents.members = True 
-intents.presences = True
-bot = Main(data, mpku.getmpm('users', None), loophelper, command_prefix=prefix, owner_id=data['owner'], intents=intents)
+if stable:
+    sys.stderr = usrout
+import imports.profiles as p 
+i = discord.Intents.default()
+i.members = True
+bot = Main(data, mpku.getmpm('users', None), loophelper, owner_id=data['owner'], intents=i)
+p.BOT = bot
+p.PLIST = bot.usermpm['pronous']
 
 first = False
 print(bot.data)
+
+@bot.event
+async def on_ready():
+    print(
+        f'\n\nin as: {bot.user.name} - {bot.user.id}\non version: {discord.__version__}\n')
+    global first
+    if (not first):
+        bot.owner = bot.get_user(bot.owner_id)
+        user = bot.owner
+        first = True
+
+        if (os.path.exists("updateout.log")):
+            await user.send(f"```\n{open('updateout.log').read()}```")
+            os.remove("updateout.log")
+            await user.send(f"```\n{open('updateerr.log').read()}```")
+            os.remove("updateerr.log")
+
+        if __name__ == '__main__':
+            msg = "```diff\n"
+            for cog in (f"cogs.{x[:-3]}" for x in os.listdir("cogs") if os.path.isfile("cogs/" + x)):
+                try:
+                    glog.debug(f"attempt to load {cog}")
+                    added = True
+                    try:
+                        bot.load_extension(cog)
+                    except commands.ExtensionAlreadyLoaded:
+                        added = False
+                        msg += f"~{cog}\n"
+                    if (added):
+                        msg += f"+{cog}\n"
+                    glog.debug(f"loaded {cog}")
+                except:
+                    try: bot.unload_extension(cog)
+                    except:
+                        pass
+                    msg += f"-{cog} !!\n"
+                    glog.warn(f"\nERROR FOR {cog}:\n{format_exc()}")                    
+            await user.send(msg + "```")
+    await bot.get_command("loop").callback(user, "start")
+    bot.autostart = True
+
 
 @bot.command(aliases=('loop',))
 @commands.is_owner()
@@ -309,96 +159,22 @@ async def loops(ctx, *loopnames):
     else: return await ctx.send(f"unknown action `{action}`")
     return await ctx.send(r + "```")
 
-
-@bot.event
-async def on_ready():
-    print(f'\n\nin as: {bot.user.name} - {bot.user.id}\non version: {discord.__version__}\n')
-    global first
-    if (not first):
-        bot.owner = bot.get_user(bot.owner_id)
-        user = bot.owner
-        first = True
-        if (os.path.exists("updateout.log")):
-            #info = await bot.application_info()
-            tmp = open("updateout.log").read()
-            await user.send(f"```\n{tmp}```")
-            os.remove("updateout.log")
-            tmp = open("updateerr.log").read()
-            await user.send(f"```\n{tmp}```")
-            os.remove("updateerr.log")
-        if __name__ == '__main__':
-            msg = "```diff\n"
-            for cog in cgs:
-                try:
-                    glog.debug(f"attempt to load {cog}") 
-                    added = True
-                    try: bot.load_extension(cog)
-                    except commands.ExtensionAlreadyLoaded:
-                        added = False
-                        msg += f"~{cog}\n"
-                    if (added): msg += f"+{cog}\n"
-                    glog.debug(f"loaded {cog}")
-                except:
-                    try: bot.unload_extension(cog)
-                    except: pass
-                    msg += f"-{cog} !!\n"
-                    print("\n-----START {}".format(cog), file=sys.stderr)
-                    traceback.print_exc()
-                    print("-----END   {}".format(cog), file=sys.stderr)
-            await user.send(msg + "```")
-    await bot.get_command("loop").callback(user, "start")
-    bot.autostart = True
-
-errored = []
-
-@bot.event
-async def on_command_error(ctx: commands.Context, error):
-    if hasattr(ctx.command, 'on_error'):
-        return
-
-    ignored = (commands.CommandOnCooldown, commands.NotOwner)
-    error = getattr(error, 'original', error)
-    if isinstance(error, ignored): return
-    #if isinstance(error, commands.DisabledCommand):
-    #    return await ctx.send(f'{ctx.command} has been disabled.')
-    if isinstance(error, commands.NoPrivateMessage):
-        try: await ctx.send('This command cannot be used in Private Messages.')
-        except: pass
-        return
-    if isinstance(error, commands.MissingPermissions):
-        return await ctx.send("You don't have sufficient permissions to run this.")
-    if isinstance(error, commands.BotMissingPermissions):
-        return await ctx.send("I don't have sufficient permissions to run this.")
-    if isinstance(error, asyncio.TimeoutError):
-        return await ctx.send("Prompt above timed out. Please redo the command.")
-    #NOW we start being linient
-    errored.append([ctx.message.id, 0])
-    if isinstance(error, commands.CommandNotFound): return
-    if isinstance(error, commands.UserInputError):
-        return await ctx.invoke(bot.get_command("help"), ctx.command.root_parent.name if ctx.command.root_parent else ctx.command.name)
-
-    if bot.owner == ctx.author:
-        return traceback.print_exception(type(error), error, error.__traceback__, file=(sys.stdout if (not stable) else sys.stderr))
-    try: await ctx.send(f"Something went wrong! We've DM'd the error to {bot.owner.mention}.")
-    except: pass
-    embed = discord.Embed(title=f"Error in {ctx.command}")
-    st = '\n'.join(traceback.format_exception(type(error), error, error.__traceback__))
-    embed.description = f"```py\n{st}\n```"
-    embed.description += f"User ID: `{ctx.author.id}` {ctx.author.mention}\nChannel ID: `{ctx.channel.id}` {ctx.channel.mention if isinstance(ctx.channel, discord.TextChannel) else '(DM)'}"
-    try: return await bot.owner.send(embed=embed)
-    except: pass
-
 iteration = 0
 count = 181
 hourcounter = 3600 - 30
 @loophelper.trackedloop(seconds=1, reconnect=True)
 async def mainloop():
+    try: await mlcoro()
+    except Exception as e:
+        glog.error(f"error in mainloop:\n{e}\n{format_exc()}")
+
+async def mlcoro():
     ####EDIT LOOP
-    global errored
-    for i in range(len(errored)):
-        errored[i][1] += 1
-        if (errored[i][1] > 3): errored[i][0] = 0
-    errored = [x for x in errored if x[0]]
+    for i in range(len(bot.errlist)):
+        bot.errlist[i][1] += 1
+        if (bot.errlist[i][1] > 3):
+            bot.errlist[i][0] = 0
+    bot.errlist = [x for x in bot.errlist if x[0]]
     ####STATUS LOOP
     global count, iteration
     count += 1
@@ -408,13 +184,15 @@ async def mainloop():
         iteration += 1
         iteration %= 3
     if last != iteration:
-        if iteration == 0: st = f"{len(bot.guilds)} servers"
+        if iteration == 0:
+            st = f"{len(bot.guilds)} servers"
         elif iteration == 1:
             c = 0
             for y in tuple(x.members for x in bot.guilds):
-                c += len([z for z in y if not z.bot]) 
+                c += len([z for z in y if not z.bot])
             st = f"{c} members"
-        elif iteration == 2: st = f"v{data['version']}"
+        elif iteration == 2:
+            st = f"v{data['version']}"
         await bot.change_presence(activity=discord.Activity(name=f"{data['status'].replace('[ch]', st)}", type=0))
     ####BACKUP LOOP
     global hourcounter
@@ -424,31 +202,28 @@ async def mainloop():
             fd = {}
             #bcks = [x.resolve() for x in Path("config").rglob('*.mbu')]
             for p in Path("config").rglob('*.mpk'):
-                if not (n := p.parent.name) in fd: fd[n] = {}
+                if not (n := p.parent.name) in fd:
+                    fd[n] = {}
                 read = p.resolve()
                 #if (read[:-3] + "mbu") in bcks:
                 #    read = read[:-3] + "mbu"
-                try: fd[n][p.stem] = open(read, "rb").read()
-                except FileNotFoundError: fd[n][p.stem] = open(p.resolve(), "rb").read()
-            f = {'varyexbackup': github.InputFileContent(content=base64.a85encode(lzma.compress(umsgpack.packb(fd), format=lzma.FORMAT_ALONE)).decode('ascii'))}
-            github.Github(os.getenv('KEY')).get_gist(os.getenv('GIST')).edit(files=f)
+                try:
+                    fd[n][p.stem] = open(read, "rb").read()
+                except FileNotFoundError:
+                    fd[n][p.stem] = open(p.resolve(), "rb").read()
+            f = {'varyexbackup': github.InputFileContent(content=base64.a85encode(
+                lzma.compress(umsgpack.packb(fd), format=lzma.FORMAT_ALONE)).decode('ascii'))}
+            github.Github(os.getenv('KEY')).get_gist(
+                os.getenv('GIST')).edit(files=f)
             glog.debug("backed up configs")
             hourcounter = 0
     ####REDIRECT
-    global usrout
-    if usrout.closed: usrout = StringIO() 
-    if not (s := usrout.getvalue()): return
-    usrout.close()
-    usrout = StringIO()
-    for x, y in zip(dlog.handlers, glog.handlers):
-        dlog.removeHandler(x)
-        glog.removeHandler(y)
-    handler.setStream(usrout)
-    dlog.addHandler(handler)
-    glog.addHandler(handler)
+    if not stable: return
+    if not (s := usrout.getvalue()):
+        return
+    usrout.truncate(0)
+    usrout.seek(0)
     await bot.owner.send(f"```\n{s}```")
-    if stable:
-        sys.stderr = usrout
 
 upd = False
 @bot.command(aliases = ('get',))
@@ -475,21 +250,12 @@ async def retrieve(ctx):
             Path(f"config/{x}").mkdir(exist_ok=True)
             open(f"config/{x}/{y}.mpk", "wb").write(result[x][y])
             glog.debug(f"config/{x}/{y}.mpk")
-    
-
-
-@bot.event
-async def on_message_edit(before, after):
-    global errored
-    if (before.content != after.content) and (after.id in {x[0] for x in errored}):
-        await bot.process_commands(after)
-        errored = [x for x in errored if x[0] != after.id]
 
 @bot.command(hidden=True)
 @commands.is_owner()
 async def redir(ctx, level):
     #pylint: disable=protected-access
-    level = difflib.get_close_matches(level.upper(), list(logging._nameToLevel))[0]
+    level = difflib.get_close_matches(level.upper(), list(levels))[0]
     glog.setLevel(level)
     await ctx.send(f"set level to {level}")
 
@@ -525,9 +291,7 @@ async def reload(ctx, *cogs):
             try: bot.unload_extension(cog)
             except: pass
             msg += f"-{cog} !!\n"
-            print("\n-----START {}".format(cog), file=sys.stderr)
-            traceback.print_exc()
-            print("-----END   {}".format(cog), file=sys.stderr)
+            glog.warn(f"\nERROR FOR {cog}:\n{format_exc()}")                    
     await ctx.send(msg + "```")
 
 @bot.command(hidden=True)
@@ -561,9 +325,7 @@ async def unload(ctx, *cogs):
             try: bot.unload_extension(cog)
             except: pass
             msg += f"-{cog} !!\n"
-            print("\n-----START {}".format(cog), file=sys.stderr)
-            traceback.print_exc()
-            print("-----END   {}".format(cog), file=sys.stderr)
+            glog.warn(f"\nERROR FOR {cog}:\n{format_exc()}")                    
     await ctx.send(msg + "```")
 
 @bot.command(hidden=True)
@@ -597,9 +359,7 @@ async def load(ctx, *cogs):
             try: bot.unload_extension(cog)
             except: pass
             msg += f"-{cog} !!\n"
-            print("\n-----START {}".format(cog), file=sys.stderr)
-            traceback.print_exc()
-            print("-----END   {}".format(cog), file=sys.stderr)
+            glog.warn(f"\nERROR FOR {cog}:\n{format_exc()}")                    
     await ctx.send(msg + "```")
 
 lastresult = None
@@ -633,10 +393,10 @@ async def _eval(ctx, *, evl):
             ret = await evalfunc()
     except:
         value = out.getvalue()
-        return await ctx.send(f'```py\n{value}{traceback.format_exc()}\n```')
+        return await ctx.send(f'```py\n{value}{format_exc()}\n```')
     val = out.getvalue()
     if not ret:
-        if val:
+        if val is not None:
             return await ctx.send(f"```py\n{val}```")
         try: return await ctx.message.add_reaction('\u2705')
         except: pass
@@ -663,13 +423,11 @@ async def update(ctx):
 @bot.command()
 @commands.is_owner()
 async def cmd(ctx, *, command):
-    res = subprocess.run(command, shell=True, check=False, capture_output=True)
+    res = subprun(command, shell=True, check=False, capture_output=True)
     val = (res.stdout.decode('utf-8') if res.stdout else "") + \
         (("\n----stderr----\n" + res.stderr.decode('utf-8')) if res.stderr else "")
-    if val:
-        return await ctx.send(f"```\n{val}```")
-    try:
-        return await ctx.message.add_reaction('\u2705')
+    if val is not None: return await ctx.send(f"```\n{val}```")
+    try: return await ctx.message.add_reaction('\u2705')
     except:
         pass
 
@@ -680,10 +438,10 @@ if (upd):
     stdr = open("updateerr.log", "w")
     sys.stdout = stout
     sys.stderr = stdr
-    if (sys.platform == 'win32'): subprocess.run(['git', 'pull'], stdout=stout, stderr=stdr, check=False, creationflags=0x08000000)
-    else: subprocess.run(['git', 'pull'], stdout=stout, stderr=stdr, check=False)
-    shutil.rmtree("cogs/__pycache__")
-    shutil.rmtree("cogs/utils/__pycache__")
+    subprun(['git', 'pull'], stdout=stout, stderr=stdr, check=False,
+            creationflags=0x08000000 * (sys.platform == 'win32'))
+    rmtree("cogs/__pycache__")
+    rmtree("imports/__pycache__")
     stout.close()
     stdr.close()
     sys.exit(1)

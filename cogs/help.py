@@ -1,12 +1,15 @@
 import discord
 from discord.ext import commands
 
-from cogs.utils.menus import Paginator
-from typing import Union, List, Optional
+from imports.menus import Paginator
+from typing import Union, List, Optional, TYPE_CHECKING
 from copy import copy
 
+
+from imports.main import Main
+
 class Help(commands.Cog):
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: Main):
         self.bot = bot
 
     def parse(self, cog, command, prefix="v!") -> Union[List[discord.Embed], discord.Embed]:

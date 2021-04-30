@@ -1,8 +1,9 @@
+from imports.other import fixml
 import discord
 from discord.ext import commands
 
-import cogs.utils.mpk as mpku
-from cogs.utils.converters import UserLookup, MemberLookup
+import imports.mpk as mpku
+from imports.converters import UserLookup, MemberLookup
 from typing import Optional
 from asyncio import sleep 
 from numpy import clip
@@ -102,10 +103,10 @@ class Misc(commands.Cog):
         """Shows information about me."""
         #("Members", len(list(self.bot.get_all_members)))
         e = discord.Embed(title="Info", colour=discord.Colour(self.bot.data['color']))
-        e.description = f"""**Version:** {self.bot.data['version']}
+        e.description = fixml(f"""**Version:** {self.bot.data['version']}
         **Owned by:** {self.bot.owner.mention}
         __**[Invite link](https://discord.com/oauth2/authorize?client_id={str(self.bot.user.id)}&permissions=268446911&scope=bot%20applications.commands)**__
-        __**[Support server](https://discord.gg/{self.bot.data['special']['server']['invite']})**__"""
+        __**[Support server](https://discord.gg/{self.bot.data['special']['server']['invite']})**__""")
         members = []
         humans = []
         unique = set()
@@ -117,11 +118,11 @@ class Misc(commands.Cog):
         members = len(members)
         humans = len(humans)
         unique = len(unique)
-        e.add_field(inline=True, name="Stats", value=f"""**Servers:** {len(self.bot.guilds)}
+        e.add_field(inline=True, name="Stats", value=fixml(f"""**Servers:** {len(self.bot.guilds)}
         **Members:**
         > **Total:** {members}
         > **Humans:** {humans}
-        > **Unique:** {unique}""")
+        > **Unique:** {unique}"""))
         e.add_field(inline=True, name="Details", value=f"**CPU:** {psutil.cpu_percent()}%\n**Memory:** {humanize.naturalsize(psutil.Process(os.getpid()).memory_info().rss, binary=True)}\n**Platform:** {platform.system()}")
         e.set_footer(text=f"Made using discord.py version {discord.__version__}", icon_url="https://cdn.discordapp.com/icons/336642139381301249/3aa641b21acded468308a37eef43d7b3.webp")
         await ctx.send(embed=e)

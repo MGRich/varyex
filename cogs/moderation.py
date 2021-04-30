@@ -1,10 +1,10 @@
 import discord
 from discord.ext import commands, menus
 
-import cogs.utils.mpk as mpku
-from cogs.utils.converters import UserLookup, MemberLookup, DurationString
-from cogs.utils.other import timeint, timestamp_to_int
-from cogs.utils.menus import Confirm 
+import imports.mpk as mpku
+from imports.converters import UserLookup, MemberLookup, DurationString
+from imports.other import timeint, timestamp_to_int
+from imports.menus import Confirm 
 
 from typing import Optional
 from datetime import datetime, timedelta

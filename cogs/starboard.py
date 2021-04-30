@@ -1,10 +1,10 @@
 import discord, copy, math
 from discord.ext import commands
 
-import cogs.utils.mpk as mpku
-from cogs.utils.menus import Paginator
-from cogs.utils.embeds import embeds
-from cogs.utils.other import getord
+import imports.mpk as mpku
+from imports.menus import Paginator
+import imports.embeds as embeds
+from imports.other import getord
 
 from typing import Optional, List
 from datetime import datetime, timedelta

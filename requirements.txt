@@ -12,3 +12,5 @@ pytimeparse
 pygithub 
 pytz 
 humanize
+lxml
+psutil

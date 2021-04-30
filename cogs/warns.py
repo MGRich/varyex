@@ -1,12 +1,12 @@
 import discord, timeago, pytimeparse, asyncio
 from discord.ext import commands
 from discord.ext.commands import Greedy
-from cogs.utils.loophelper import trackedloop
+from imports.loophelper import trackedloop
 
-import cogs.utils.mpk as mpku
-from cogs.utils.menus import Confirm
-from cogs.utils.converters import UserLookup, MemberLookup, DurationString
-from cogs.utils.other import timeint, timestamp_to_int, datetime_from_int, timestamp_now
+import imports.mpk as mpku
+from imports.menus import Confirm
+from imports.converters import UserLookup, MemberLookup, DurationString
+from imports.other import fixml, timeint, timestamp_to_int, datetime_from_int, timestamp_now
 
 from typing import Optional
 from datetime import datetime, timedelta
@@ -387,10 +387,10 @@ class Warns(commands.Cog):
             timed = True
 
         pre = embed.description
-        embed.description += f"""Please type the message that would get sent in the channel the user was warned in.
+        embed.description += fixml(f"""Please type the message that would get sent in the channel the user was warned in.
         `[u]` pings the warned user.
         `[r]` posts the reason.
-        {'`[t]` posts the duration.' if timed else ''}"""
+        {'`[t]` posts the duration.' if timed else ''}""")
         await msg.edit(embed=embed)
         good = False
         touse = None
@@ -405,9 +405,9 @@ class Warns(commands.Cog):
         embed.description = pre + f"**Server MSG:** `{touse}`\n"
 
         pre = embed.description
-        embed.description += f"""Please type the message that would get sent to the user in DMs.
+        embed.description += fixml(f"""Please type the message that would get sent to the user in DMs.
         `[r]` posts the reason.
-        {'`[t]` posts the duration.' if timed else ''}"""
+        {'`[t]` posts the duration.' if timed else ''}""")
         await msg.edit(embed=embed)
         good = False
         while not good:

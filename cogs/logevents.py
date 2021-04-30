@@ -2,19 +2,21 @@ import discord, re, difflib
 from discord.ext import commands, tasks
 from discord import AuditLogAction
 
-from cogs.utils.embeds import embeds
-import cogs.utils.mpk as mpku
+import imports.embeds as embeds
+import imports.mpk as mpku
 
-from typing import Union, List
+from typing import Union, List, TYPE_CHECKING
 from datetime import datetime, timedelta
 from io import BytesIO
+
+from imports.main import Main
 
 import logging
 LOG = logging.getLogger('bot')
 
 
 class Logging(commands.Cog):
-    def __init__(self, bot: discord.Client):
+    def __init__(self, bot: Main):
         # pylint: disable=no-member
         self.bot = bot
         self.arrow = "\u2192"

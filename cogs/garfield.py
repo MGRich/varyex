@@ -1,16 +1,19 @@
 import discord, logging
 from discord.ext import commands
-from cogs.utils.loophelper import trackedloop
+from imports.loophelper import trackedloop
 
-import cogs.utils.mpk as mpku
-from cogs.utils.other import httpfetch, urlisOK
+import imports.mpk as mpku
+from imports.other import httpfetch, urlisOK
 
-from typing import Union, Optional, List, Tuple
+from typing import Union, Optional, List, Tuple, TYPE_CHECKING
 from datetime import datetime, timedelta
 import re
 from html.parser import HTMLParser
 import random
 import dateparser
+
+
+from imports.main import Main
 
 LOG = logging.getLogger("bot")
 
@@ -157,7 +160,7 @@ class SROMGParser(HTMLParser):
 
 
 class Garfield(commands.Cog):
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: Main):
         # pylint: disable=no-member
         self.bot = bot
         self.firstrun = True
