@@ -5,7 +5,7 @@ import imports.mpk as mpku
 
 import asyncio, aiohttp
 from datetime import datetime
-import sys, traceback
+import sys, traceback, os
 
 from typing import List, TYPE_CHECKING
 
@@ -110,7 +110,7 @@ class Main(commands.Bot):
     loops: List[discord.ext.tasks.Loop] = []
     autostart = False
 
-    def __init__(self, data, userdata, lh, *args, **kwargs):
+    def __init__(self, data, userdata, *args, **kwargs):
         super().__init__(*args, command_prefix=lambda x, y: (), **kwargs)
         self.data: dict = data
         self.usermpm: mpku.DefaultContainer = userdata
@@ -118,7 +118,7 @@ class Main(commands.Bot):
         self.remove_command("help")
 
         self.owner: discord.User = None
-        lh.BOT = self
+        self.secret = os.getenv("SSECRET" if self.data['stable'] else "DSECRET")
 
         #assign a custom parser
         self._connection.parsers["INTERACTION_CREATE"] = self.recieve_interaction

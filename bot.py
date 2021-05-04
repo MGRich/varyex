@@ -1,4 +1,6 @@
 import discord
+from discord.http import Route
+Route.BASE = 'https://discord.com/api/v8'
 from discord.abc import Messageable
 from discord.ext import commands
 import imports.loophelper as loophelper
@@ -30,8 +32,7 @@ from imports.main import sendoverride, Main
 Messageable.ogsend = Messageable.send
 Messageable.send = sendoverride
 
-
-stable = False
+from website.main import run_app
 
 try:    data = jload(open("stable.json" if sys.argv[1] == "stable" else "info.json"))
 except: data = jload(open("info.json"))
@@ -62,11 +63,12 @@ glog.addHandler(handler)
 
 if stable:
     sys.stderr = usrout
-import imports.profiles as p 
+
 i = discord.Intents.default()
 i.members = True
-bot = Main(data, mpku.getmpm('users', None), loophelper, owner_id=data['owner'], intents=i)
-p.BOT = bot
+bot = Main(data, mpku.getmpm('users', None), owner_id=data['owner'], intents=i)
+import imports.globals as g
+g.BOT = bot
 
 first = False
 print(bot.data)
@@ -258,9 +260,11 @@ async def redir(ctx, level):
     glog.setLevel(level)
     await ctx.send(f"set level to {level}")
 
-@bot.command(hidden=True, aliases=('r', 'rl'))
+#@bot.command(hidden=True, aliases=('r', 'rl', 'load', 'unload'))
+@bot.command()
 @commands.is_owner()
-async def reload(ctx, *cogs):
+async def reload(ctx: commands.Context, *cogs):
+    method = ('r', 'l', 'u').index(ctx.invoked_with[x])
     cogs = set(cogs)
     cgs = set()
     msg = "```diff\n"
@@ -430,6 +434,11 @@ async def cmd(ctx, *, command):
     except:
         pass
 
+
+import threading
+from website.main import run_app, get_runner
+th = threading.Thread(target=run_app, args=(os.getenv("WEBHOST"), int(os.getenv("WEBPORT")), get_runner()))
+th.start()
 bot.run(t, bot=True, reconnect=True)
 
 if (upd): 

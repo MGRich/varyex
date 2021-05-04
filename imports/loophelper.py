@@ -1,8 +1,8 @@
 from discord.ext import tasks
-
-BOT = None
+import imports.globals as g 
 
 def trackedloop(*, seconds=0, minutes=0, hours=0, count=None, reconnect=True, loop=None):
+    BOT = g.BOT
     def decorator(func):
         kwargs = {
             'seconds': seconds,

@@ -1,15 +1,19 @@
-python-dotenv 
+#discord-related 
 discord.py 
 git+https://github.com/Rapptz/discord-ext-menus 
+#important stuff
+python-dotenv 
 u-msgpack-python 
 aiohttp 
+aiohttp_session
+pygithub 
+#less important
 timeago 
 number-parser 
 dateparser 
 pillow 
 numpy 
 pytimeparse 
-pygithub 
 pytz 
 humanize
 lxml

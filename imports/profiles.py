@@ -24,6 +24,7 @@ from inspect import ismethod, getmembers
 
 from typing import Optional, Set, Union, List, TYPE_CHECKING, Tuple
 
+import imports.globals as g
 BOT = None
 if TYPE_CHECKING:
     from imports.main import Main
@@ -310,6 +311,8 @@ class UserProfile():
         return pnoun_list(self.pronouns)
 
     def save(self):
+        global BOT
+        BOT = g.BOT
         assert self.uid and BOT
         BOT.usermpm[str(self.uid)]['profile'] = self
         new = False
