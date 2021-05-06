@@ -18,17 +18,16 @@ import aiohttp_jinja2 as aiojinja
 from hashlib import sha256
 import jinja2
 
-from website.helper import discordreq, DiscordRoute, UnifiedRoutes, templated
+#from website.helper import discordreq, DiscordRoute, UnifiedRoutes, templated
 
 #WEBSITE IMPORTSSSS
-from website.routes import guilds, auth
+#from website.routes import guilds, auth
 
-routes = UnifiedRoutes()
+routes = web.RouteTableDef()
 LOG = logging.getLogger('bot')
 
 @routes.view("/")
 @aiojinja.template("index.html")
-@templated
 async def wh(request):
     return {}
 

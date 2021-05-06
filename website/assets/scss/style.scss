@@ -1,95 +1,15 @@
-@import url(https://fonts.googleapis.com/css?family=Josefin+Sans);
-@import url(https://fonts.googleapis.com/css?family=Space+Mono);
-
-header {
-    width: 100%;
-    height: 50px;
-    top:0;
-    left:0;
-    background-color: rgba(24, 20, 30);
-    transition: background-color .2s;
-    position: fixed;
-    display: inline-block;
-    * {
-        color: #e2e9e9;
+html {
+    &, body {
+        height:100%;
     }
-    z-index: 10;
-    #logo {
-        text-decoration: none;
-        display: inline-block;
-        height: 100%;
-        position: relative;
-        left: 30px;
-        //bottom: 10px;
-        font-size: 1.6em;
-        * {
-            display: inline-block;
-            position: relative;
-            top: 10px;
-        }
+    body {
+        background-color: #18141e;
         img {
-            width: 1.5em;
-        }
-        span {
-            text-indent: -0.4em;
-            white-space: nowrap;
-            text-align: unset;
-            font-family: 'Space Mono';
-            font-style: normal;
-            font-weight: 800;
-        }
-    }
-    .leftalign {
-        font-family: 'Josefin Sans';
-        height: 100%;
-        min-width: 80px;
-        position: absolute;
-        right: 0px;
-        top: 0px;
-        text-align: center;
-        &#header-dropdown {
-            * {
-                display: inline-block;
-                //position: absolute;
-                //top: 50%;
-                //transform: translateY(-50%);
-            }
-            img {
-                width: 30px;
-                border-radius: 50%;
-                left: 5px;
-            }
-            span {
-                width: auto;
-                white-space: nowrap;
-            }
+            width: 30%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
         }
     }
 }
-
-.white-hover {
-    background-color: transparent;
-    border: none;
-    padding: 0 5px;
-    transition: background-color .2s;
-    &:hover {
-        background-color: rgba(white, .2);
-        cursor: pointer;
-    }
-    &:active{
-        transition: background-color 0s;
-        background-color: rgba(white, .3);
-    }
-  
-}
-
-body {
-    background-color: #2e2738;
-}
-
-#body {
-    position: absolute;
-    top: 50px;
-    left:0;
-    width:100%;
-} 
