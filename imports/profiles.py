@@ -25,7 +25,7 @@ from inspect import ismethod, getmembers
 from typing import Optional, Set, Union, List, TYPE_CHECKING, Tuple
 
 import imports.globals as g
-BOT = None
+BOT = g.BOT
 if TYPE_CHECKING:
     from imports.main import Main
     BOT: Main 
@@ -385,6 +385,8 @@ class UserProfile():
 
     @classmethod
     def fromuser(cls, uid: Union[discord.User, int]) -> UserProfile:
+        global BOT
+        BOT = g.BOT
         if isinstance(uid, discord.abc.User):
             uid = uid.id
         inp = BOT.usermpm[str(uid)]['profile']
