@@ -1,0 +1,19 @@
+{% include "common/header.html" %}
+    <ul>
+        {% for name, id, icon, isin in gl %}
+        <li><a href="server/{{id}}">
+            {% if icon != None %}
+            <img src="https://cdn.discordapp.com/icons/{{id}}/{{icon}}.png?size=512"
+                {% if isin %}   
+                class = "guild-icon notinvited"
+                {% else %}
+                class = "guild-icon"
+                {% endif %}
+            >
+            {% else %}
+            <p class="guild-text">{{name}}</p>
+            {% endif %}
+        </a></li>
+        {% endfor %}
+    </ul>
+{% include "common/footer.html" %}

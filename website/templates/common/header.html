@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html> <!--this is completed in footer.html-->
+<head>
+    <title>{{title}} - Varyex</title>
+    <link rel="shortcut icon" type="image/png" href="assets/img/favicon.png"/>
+    <link rel="stylesheet" href="assets/css/style.min.css">
+    {% for file in extracss %}
+    <link rel="stylesheet" href="assets/css/{{file}}.min.css">
+    {% endfor %}
+    <script src="assets/scripts/header.js"></script>
+    {% for file in extrajs %}
+    <script src="assets/scripts/{{file}}.js"></script>
+    {% endfor %}
+</head>
+<body>
+    <header id="header"> 
+        <a href="/" id="logo">
+            <img src="assets/img/logo.svg">
+            <span id="header-text">aryex</span>
+        </a>
+        {% if not user %}
+        <a class="leftalign white-hover" href="/login">
+                <span>Log in</span>
+        </a>
+        {% else %}
+        <button class="leftalign white-hover" id="header-dropdown">
+            <img src="{{user.avatar_url_as(format='png', size=64)}}" class="avatar">
+            <span>{{user.name}}</span>
+        </button>
+        {% endif %}
+        </a>
+    </header>
+    <div id="body"> <!--this is completed in footer.html-->

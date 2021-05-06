@@ -5,7 +5,8 @@ git+https://github.com/Rapptz/discord-ext-menus
 python-dotenv 
 u-msgpack-python 
 aiohttp 
-aiohttp_session
+aiohttp-session
+aiohttp-jinja2
 pygithub 
 #less important
 timeago 

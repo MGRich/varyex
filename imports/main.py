@@ -107,23 +107,30 @@ class InteractionsContext(commands.Context):
 
 class Main(commands.Bot):
     errlist = []
-    loops: List[discord.ext.tasks.Loop] = []
     autostart = False
 
-    def __init__(self, data, userdata, *args, **kwargs):
+    def __init__(self, data, userdata, *args, webonly=False, **kwargs):
         super().__init__(*args, command_prefix=lambda x, y: (), **kwargs)
         self.data: dict = data
         self.usermpm: mpku.DefaultContainer = userdata
-        self.looptask = self.loop.create_task(self.loopcheckup())
-        self.remove_command("help")
+        self.webonly = webonly
+        if webonly:
+            for x in self.commands:
+                self.remove_command(x.name)
+        else:
+            self.loops: List[discord.ext.tasks.Loop] = []
+            self.remove_command("help")
+            self._connection.parsers["INTERACTION_CREATE"] = self.recieve_interaction
+            self.looptask = self.loop.create_task(self.loopcheckup())
+
 
         self.owner: discord.User = None
         self.secret = os.getenv("SSECRET" if self.data['stable'] else "DSECRET")
 
         #assign a custom parser
-        self._connection.parsers["INTERACTION_CREATE"] = self.recieve_interaction
 
     async def get_prefix(self, message):
+        if self.webonly: return ()
         prf = self.data['prefix'].copy()
         if message.guild:
             con = mpku.getmpm("misc", message.guild)
@@ -152,6 +159,10 @@ class Main(commands.Bot):
                 break
             except:
                 pass
+
+    def dispatch(self, event_name, *args, **kwargs):
+        if self.webonly: return
+        return super().dispatch(event_name, *args, **kwargs)
 
     def recieve_interaction(self, data):
         asyncio.ensure_future(self.handle_interaction(data), loop=self.loop)
