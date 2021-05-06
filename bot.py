@@ -6,6 +6,7 @@ from discord.ext import commands
 import imports.loophelper as loophelper
 
 from imports.menus import Confirm
+import imports.profiles #for ext
 import imports.mpk as mpku
 
 from logging import _nameToLevel as levels
