@@ -558,27 +558,19 @@ class Profile(commands.Cog):
         for i in range(12): bdays.append([])
         for m in ctx.guild.members:
             m: discord.Member
-            if self.bot.usermpm[str(m.id)]['profile'].isblank:
+            if not (prf := UserProfile.fromuser(m)):
                 continue
-            mpk = self.bot.usermpm[str(m.id)]['profile']
-            bs = mpk['birthday']
-            if not bs: continue
-            hasy = True
-            if (len(bs) == 4):
-                hasy = False
-                dt = datetime.strptime(bs, "%d%m")
-            else:
-                dt = datetime.strptime(bs, "%d%m%y")
-            tz = pytz.timezone(mpk['tz'].replace(" ", "_") if mpk['tz'] else "UTC")
+            if not prf.birthday: continue
+            tz = prf.timezone or pytz.timezone("UTC")
             now = datetime.now(tz)
-            if hasy:
-                dt = dt.replace(tzinfo=tz)
-                invalid = now < dt
-                c = 0 if invalid else calcyears(dt, now)
-                invalid = invalid or c < 13
-            if invalid: hasy = False
+            dt = prf.birthday.replace(tzinfo=tz)
+            c = calcyears(dt, now)
+            invalid = False
+            if c < 13:
+                invalid = True
+            hasy = prf.birthday.year != 1900 and not invalid
             dt = dt.replace(year=now.year)
-            out = f"<@{m.id}> - {getord(dt.day)}"
+            out = f"{getord(dt.day)} - <@{m.id}>"
             if hasy:
                 out += f" ({c}yrs)"
             if now.date() == dt.date():
