@@ -11,15 +11,25 @@ html {
     }
 }
 
+span {
+    font-family: 'Space Mono';
+    font-size: 12vw;
+    color: #e2e9e9;
+    font-weight: 600;
+    text-decoration: none;
+    position: absolute;
 
-a {
+}
+
+#server {
+    font-size: 42px;
+    top: 95%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+#atag {
     #invitetext {
-        font-family: 'Space Mono';
-        font-size: 12vw;
-        color: #e2e9e9;
-        font-weight: 600;
-        text-decoration: none;
-        position: absolute;
         top: 51.8%;
         left: 57%;
         transform: translate(-50%, -50%);
@@ -47,7 +57,7 @@ a {
             left: 25%;
             transform: translate(-50%, -50%);
             &#plusslash {
-                opacity: 10%;
+                opacity: 0%;
             }
         }    
         #invitetext {
