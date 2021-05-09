@@ -1,3 +1,5 @@
+@import url(https://fonts.googleapis.com/css?family=Space+Mono);
+
 html {
     &, body {
         height:100%;
@@ -5,12 +7,54 @@ html {
     }
     body {
         background-color: #18141e;
-        img {
-            width: 30%;
+
+    }
+}
+
+
+a {
+    #invitetext {
+        font-family: 'Space Mono';
+        font-size: 12vw;
+        color: #e2e9e9;
+        font-weight: 600;
+        text-decoration: none;
+        position: absolute;
+        top: 51.8%;
+        left: 57%;
+        transform: translate(-50%, -50%);
+        opacity: 0%;
+        transition: opacity;
+        transition-duration: .1s;
+    }
+    img {
+        width: 30%;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        transition: all .3s;
+        &#blank {
+            height: 40%;
+            width: 80%;
+        }
+    }
+    &:hover {
+        img:not(#blank) {
+            width: 20%;
             position: absolute;
             top: 50%;
-            left: 50%;
+            left: 25%;
             transform: translate(-50%, -50%);
-        }
+            &#plusslash {
+                opacity: 10%;
+            }
+        }    
+        #invitetext {
+            opacity: 100%;
+            transition-delay: .3s;
+            transition-duration: .5s;
+        } 
+          
     }
 }

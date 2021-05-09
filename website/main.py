@@ -17,6 +17,7 @@ from aiohttp_session.cookie_storage import EncryptedCookieStorage
 import aiohttp_jinja2 as aiojinja
 from hashlib import sha256
 import jinja2
+from yarl import URL
 
 #from website.helper import discordreq, DiscordRoute, UnifiedRoutes, templated
 
@@ -29,7 +30,11 @@ LOG = logging.getLogger('bot')
 @routes.view("/")
 @aiojinja.template("index.html")
 async def wh(request):
-    return {}
+    s = str(URL.build(scheme="https", host="discord.com", path="/api/oauth2/authorize", query={
+        'client_id': g.BOT.user.id,
+        "permissions": "268446911"
+    })) + "&scope=bot%20applications.commands"
+    return {'invite': s}
 
 @routes.view("/assets/{path:.*}")
 async def get_asset(request: web.Request):
