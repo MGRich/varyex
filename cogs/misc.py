@@ -12,7 +12,7 @@ from datetime import timedelta
 
 import aiohttp, imghdr, io, os, asyncio 
 from asyncio.locks import Semaphore
-from PIL import Image
+from PIL import Image, ImageEnhance
 
 import psutil, humanize, platform
 
@@ -155,8 +155,9 @@ class Misc(commands.Cog):
         > `565` - RGB565 filter, used for some consoles and other graphics"""
         if (len(ctx.message.attachments) == 0 and not links): return
         ftouse = ""
-        if   ("gen" in filter.lower()): ftouse = "gen"
-        elif ("565" in filter.lower()): ftouse = "565"
+        if   ("gen"   in filter.lower()): ftouse = "gen"
+        elif ("565"   in filter.lower()): ftouse = "565"
+        elif ("blurp" in filter.lower()): ftouse = "blurple"
         if not ftouse: return await ctx.send("Invalid filter!")
         images = []
         invalid = []
@@ -216,6 +217,20 @@ class Misc(commands.Cog):
                         oB = (val & 0x1F)
                         #and turn back into 888
                         map[x, y] = (((oR * 527 + 23) >> 6), ((oG * 259 + 33) >> 6), ((oB * 527 + 23) >> 6), A)
+            elif ftouse == "blurple":
+                img = ImageEnhance.Contrast(img).enhance(2).convert('L').convert('RGB')
+                map = img.load()
+                GOAL = (0x72, 0x89, 0xda)  # 7289da
+                def lerp(to255):
+                    p = to255 / 255.0
+                    r = []
+                    for i in range(3):
+                        r.append(GOAL[i] + int((0xFF - GOAL[i]) * p))
+                    return tuple(r)
+                for y in range(img.height):
+                    for x in range(img.width):
+                        img.putpixel((x, y), lerp(map[x, y][0]))
+                        
             async with sem:
                 img.save(f"{ctx.message.id}{done}.png")
                 files.append(discord.File(f"{ctx.message.id}{done}.png"))
