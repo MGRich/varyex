@@ -9,7 +9,7 @@ from imports.profiles import ACCOUNTS, UserAccount, UserProfile, Pronouns, Prono
 
 from imports.converters import UserLookup, DurationString
 from imports.menus import Confirm, Choice
-from imports.other import getord, timestamp_to_int, timestamp_now, iiterate, httpfetch
+from imports.other import getord, timestamp_to_int, timestamp_now, iiterate, httpfetch, utcnow
 
 from typing import TYPE_CHECKING, Union, Optional, List
 from datetime import datetime, timedelta
@@ -81,7 +81,7 @@ class Profile(commands.Cog):
         if not ((d := ds.duration) and (st := ds.string)): return await ctx.send("Please set a valid reminder.")
         if d // 60 == 0: return await ctx.send("Please set a valid duration.")
         mpk = self.bot.usermpm[str(ctx.author.id)]
-        mpk['reminders'].append({'len': d / 60, 'time': timestamp_to_int(datetime.utcnow() + timedelta(seconds=d)), 'msg': st, 'ch': ctx.channel.id})
+        mpk['reminders'].append({'len': d / 60, 'time': timestamp_to_int(utcnow() + timedelta(seconds=d)), 'msg': st, 'ch': ctx.channel.id})
         mpk.save()
         await ctx.send("Reminder set!")
 
@@ -123,7 +123,7 @@ class Profile(commands.Cog):
         if not user: user = ctx.author
         user: discord.User
         e = discord.Embed(title=str(user))
-        e.set_thumbnail(url=str(user.avatar_url))
+        e.set_thumbnail(url=str(user.avatar))
         isguild = bool(ctx.guild)
         bm = ""
         isbot = user.bot
@@ -132,7 +132,7 @@ class Profile(commands.Cog):
             isguild = bool(m)
             if m:
                 e.color = m.color if m.color != discord.Color.default() else e.color
-                gl = [f" - *{m.nick}*" if m.nick else "", f"**{'Added' if isbot else 'Joined'} at**: {m.joined_at.strftime('%m/%d/%y %I:%M %p')} UTC ({timeago.format(m.joined_at, datetime.utcnow())})\n"]
+                gl = [f" - *{m.nick}*" if m.nick else "", f"**{'Added' if isbot else 'Joined'} at**: {m.joined_at.strftime('%m/%d/%y %I:%M %p')} UTC ({timeago.format(m.joined_at, utcnow())})\n"]
             try: 
                 l = [x for x in (await ctx.guild.bans()) if x.user.id == user.id]
                 if l and (ctx.author.permissions_in(ctx.channel).ban_members):
@@ -144,7 +144,7 @@ class Profile(commands.Cog):
         def glp(index):
             nonlocal gl, isguild
             return (gl[index] if isguild else "")
-        e.description = f"""{user.mention}{' (bot owner) ' if user.id == self.bot.owner.id else ''}{glp(0)}{bm}\n**Created at**: {user.created_at.strftime('%m/%d/%y %I:%M %p')} UTC ({timeago.format(user.created_at, datetime.utcnow())})\n{glp(1)}"""
+        e.description = f"""{user.mention}{' (bot owner) ' if user.id == self.bot.owner.id else ''}{glp(0)}{bm}\n**Created at**: {user.created_at.strftime('%m/%d/%y %I:%M %p')} UTC ({timeago.format(user.created_at, utcnow())})\n{glp(1)}"""
         if isguild and m.roles[1:]:
             rev = m.roles[1:]
             rev.reverse()
@@ -343,7 +343,7 @@ class Profile(commands.Cog):
                 await tod.delete()
                 continue
 
-            if (dt.year >= datetime.utcnow().year):
+            if (dt.year >= utcnow().year):
                 prf.birthday = dt.replace(year = 1900)
             else:
                 #gonna count to be sure 

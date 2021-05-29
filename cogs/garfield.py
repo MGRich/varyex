@@ -3,7 +3,7 @@ from discord.ext import commands
 from imports.loophelper import trackedloop
 
 import imports.mpk as mpku
-from imports.other import httpfetch, urlisOK
+from imports.other import httpfetch, urlisOK, utcnow
 
 from typing import Union, Optional, List, Tuple, TYPE_CHECKING
 from datetime import datetime, timedelta
@@ -182,7 +182,7 @@ class Garfield(commands.Cog):
                 if (await urlisOK(url)): return (url, limitdatetime(date))
             date -= timedelta(days=1)
             attempts += 1
-        return (-1, datetime.utcnow())
+        return (-1, utcnow())
 
     async def calcsromg(self, di: Union[datetime, int]):
         direct = type(di) == int
@@ -249,7 +249,7 @@ class Garfield(commands.Cog):
         if not re.fullmatch("show (comic|sromg|strip)", m.content.lower()): return
         await m.channel.trigger_typing()
         s = m.content.split()[1] == "sromg"
-        if not s: url, date = await self.calcstripfromdate(datetime.utcnow() + timedelta(days=1))
+        if not s: url, date = await self.calcstripfromdate(utcnow() + timedelta(days=1))
         else: 
             url = await self.calcsromg(-1)
             date = None
@@ -267,7 +267,7 @@ class Garfield(commands.Cog):
         isSROMG = ctx.invoked_with == "sromg"
         num = None
         if not date:
-            if not isSROMG: date = limitdatetime((datetime.utcnow() + timedelta(days=1)))
+            if not isSROMG: date = limitdatetime((utcnow() + timedelta(days=1)))
         elif date.startswith("sub"):
             if ctx.guild:
                 if not ctx.author.permissions_in(ctx.channel).manage_channels: raise commands.MissingPermissions(["manage_channel"])
@@ -288,7 +288,7 @@ class Garfield(commands.Cog):
                 num = 0
             else:
                 start = datetime(1978, 6, 19)
-                delt = datetime.utcnow() - start #https://stackoverflow.com/questions/553303/
+                delt = utcnow() - start #https://stackoverflow.com/questions/553303/
                 intd = (delt.days * 24 * 60 * 60) + delt.seconds
                 date = start + timedelta(seconds=random.randrange(intd))
         else:
@@ -303,9 +303,9 @@ class Garfield(commands.Cog):
                 date = dateparser.parse(date, settings={'STRICT_PARSING': True})
                 await msg.delete()
                 if not date: return await ctx.send("Could not parse the date given.")
-                if date > datetime.utcnow() + timedelta(days=1): return await ctx.send("Please send a date that is not in the far future (1 day max).")
+                if date > utcnow() + timedelta(days=1): return await ctx.send("Please send a date that is not in the far future (1 day max).")
         if num is None and date: 
-            while (date > (datetime.utcnow() + timedelta(days=1))): date -= timedelta(days=1)
+            while (date > (utcnow() + timedelta(days=1))): date -= timedelta(days=1)
         else: date = num
         if isSROMG:
             return await ctx.send(embed=await self.formatembed(await self.calcsromg(-1 if date is None else date), True, False))
@@ -318,7 +318,7 @@ class Garfield(commands.Cog):
     @trackedloop(minutes=5, reconnect=True)
     async def garfloop(self):
         LOG.debug("gstart")
-        gurl, gdate = await self.calcstripfromdate(datetime.utcnow() + timedelta(days=1))
+        gurl, gdate = await self.calcstripfromdate(utcnow() + timedelta(days=1))
         sdata = await self.calcsromg(-1)
         gembed = sembed = None
         if self.firstrun:

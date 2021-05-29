@@ -3,7 +3,7 @@ from __future__ import annotations
 import aiohttp
 from aiohttp import http
 from imports.menus import Choice, Confirm
-from imports.other import fixml, httpfetch, iiterate
+from imports.other import fixml, httpfetch, iiterate, utcnow
 import discord
 from discord.ext import commands, menus
 
@@ -507,7 +507,7 @@ class TZMenu(menus.Menu):
         if self.deepl:
             ins = f" (in {'/'.join(self.deepl)})"
         e.set_footer(text=f"Page {self.page + 1}/{pmax + 1}{ins}")
-        e.timestamp = datetime.utcnow()
+        e.timestamp = utcnow()
         await self.message.edit(content="", embed=e)
 
     @menus.button('\u23F9')

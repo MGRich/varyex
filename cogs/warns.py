@@ -6,7 +6,7 @@ from imports.loophelper import trackedloop
 import imports.mpk as mpku
 from imports.menus import Confirm
 from imports.converters import UserLookup, MemberLookup, DurationString
-from imports.other import fixml, timeint, timestamp_to_int, datetime_from_int, timestamp_now
+from imports.other import fixml, timeint, timestamp_to_int, datetime_from_int, timestamp_now, utcnow
 
 from typing import Optional
 from datetime import datetime, timedelta
@@ -165,7 +165,7 @@ class Warns(commands.Cog):
                     if (typ) or (ofc['time']):
                         if not mpk['inwarn']: mpk['inwarn'] = {}
                         mpk['inwarn'][uid] = {'left': 0, 
-                            'time': timestamp_to_int(datetime.utcnow() + timedelta(seconds=(ofc['time'] * 60) if not typ else duration)), 
+                            'time': timestamp_to_int(utcnow() + timedelta(seconds=(ofc['time'] * 60) if not typ else duration)), 
                             'type': 'warn' if not typ else 'mute'}
             if act['dmmsg']:
                 try: await user.send(act['dmmsg'])
@@ -517,14 +517,14 @@ class Warns(commands.Cog):
         uid = str(user.id)
         embed = discord.Embed(color=(discord.Color(self.bot.data['color']) if user.color == discord.Color.default() else user.color))
         embed.set_author(name=user.display_name, icon_url=user.avatar_url)
-        embed.timestamp = datetime.utcnow()
+        embed.timestamp = utcnow()
         embed.title = "Warnings"
         
         desc = ""
         for warn in reversed(mpk['users'][uid]):
             reason = f"*{warn['reason']}*"
             if (warn['major']): reason = f"*{reason}*"
-            desc += f"> {reason} - <@{warn['who']}>\n> *{timeago.format(datetime_from_int(warn['timestamp']), datetime.utcnow())}* (Case {mpk['users'][uid].index(warn) + 1})\n> `-------------`\n"
+            desc += f"> {reason} - <@{warn['who']}>\n> *{timeago.format(datetime_from_int(warn['timestamp']), utcnow())}* (Case {mpk['users'][uid].index(warn) + 1})\n> `-------------`\n"
         if not mpk['users'][uid]: desc = "__No warnings!__"
         else: desc = desc[:-18]
         embed.description = desc.strip()

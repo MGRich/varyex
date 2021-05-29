@@ -4,6 +4,7 @@ from discord import AuditLogAction
 
 import imports.embeds as embeds
 import imports.mpk as mpku
+from imports.other import utcnow
 
 from typing import Union, List, TYPE_CHECKING
 from datetime import datetime, timedelta
@@ -60,7 +61,7 @@ class Logging(commands.Cog):
         offset = None
         #first lets travel up. if this is a chain of some kind, the author will remain
         while True:
-            ml = await chn.history(before=offset, after=(offset or datetime.utcnow()) - timedelta(minutes=7), oldest_first=False, limit=10).flatten()
+            ml = await chn.history(before=offset, after=(offset or utcnow()) - timedelta(minutes=7), oldest_first=False, limit=10).flatten()
             if (not ml): break
             for m3 in ml:
                 m2 = m3
@@ -151,7 +152,7 @@ class Logging(commands.Cog):
 
          
     def makebase(self, member, timestamp=None, colortype = 2) -> discord.Embed:
-        if not timestamp: timestamp = datetime.utcnow()
+        if not timestamp: timestamp = utcnow()
         if (isinstance(member, discord.Member)):
             embed = discord.Embed(color=(discord.Color(self.bot.data['color']) if member.color == discord.Color.default() else member.color))
             embed.set_author(name=f"{member.display_name} ({str(member)})", icon_url=member.avatar_url)
@@ -179,7 +180,7 @@ class Logging(commands.Cog):
             async for log in guild.audit_logs(limit=limit, action=action):
                 if (((log.target == target) if (not isinstance(target, int)) else (log.target.id == target)) if target else True):
                     if (after):
-                        if (log.created_at < datetime.utcnow() - timedelta(seconds=5)): continue
+                        if (log.created_at < utcnow() - timedelta(seconds=5)): continue
                     if (uselist): result.append(log) 
                     else: return log
         return None if not uselist else result

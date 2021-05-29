@@ -69,8 +69,13 @@ def run_app(ip, port, runner):
     site = web.TCPSite(runner, ip, port, ssl_context=ctx)
     if __name__ == '__main__':
         print('starting')
+    g.WEBDICT['running'] = True
     loop.run_until_complete(site.start())
-    loop.run_forever()
+    #WHY DO WE HAVE TO DO THIS????????
+    loop.call_soon(loop._loop_self_reading)
+    while True:
+        loop._run_once()
+        #LOL
 
 if __name__ == '__main__':
     #os.chdir(os.getcwd() + "/../")

@@ -1,7 +1,6 @@
 import discord
 from discord.http import Route
 Route.BASE = 'https://discord.com/api/v8'
-from discord.abc import Messageable
 from discord.ext import commands
 import imports.loophelper as loophelper
 
@@ -28,10 +27,9 @@ from json import load as jload
 from dotenv import load_dotenv
 load_dotenv()
 
-from imports.main import sendoverride, Main
+from imports.main import InteractionsContext, Main, InteractionsContext
 #override discord
-Messageable.ogsend = Messageable.send
-Messageable.send = sendoverride
+
 
 from website.main import run_app
 
@@ -114,6 +112,57 @@ async def on_ready():
     await bot.get_command("loop").callback(user, "start")
     bot.autostart = True
 
+@bot.event
+async def on_interaction(interaction: discord.Interaction):
+    if interaction.type != discord.interactions.InteractionType.application_command: return
+    channel: discord.TextChannel = interaction.channel or await interaction.user.create_dm()
+    cmddata = interaction.data
+    out = [cmddata['name']]
+    if cmddata['name'] in {"warncfg", "profilecfg"}:
+        out[0] = cmddata['name'].split("cfg")[0]
+        out.append('cfg' if out[0] == "warn" else 'edit')
+            
+    wasstring = False
+    def appender(option):
+        nonlocal wasstring
+        if option['type'] == 3:
+            out.append(f"\"{option['value']}\"")
+            wasstring = True
+        else:
+            out.append(str(option['value']))
+            wasstring = False
+
+    for x in cmddata.get('options', []):
+        if x['type'] in {1, 2}:
+            out.append(x['name'])
+            for y in x.get('options', []):
+                if y['type'] == 1:
+                    out.append(y['name'])
+                    for z in y.get('options', []):
+                        appender(z)
+                else: appender(y)
+        else: appender(x)
+
+    if wasstring:
+        out[-1] = out[-1][1:-1]
+
+
+    fakemsg = discord.Message(state=interaction._state, channel=channel, data=
+        {'content': '', 'id': interaction.id, 'attachments': [], 'embeds': [], 
+        'pinned': False, 'mention_everyone': False, 'tts': False, 'type': 0, 'edited_timestamp': None})
+    fakemsg.author = interaction.user
+
+    out = (await bot.get_prefix(fakemsg))[0] + ' '.join(out)
+    fakemsg.content = out
+
+    ctx = await bot.get_context(fakemsg, cls=InteractionsContext)
+    ctx.inter = interaction
+    await ctx.trigger_typing()
+    if not ctx.command:
+        return await ctx.send("That command either doesn't exist or isn't loaded!")
+    if not ctx.channel.permissions_for(ctx.me).send_messages:
+        return await ctx.send("I can't normally send messages in here!", delete_after=3)
+    await bot.invoke(ctx)
 
 @bot.command(aliases=('loop',))
 @commands.is_owner()
@@ -235,7 +284,7 @@ async def retrieve(ctx):
     c = Confirm("you sure? thisll backup config folder and run update")
     if not (await c.prompt(ctx)): return
     await ctx.send("restarting")
-    await bot.logout()
+    await bot.close()
     upd = True
     try: Path("config").rename("configold")
     except: pass
@@ -262,10 +311,10 @@ async def redir(ctx, level):
     await ctx.send(f"set level to {level}")
 
 #@bot.command(hidden=True, aliases=('r', 'rl', 'load', 'unload'))
-@bot.command()
+@bot.command(aliases=('r',))
 @commands.is_owner()
 async def reload(ctx: commands.Context, *cogs):
-    method = ('r', 'l', 'u').index(ctx.invoked_with[x])
+    #method = ('r', 'l', 'u').index(ctx.invoked_with[x])
     cogs = set(cogs)
     cgs = set()
     msg = "```diff\n"
@@ -438,9 +487,9 @@ async def cmd(ctx, *, command):
 
 import threading
 from website.main import run_app, get_runner
-th = threading.Thread(target=run_app, args=(os.getenv("WEBHOST"), int(os.getenv("WEBPORT")), get_runner()))
+th = threading.Thread(target=run_app, args=(os.getenv("WEBHOST"), int(os.getenv("WEBPORT")), get_runner()), daemon=True)
 th.start()
-bot.run(t, bot=True, reconnect=True)
+bot.run(t, reconnect=True)
 
 if (upd): 
     stout = open("updateout.log", "w")

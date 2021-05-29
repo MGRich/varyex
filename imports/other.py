@@ -1,6 +1,9 @@
 import humanize
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, timezone
 from aiohttp import request as aioreq
+
+def utcnow():
+    return datetime.now(timezone.utc)
 
 def getord(num):
     st = "th"
@@ -18,7 +21,7 @@ def timeint(num, minutes=False):
 def timestamp_to_int(dt):
     return int(datetime.timestamp(dt) * 1000000)
 def timestamp_now():
-    return timestamp_to_int(datetime.utcnow())    
+    return timestamp_to_int(utcnow())    
 def datetime_from_int(dt):
     return datetime.fromtimestamp(dt  / 1000000)
 

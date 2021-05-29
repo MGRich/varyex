@@ -3,7 +3,7 @@ from discord.ext import commands, menus
 
 import imports.mpk as mpku
 from imports.converters import UserLookup, MemberLookup, DurationString
-from imports.other import timeint, timestamp_to_int
+from imports.other import timeint, timestamp_to_int, utcnow
 from imports.menus import Confirm 
 
 from typing import Optional
@@ -135,7 +135,7 @@ class Moderation(commands.Cog):
                 if time:
                     t += f" for {timeint(time)}"
                     uid = str(member.id)
-                    mpk['inwarn'][uid] = {'left': 0, 'time': timestamp_to_int(datetime.utcnow() + timedelta(seconds=time)), 'type': 'ban'}
+                    mpk['inwarn'][uid] = {'left': 0, 'time': timestamp_to_int(utcnow() + timedelta(seconds=time)), 'type': 'ban'}
                 if (reason != ""): t += f" for {reason}{'.' if not reason[-1] in punctuation else ''}"
                 else: t += '.'
                 if af: t += " (happy april fools!)"

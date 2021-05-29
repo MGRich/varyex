@@ -3,6 +3,7 @@ from discord.ext import commands
 
 import imports.mpk as mpku
 import imports.embeds as embeds
+from imports.other import utcnow
 from imports.converters import MemberLookup, UserLookup
 
 from datetime import datetime, timedelta
@@ -166,7 +167,9 @@ class Filters(commands.Cog):
         hasf = False
         
         if mpk['filterping'] and mpk['channel']:
-            try: chn = await self.bot.fetch_channel(mpk['channel'])
+            try: 
+                chn = self.bot.get_channel(mpk['channel'])
+                if not chn: raise Exception()
             except: pass
             else: hasfp = not msg.author.bot
         
@@ -185,7 +188,7 @@ class Filters(commands.Cog):
                 for memb in entry[1]:
                     forceNo = memb in {x.id for x in msg.mentions}
                     if not forceNo:
-                        async for message in msg.channel.history(limit=15, after=datetime.utcnow() - timedelta(seconds=30)):
+                        async for message in msg.channel.history(limit=15, after=utcnow() - timedelta(seconds=30)):
                             if message.author.id == memb:
                                 forceNo = True
                                 break

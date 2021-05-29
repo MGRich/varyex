@@ -1,5 +1,7 @@
 import discord
 from discord.ext import commands
+from discord.http import Route
+from discord.utils import MISSING
 
 import imports.mpk as mpku
 
@@ -9,8 +11,10 @@ import sys, traceback, os
 
 from typing import List, TYPE_CHECKING
 
+async def typingoverride(self: discord.abc.Messageable, ephemeral=False):
+    return await self.ogtyping()
 
-async def sendoverride(self: discord.abc.Messageable, content=None, *, embed: discord.Embed = None, returndata=False, **kwargs):
+async def sendoverride(self: discord.abc.Messageable, content=None, *, embed: discord.Embed = None, returndata=False, ephemeral=False, **kwargs):
     #TODO: more than just desc
     if not embed:
         if not returndata:
@@ -55,9 +59,15 @@ async def sendoverride(self: discord.abc.Messageable, content=None, *, embed: di
         return await self.ogsend(embed=embeds[-1], file=files)
     return await self.ogsend(embed=embeds[-1])
 
+from discord.abc import Messageable
+Messageable.ogsend = Messageable.send
+Messageable.send = sendoverride
+
+Messageable.ogtyping = Messageable.trigger_typing
+Messageable.trigger_typing = typingoverride
 
 class InteractionsContext(commands.Context):
-    def __init__(self, idata: dict = None, **attrs):
+    def __init__(self, interaction: discord.Interaction = None, **attrs):
         #assert channel
         try:
             super().__init__(**attrs)
@@ -65,44 +75,53 @@ class InteractionsContext(commands.Context):
             pass  # i THINK all gets caught
         #self.channel: discord.TextChannel = channel
         self._state = self.channel._state  # steal the state so i can send shit
-        self.idata = idata
-        self.sent = False
-        self.thinking = False
+        self.inter = interaction
+        self._sent = False
+        self._ephemeral = False
+        self._thinking = False
 
     async def reply(self, content=None, **kwargs):  # no replies
         return await self.send(content, **kwargs)
 
-    async def send(self, content=None, **kwargs):
-        if self.sent:
-            return await super().send(content, **kwargs)
-        self.sent = True
-        d: dict = await sendoverride(self, content, embed=kwargs.pop('embed', None), returndata=True, **kwargs)
-        for x in d.copy():
-            if x not in {'content', 'embeds', 'allowed_mentions'}:
-                del d[x]
-
-        for i in range(len(d['embeds'])):
-            d['embeds'][i] = d['embeds'][i].to_dict()
-
-        async with aiohttp.ClientSession() as session:
-            if self.thinking:
-                url = f"https://discord.com/api/v8/webhooks/{self.me.id}/{self.idata['token']}/messages/@original"
-                r = await session.patch(url, json=d)
+    async def send(self, content=None, ephemeral=None, **kwargs):
+        webhook = discord.webhook.async_.async_context.get()
+        if self._sent:
+            if ephemeral is None:
+                ephemeral = self._ephemeral
             else:
-                url = f"https://discord.com/api/v8/interactions/{self.idata['id']}/{self.idata['token']}/callback"
-                r = await session.post(url, json={'type': 4, 'data': d})
-        if r.status in {200, 201}:
-            return discord.Message(state=self._state, channel=self.channel, data=await r.json())
-        raise discord.errors.HTTPException(r, await r.json())
+                self._ephemeral = ephemeral
+            #if not self._ephemeral:
+            if True:
+                return await super().send(content, **kwargs)
+            #TODO: epemeral handling?
+            d = kwargs
+            if content:
+                d.update({'content': content})
+            
+        ephemeral = ephemeral or False
+        self._sent = True
+        if not self._ephemeral:
+            self._ephemeral = ephemeral
 
-    async def trigger_typing(self):
-        if self.thinking:
-            await super().trigger_typing()
-            return
-        self.thinking = True
-        url = f"https://discord.com/api/v8/interactions/{self.idata['id']}/{self.idata['token']}/callback"
         async with aiohttp.ClientSession() as session:
-            await session.post(url, json={'type': 5})
+            #if self._thinking:
+                #await self.inter.response.edit_message(content=content, embed=kwargs.pop('embed', None), view=kwargs.pop('view', None))
+            #else:
+            await self.inter.response.send_message(content, embed=kwargs.pop('embed', MISSING), ephemeral=self._ephemeral)
+        
+        d = await webhook.get_original_interaction_response(self.inter.application_id, self.inter.token, session=self.inter._session)
+        return discord.Message(state=self._state, channel=self.channel, data=d)
+        
+
+    async def trigger_typing(self, ephemeral=False):
+        return
+        if self._thinking:
+            if ephemeral:
+                await super().trigger_typing()
+            return
+        self._thinking = True
+        self._ephemeral = ephemeral
+        await self.inter.response.defer(ephemeral=ephemeral)
 
 
 class Main(commands.Bot):
@@ -120,14 +139,10 @@ class Main(commands.Bot):
         else:
             self.loops: List[discord.ext.tasks.Loop] = []
             self.remove_command("help")
-            self._connection.parsers["INTERACTION_CREATE"] = self.recieve_interaction
             self.looptask = self.loop.create_task(self.loopcheckup())
-
 
         self.owner: discord.User = None
         self.secret = os.getenv("SSECRET" if self.data['stable'] else "DSECRET")
-
-        #assign a custom parser
 
     async def get_prefix(self, message):
         if self.webonly: return ()
@@ -163,61 +178,6 @@ class Main(commands.Bot):
     def dispatch(self, event_name, *args, **kwargs):
         if self.webonly: return
         return super().dispatch(event_name, *args, **kwargs)
-
-    def recieve_interaction(self, data):
-        asyncio.ensure_future(self.handle_interaction(data), loop=self.loop)
-
-    async def handle_interaction(self, data):
-        channel: discord.TextChannel = await self.fetch_channel(data['channel_id']) or await (await self.fetch_user(data['user']['id'])).create_dm()
-
-        cmddata = data['data']
-        out = [cmddata['name']]
-        if cmddata['name'] in {"warncfg", "profilecfg"}:
-            out[0] = cmddata['name'].split("cfg")[0]
-            out.append('cfg' if out[0] == "warn" else 'edit')
-
-        wasstring = False
-
-        def appender(option):
-            nonlocal wasstring
-            if option['type'] == 3:
-                out.append(f"\"{option['value']}\"")
-                wasstring = True
-            else:
-                out.append(str(option['value']))
-                wasstring = False
-
-        for x in cmddata.get('options', []):
-            if x['type'] in {1, 2}:
-                out.append(x['name'])
-                for y in x.get('options', []):
-                    if y['type'] == 1:
-                        out.append(y['name'])
-                        for z in y.get('options', []):
-                            appender(z)
-                    else:
-                        appender(y)
-            else:
-                appender(x)
-
-        if wasstring:
-            out[-1] = out[-1][1:-1]
-
-        fakemsg = discord.Message(state=self._connection, channel=channel, data={
-            'content': '', 'id': discord.utils.time_snowflake(datetime.now()), 
-            'attachments': [], 'embeds': [], 'pinned': False, 'mention_everyone': False, 
-            'tts': False, 'type': 0, 'edited_timestamp': None})
-        try: fakemsg._handle_author(data['user'])
-        except KeyError: fakemsg._handle_author(data['member']['user'])
-
-        out = (await self.get_prefix(fakemsg))[0] + ' '.join(out)
-        print(out)
-        fakemsg._handle_content(out)
-
-        ctx = await self.get_context(fakemsg, cls=InteractionsContext)
-        ctx.idata = data
-        await ctx.trigger_typing()
-        await self.invoke(ctx)
 
     async def on_command_error(self, ctx, error):
         if hasattr(ctx.command, 'on_error'):
@@ -256,3 +216,7 @@ class Main(commands.Bot):
         embed.description += f"User ID: `{ctx.author.id}` {ctx.author.mention}\nChannel ID: `{ctx.channel.id}` {ctx.channel.mention if isinstance(ctx.channel, discord.abc.GuildChannel) else '(DM)'}"
         try: return await self.owner.send(embed=embed)
         except: pass
+
+    @property
+    def stable(self):
+        return self.data['stable']

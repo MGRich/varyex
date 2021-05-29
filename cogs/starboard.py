@@ -4,7 +4,7 @@ from discord.ext import commands
 import imports.mpk as mpku
 from imports.menus import Paginator
 import imports.embeds as embeds
-from imports.other import getord
+from imports.other import getord, utcnow
 
 from typing import Optional, List
 from datetime import datetime, timedelta
@@ -111,7 +111,7 @@ class Starboard(commands.Cog):
             
     @commands.Cog.listener()
     async def on_guild_channel_pins_update(self, chn: discord.TextChannel, pin: Optional[datetime]):
-        if not pin or not (pins := (await chn.pins())) or ((datetime.utcnow() - pin) > timedelta(seconds=10)): return
+        if not pin or not (pins := (await chn.pins())) or ((utcnow() - pin) > timedelta(seconds=10)): return
         msg: discord.Message = pins[0]
         LOG.debug(msg)
         fakepay = discord.RawReactionActionEvent({'message_id': msg.id, 'channel_id': chn.id, 'user_id': 0, 'guild_id': 1}, None, "")
