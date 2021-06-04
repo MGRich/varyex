@@ -100,7 +100,7 @@ def run_app(ip, port, runner):
         except:
             LOG.error("COULDN'T LOAD SSL KEYS!!!! SITE WILL NOT RUN")
             return
-        g.WEBDICT['ROOT'] = "https://" + ip
+        g.WEBDICT['ROOT'] = "https://" + "varyex.dev" #target
     else: 
         ctx = None
         g.WEBDICT['ROOT'] = "http://" + ip
