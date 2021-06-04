@@ -76,11 +76,7 @@ def run_app(ip, port, runner):
         print('starting')
     g.WEBDICT['running'] = True
     loop.run_until_complete(site.start())
-    #WHY DO WE HAVE TO DO THIS????????
-    loop.call_soon(loop._loop_self_reading)
-    while True:
-        loop._run_once()
-        #LOL
+    loop.run_forever()
 
 if __name__ == '__main__':
     #os.chdir(os.getcwd() + "/../")
