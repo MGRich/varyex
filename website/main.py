@@ -36,6 +36,11 @@ async def wh(request):
     })) + "&scope=bot%20applications.commands"
     return {'invite': s}
 
+@routes.view("/privacy-policy")
+@aiojinja.template("privacy.html")
+async def pp(request):
+    return {}
+
 @routes.view("/assets/{path:.*}")
 async def get_asset(request: web.Request):
     try:
@@ -100,4 +105,4 @@ if __name__ == '__main__':
     g.BOT = bot
     import threading
     threading.Thread(target=run_app, args=(os.getenv("WEBHOST"), os.getenv("WEBPORT"), get_runner())).start()
-    bot.run(t, bot=True, reconnect=True)
+    bot.run(t, reconnect=True)
