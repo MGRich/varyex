@@ -153,7 +153,7 @@ class ModdedResponse(InteractionResponse):
             data=payload,
         )
 
-        if view not in {MISSING, None} and not view.is_finished():
+        if view not in (MISSING, None) and not view.is_finished():
             state.store_view(view, message_id)
 
         self._responded = True
