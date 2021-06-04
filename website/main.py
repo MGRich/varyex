@@ -1,4 +1,6 @@
 import sys, os
+
+from aiohttp.web_request import FileField
 sys.path.append(os.getcwd()) #for name == main
 
 from collections import namedtuple
@@ -16,6 +18,7 @@ from aiohttp_session import setup, get_session, session_middleware
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 import aiohttp_jinja2 as aiojinja
 from hashlib import sha256
+from zlib import crc32
 import jinja2
 from yarl import URL
 
@@ -50,8 +53,38 @@ async def get_asset(request: web.Request):
         raise web.HTTPUnauthorized()
     return web.FileResponse(path)
 
+@routes.post("/rmgupload")
+async def rmgupload(request: web.Request):
+    try:
+        if request.headers['secret'] != g.BOT.secret: raise Exception()
+    except: raise web.HTTPUnauthorized()
+    if not os.path.exists('website/rmg'): os.mkdir('website/rmg')
+
+    c = await request.post()
+    r = {'files': []}
+    x: FileField = c['files']
+    c = x.file.read()
+    fn = format(crc32(c), 'x') + '.' + x.filename.split('.')[-1]
+    if not os.path.exists(f'website/rmg/{fn}'):
+        with open(f'website/rmg/{fn}', 'wb') as f:
+            f.write(c)
+    r['files'].append({'url': g.WEBDICT['ROOT'] + "/rmgfile/" + fn})
+    
+    return web.json_response(r)
+
+@routes.view("/rmgfile/{path:.*}")
+async def rmgfetch(request: web.Request):
+    try:
+        path = "website/rmg/" + request.match_info['path']
+    except:
+        raise web.HTTPUnauthorized()
+    if not os.path.isfile(path) or not os.path.relpath(os.path.realpath(path)).replace("\\", "/").startswith("website/rmg/"):
+        raise web.HTTPUnauthorized()
+    return web.FileResponse(path)
+
+
 def get_runner():
-    app = web.Application()
+    app = web.Application(client_max_size=1024**2 * 200)
     secret_key = sha256(g.BOT.secret.encode('utf-8')).digest()
     setup(app, EncryptedCookieStorage(secret_key))
     aiojinja.setup(app, loader=jinja2.FileSystemLoader('website/templates'))
@@ -59,14 +92,18 @@ def get_runner():
     return web.AppRunner(app)
 
 def run_app(ip, port, runner):
-    try:
-        ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-        ctx.load_cert_chain('website/https/security.crt',
-                            'website/https/security.key')
-    except:
-        LOG.error("COULDN'T LOAD SSL KEYS!!!! SITE WILL NOT RUN")
-        return
-    g.WEBDICT['ROOT'] = "https://" + ip
+    if g.BOT.stable:
+        try:
+            ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+            ctx.load_cert_chain('website/https/security.crt',
+                                'website/https/security.key')
+        except:
+            LOG.error("COULDN'T LOAD SSL KEYS!!!! SITE WILL NOT RUN")
+            return
+        g.WEBDICT['ROOT'] = "https://" + ip
+    else: 
+        ctx = None
+        g.WEBDICT['ROOT'] = "http://" + ip
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop) #is this fine? discord is currently running parallel...
     #turns out it is? prolly threadbased
