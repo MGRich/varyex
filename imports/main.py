@@ -92,8 +92,72 @@ class ModdedInteraction(Interaction):
         return ModdedResponse(self)
 
 class ModdedResponse(InteractionResponse):
-    pass #we don't need this anymore but just to be safe i'm keeping it here
-    
+    async def edit_message(
+        self,
+        *,
+        content: Optional[Any] = MISSING,
+        embed: Optional[discord.Embed] = MISSING,
+        embeds: List[discord.Embed] = MISSING,
+        attachments: List[discord.Attachment] = MISSING,
+        view: Optional[ui.View] = MISSING,
+    ) -> None:
+        """slightly modded cause thanks rapptz
+        """
+        if self._responded:
+            return
+
+        parent = self._parent
+        msg = parent.message
+        state = parent._state
+        message_id = msg.id if msg else None
+        if parent.type is not discord.InteractionType.component:
+            return
+
+        # TODO: embeds: List[Embed]?
+        payload = {}
+        if content is not MISSING:
+            if content is None:
+                payload['content'] = None
+            else:
+                payload['content'] = str(content)
+
+        if embed is not MISSING and embeds is not MISSING:
+            raise TypeError(
+                'cannot mix both embed and embeds keyword arguments')
+
+        if embed is not MISSING:
+            if embed is None:
+                embeds = []
+            else:
+                embeds = [embed]
+
+        if embeds is not MISSING:
+            payload['embeds'] = [e.to_dict() for e in embeds]
+
+        if attachments is not MISSING:
+            payload['attachments'] = [a.to_dict() for a in attachments]
+
+        if view is not MISSING:
+            state.prevent_view_updates_for(message_id)
+            if view is None:
+                payload['components'] = []
+            else:
+                payload['components'] = view.to_components()
+
+        adapter = discord.webhook.async_.async_context.get()
+        await adapter.create_interaction_response(
+            parent.id,
+            parent.token,
+            session=parent._session,
+            type=discord.InteractionResponseType.message_update.value,
+            data=payload,
+        )
+
+        if view not in {MISSING, None} and not view.is_finished():
+            state.store_view(view, message_id)
+
+        self._responded = True
+
 #dude i'm actually fucking cracked LOL
 class ModdedState(ConnectionState):
     def __init__(self, *, dispatch, handlers, hooks, http, loop, **options):

@@ -84,10 +84,10 @@ class ViewMenu(ui.View):
             await self._event.wait()
         
     async def stop(self, i: Interaction) -> None: 
+        super().stop()
         if self.remove_on_finish:
             i.response._responded = False #force it on
             await i.response.edit_message(view=None)
-        super().stop()
         self._event.set()
 
     def get_item(self, query):
