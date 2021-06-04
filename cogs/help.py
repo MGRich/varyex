@@ -48,15 +48,15 @@ class Help(commands.Cog):
                 if len(embeds[-1]) > 400:
                     embeds.append(copy(embed))
             if not embeds[-1].description: del embeds[-1]
-            return await Paginator(embeds, footer=f"Use {ctx.prefix}help [command] for more info on a command.", title="Help", loop=True).start(ctx)
+            return await Paginator(embeds, footer=f"Use {ctx.prefix}help [command] for more info on a command.", title="Help", loop=True).start(ctx, ephemeral=True)
         embed = self.parse(None, command.lower())
         if not embed:
             for x in list(self.bot.cogs):
                 if x.lower() == command.lower():
-                    return await ctx.send(embed=self.parse(x, None, prefix=ctx.prefix))
-            await ctx.send("That command doesn't exist!")
+                    return await ctx.send(embed=self.parse(x, None, prefix=ctx.prefix), ephemeral=True)
+            await ctx.send("That command doesn't exist!", ephemeral=True)
             return await ctx.invoke(self.help)
-        return await ctx.send(embed=embed)
+        return await ctx.send(embed=embed, ephemeral=True)
 
 def setup(bot):
     bot.add_cog(Help(bot))

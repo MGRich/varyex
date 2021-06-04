@@ -16,7 +16,7 @@ async def buildembed(self, msg: discord.Message, stardata = None, focus = None, 
                 
     
     embed = discord.Embed(color=(discord.Color(dcolor) if msg.author.color == discord.Color.default() else msg.author.color))
-    embed.set_author(name=msg.author.display_name, icon_url=msg.author.avatar_url)
+    embed.set_author(name=msg.author.display_name, icon_url=msg.author.avatar)
     embed.timestamp = msg.created_at
     desc = msg.content
     if msg.embeds and re.fullmatch(r"https?:\/\/[^ ]*", desc) and (msg.embeds[0].type in {'image', 'gifv'}): desc = ""
@@ -24,8 +24,8 @@ async def buildembed(self, msg: discord.Message, stardata = None, focus = None, 
     done = False
     for attachment in msg.attachments:
         try: 
-            if (not list(os.path.splitext(attachment.filename))[1].lower() in {".png", ".webm", ".gif", ".jpg", ".jpeg", ".webp"}) or done: raise Exception()
-            if (not attachmode): raise Exception()
+            if not attachmode or done: raise Exception()
+            if (not list(os.path.splitext(attachment.filename))[1].lower() in {".png", ".webm", ".gif", ".jpg", ".jpeg", ".webp"}): raise Exception()
             if (attachmode & 1): embed.set_image(url=attachment.proxy_url)
             else: embed.set_image(url=attachment.url)
             done = True

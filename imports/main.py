@@ -1,15 +1,30 @@
+from __future__ import annotations
+
 import discord
+from discord import ui
+from discord.enums import MessageType
 from discord.ext import commands
 from discord.http import Route
-from discord.utils import MISSING
+from discord import utils
+from discord.message import Message
+from discord.types.message import MessageActivity
+from discord.utils import MISSING, utcnow
+from discord.webhook.async_ import AsyncWebhookAdapter, WebhookMessage
+from discord.state import ConnectionState
+from discord import Interaction
+from discord.interactions import InteractionResponse
 
 import imports.mpk as mpku
+import imports.globals as g
 
 import asyncio, aiohttp
 from datetime import datetime
 import sys, traceback, os
 
-from typing import List, TYPE_CHECKING
+import logging
+LOG = logging.getLogger('bot')
+
+from typing import List, TYPE_CHECKING, Optional, Union, Dict, Any
 
 async def typingoverride(self: discord.abc.Messageable, ephemeral=False):
     return await self.ogtyping()
@@ -66,6 +81,79 @@ Messageable.send = sendoverride
 Messageable.ogtyping = Messageable.trigger_typing
 Messageable.trigger_typing = typingoverride
 
+class ModdedInteraction(Interaction):
+    @property
+    def channel(self) -> Optional[Messageable]:
+        try: return super().channel or self.user.dm_channel
+        except: return None
+
+    @utils.cached_slot_property('_cs_response')
+    def response(self) -> ModdedResponse:
+        return ModdedResponse(self)
+
+class ModdedResponse(InteractionResponse):
+    pass #we don't need this anymore but just to be safe i'm keeping it here
+    
+#dude i'm actually fucking cracked LOL
+class ModdedState(ConnectionState):
+    def __init__(self, *, dispatch, handlers, hooks, http, loop, **options):
+        super().__init__(dispatch=dispatch, handlers=handlers, hooks=hooks, http=http, loop=loop, **options)
+    
+    def parse_interaction_create(self, data):
+        #copied from super, just changed to use modded interaction
+        interaction = ModdedInteraction(data=data, state=self)
+        if data['type'] == 3:  # interaction component
+            custom_id = interaction.data['custom_id']  # type: ignore
+            component_type = interaction.data['component_type']  # type: ignore
+            self._view_store.dispatch(component_type, custom_id, interaction)
+
+        self.dispatch('interaction', interaction)
+
+class EphemeralMessage(discord.Message):
+    def __init__(self, state: ModdedState, channel: discord.abc.Messageable, data: dict):
+        self.channel = channel
+        self._state = state
+        self.id = utils.time_snowflake(data.get('created_at', utcnow()))
+        self._edited_timestamp = None
+        self.content = data.get('content', None)
+        self.embeds = data.get('embeds', [])
+        self.author = g.BOT.user
+        self.components = [discord.components._component_factory(d) for d in data.get('components', [])]
+        self.type = MessageType.default #i guess?
+        #self.flags = 64 #ephemeral
+        self.interaction: ModdedInteraction = data.get('interaction') #must be there
+        self.pinned = False
+        self.reactions = []
+        self.tss = data.get('tts', False)
+
+    #NULLED
+    async def delete(self, *, delay: Optional[float]) -> None:
+        pass #maybe we'll get the ability to later
+    async def add_reaction(self, emoji) -> None:
+        pass
+    async def remove_reaction(self, emoji, member) -> None:
+        pass
+    async def clear_reaction(self, emoji) -> None:
+        pass
+    async def clear_reactions(self) -> None:
+        pass
+    async def pin(self, *, reason) -> None:
+        pass
+    async def unpin(self, *, reason) -> None:
+        pass
+    async def edit(self, **options):
+        #thanks discord devs
+        LOG.error("ATTEMPT TO EDIT EPHEMERAL MESSAGE")        
+
+    
+    async def reply(self, content, **kwargs) -> WebhookMessage:
+        ephemeral = kwargs.pop('ephemeral', True)
+        return await self.interaction.followup.send(content, ephemeral=ephemeral, **kwargs)
+
+
+
+        
+
 class InteractionsContext(commands.Context):
     def __init__(self, interaction: discord.Interaction = None, **attrs):
         #assert channel
@@ -80,37 +168,50 @@ class InteractionsContext(commands.Context):
         self._ephemeral = False
         self._thinking = False
 
-    async def reply(self, content=None, **kwargs):  # no replies
-        return await self.send(content, **kwargs)
+    async def reply(self, content=None, **kwargs):
+        if not self._sent or self._ephemeral:
+            return await self.send(content, **kwargs)
+        return await super().reply(content, **kwargs)
 
-    async def send(self, content=None, ephemeral=None, **kwargs):
+    async def send(self, content=None, ephemeral=None, **kwargs) -> Union[Message, WebhookMessage]:
         webhook = discord.webhook.async_.async_context.get()
         if self._sent:
             if ephemeral is None:
                 ephemeral = self._ephemeral
-            else:
-                self._ephemeral = ephemeral
-            #if not self._ephemeral:
-            if True:
+            self._ephemeral = ephemeral
+            if not self._ephemeral:
                 return await super().send(content, **kwargs)
-            #TODO: epemeral handling?
-            d = kwargs
-            if content:
-                d.update({'content': content})
+            return await self.inter.followup.send(content, ephemeral=True, **kwargs)
+            
             
         ephemeral = ephemeral or False
         self._sent = True
         if not self._ephemeral:
             self._ephemeral = ephemeral
+        
+        embeds = MISSING
+        if kwargs.get('embed', None):
+            embeds = (await sendoverride(self, content=content, embed=kwargs.pop('embed'), returndata=True))['embeds'] or MISSING
 
         async with aiohttp.ClientSession() as session:
             #if self._thinking:
-                #await self.inter.response.edit_message(content=content, embed=kwargs.pop('embed', None), view=kwargs.pop('view', None))
+                #await self.inter.response.edit_message(content=content, embed=kwargs.get('embed', None), view=kwargs.get('view', None))
             #else:
-            await self.inter.response.send_message(content, embed=kwargs.pop('embed', MISSING), ephemeral=self._ephemeral)
+            await self.inter.response.send_message(content, embeds=embeds, ephemeral=self._ephemeral, view=kwargs.get('view', MISSING))
         
-        d = await webhook.get_original_interaction_response(self.inter.application_id, self.inter.token, session=self.inter._session)
-        return discord.Message(state=self._state, channel=self.channel, data=d)
+        if not self._ephemeral:
+            d = await webhook.get_original_interaction_response(self.inter.application_id, self.inter.token, session=self.inter._session)
+            return discord.Message(state=self._state, channel=self.channel, data=d)
+
+        d = {
+            'content': content or None,
+            'embeds': embeds or [],
+            'tts': kwargs.get('tts', False),
+            'components': kwargs.get('view').to_components() if kwargs.get('view', None) else [],
+            'interaction': self.inter
+        }
+        return EphemeralMessage(self._state, self.channel, d)
+        
         
 
     async def trigger_typing(self, ephemeral=False):
@@ -122,8 +223,7 @@ class InteractionsContext(commands.Context):
         self._thinking = True
         self._ephemeral = ephemeral
         await self.inter.response.defer(ephemeral=ephemeral)
-
-
+    
 class Main(commands.Bot):
     errlist = []
     autostart = False
@@ -178,6 +278,10 @@ class Main(commands.Bot):
     def dispatch(self, event_name, *args, **kwargs):
         if self.webonly: return
         return super().dispatch(event_name, *args, **kwargs)
+    
+    def _get_state(self, **options):
+        return ModdedState(dispatch=self.dispatch, handlers=self._handlers,
+                               hooks=self._hooks, http=self.http, loop=self.loop, **options)
 
     async def on_command_error(self, ctx, error):
         if hasattr(ctx.command, 'on_error'):

@@ -3,8 +3,9 @@ from discord.ext import commands, menus
 
 import imports.mpk as mpku
 from imports.converters import UserLookup, MemberLookup, DurationString
-from imports.other import timeint, timestamp_to_int, utcnow
+from imports.other import timeint, timestamp_to_int
 from imports.menus import Confirm 
+from discord.utils import utcnow
 
 from typing import Optional
 from datetime import datetime, timedelta
@@ -105,9 +106,9 @@ class Moderation(commands.Cog):
         self.bot = bot
 
     @commands.command()
-    @commands.guild_only()
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
+    @commands.guild_only()
     async def ban(self, ctx, members: commands.Greedy[UserLookup], *, reason: Optional[DurationString] = ""):
         """Bans users.
         Both the bot and the runner **must be able to ban.**
@@ -150,9 +151,9 @@ class Moderation(commands.Cog):
         await ctx.send(f"User{'s' if len(banlist) > 1 else ''} {', '.join(banlist)} successfully banned.")
 
     @commands.command()
-    @commands.guild_only()
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
+    @commands.guild_only()
     async def unban(self, ctx, members:commands.Greedy[UserLookup], *, reason: Optional[str] = ""):
         """Unbans users.
         Both the bot and the runner **must be able to unban.**
@@ -172,9 +173,9 @@ class Moderation(commands.Cog):
         await ctx.send(f"User{'s' if len(ubanlist) > 1 else ''} {', '.join(ubanlist)} successfully unbanned.")
 
     @commands.command()
-    @commands.guild_only()
     @commands.has_permissions(kick_members=True)
     @commands.bot_has_permissions(kick_members=True)
+    @commands.guild_only()
     async def kick(self, ctx, members:commands.Greedy[MemberLookup], *, reason: Optional[str] = ""):
         """Kicks users.
         Both the bot and the runner **must be able to kick.**
@@ -197,8 +198,8 @@ class Moderation(commands.Cog):
         await ctx.send(f"User{'s' if len(banlist) > 1 else ''} {', '.join(banlist)} successfully kicked.")
 
     @commands.command()
-    @commands.guild_only()
     @commands.has_permissions(manage_messages=True, read_message_history=True)
+    @commands.guild_only()
     async def purge(self, ctx: commands.Context, count = 100, member: Optional[MemberLookup] = None):
         """Purges messages.
 
@@ -219,6 +220,7 @@ class Moderation(commands.Cog):
 ###################################LOG CONFIG############################
     @commands.group(aliases=('logs',))
     @commands.has_permissions(manage_guild=True)
+    @commands.guild_only()
     async def log(self, ctx):
         """Sets up logging.
         
@@ -236,6 +238,7 @@ class Moderation(commands.Cog):
             await ctx.send(embed=embed)
     
     @log.group(aliases = ('cfg',))
+    @commands.guild_only()
     async def config(self, ctx):
         """Sets up logging."""
         if not ctx.invoked_subcommand:
@@ -243,6 +246,7 @@ class Moderation(commands.Cog):
 
     @config.command(aliases = ('setchannel',))
     @commands.has_permissions(manage_guild=True)
+    @commands.guild_only()
     async def channel(self, ctx, channel: Optional[discord.TextChannel]):
         """Set the channel for logs."""
         if not channel: return await ctx.invoke(self.log)
@@ -253,6 +257,7 @@ class Moderation(commands.Cog):
 
     @config.command()
     @commands.has_permissions(manage_guild=True)
+    @commands.guild_only()
     async def toggle(self, ctx):
         """Toggle certain parts of logging."""
         ctx.invoked_subcommand = None

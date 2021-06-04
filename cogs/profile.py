@@ -1,6 +1,8 @@
+from discord.enums import ButtonStyle
 from imports.mpk import DefaultContainer
 import discord, asyncio, re, aiohttp
 from discord.ext import commands
+from discord import ui
 from imports.loophelper import trackedloop
 from imports.profiles import ACCOUNTS, UserAccount, UserProfile, Pronouns, PronounSelector, TZMenu, get_pnounspage, pnoun_list
 
@@ -9,7 +11,8 @@ from imports.profiles import ACCOUNTS, UserAccount, UserProfile, Pronouns, Prono
 
 from imports.converters import UserLookup, DurationString
 from imports.menus import Confirm, Choice
-from imports.other import getord, timestamp_to_int, timestamp_now, iiterate, httpfetch, utcnow
+from imports.other import getord, timestamp_to_int, timestamp_now, iiterate, httpfetch
+from discord.utils import utcnow
 
 from typing import TYPE_CHECKING, Union, Optional, List
 from datetime import datetime, timedelta
@@ -389,7 +392,6 @@ class Profile(commands.Cog):
             return await ctx.send("Timezone set!")
         return await ctx.send("Timezone setting cancelled.")
 
-    @commands.guild_only()
     @edit.command(aliases = ('account', 'accounts', 'setaccount'))
     async def setaccounts(self, ctx: commands.Context):
         """Setup accounts on your profile."""
@@ -399,10 +401,10 @@ class Profile(commands.Cog):
 
         embed = discord.Embed(title = "Accounts Management", description = "Pick which account you'd like to add/remove.",
             color = self.bot.data['color'] if ctx.author.color == discord.Color.default() else ctx.author.color)
-        embed.set_author(name=ctx.author.display_name, icon_url=str(ctx.author.avatar_url_as(format='jpg', size=64)))
+        embed.set_author(name=ctx.author.display_name, icon_url=str(ctx.author.avatar))
         emoji = [self.bot.get_emoji(ACCOUNTS[x]['emoji']) for x in ACCOUNTS]
         msg: discord.Message = await ctx.send(embed=embed)
-        a = await Choice(msg, emoji).prompt(ctx)
+        a = await Choice(msg, emoji + [ui.Button(style=ButtonStyle.red, label="Cancel")], remove_on_finish=False).prompt(ctx)
 
         acctype = list(ACCOUNTS)[a]
         data = ACCOUNTS[acctype]
@@ -413,7 +415,7 @@ class Profile(commands.Cog):
         embed.color = data['color']
 
         alist = [x for x in acclist if x.type == acctype]
-        embed.description = "Current accounts:\n" if alist else "*No accounts.*\n"
+        embed.description = "Current accounts:\n" if alist else "No accounts. Would you like to add one?"
         t = data['type']
         i = 0
         for x in alist:
@@ -423,10 +425,14 @@ class Profile(commands.Cog):
             i += 1
 
         pre = embed.description
-        embed.description += "\nAdd/update using \u2705, remove using \u26D4, cancel using \u274C"
+        #embed.description += "\nAdd/update using \u2705, remove using \u26D4, cancel using \u274C"
         await msg.edit(embed=embed)
 
-        a = await Choice(msg, ['\u2705', '\u26D4', '\u274C']).prompt(ctx)
+        b = [ui.Button(style=ButtonStyle.success, label="Yes" if not alist else "Add/update" if len(alist) < 3 else "Update"),
+             ui.Button(style=ButtonStyle.danger, label="Remove") if alist else None,
+             ui.Button(style=ButtonStyle.grey, label="No" if not alist else "Cancel")]
+
+        a = await Choice(msg, b).prompt(ctx)
         if a == 2: return await ctx.send("Cancelled account management.") 
         if a == 1:
             if not alist: return await ctx.send("There's no accounts to delete!")

@@ -3,7 +3,7 @@ from discord.ext import commands
 
 import imports.mpk as mpku
 import imports.embeds as embeds
-from imports.other import utcnow
+from discord.utils import utcnow
 from imports.converters import MemberLookup, UserLookup
 
 from datetime import datetime, timedelta

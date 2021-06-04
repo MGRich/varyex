@@ -78,8 +78,8 @@ class Misc(commands.Cog):
         elif not user: user = ctx.author
         
         e = discord.Embed(color=(discord.Color(self.bot.data['color']) if user.color == discord.Color.default() else user.color))
-        e.set_author(name=f"{user.display_name}'s avatar", icon_url=str(user.avatar_url_as(format='jpg', size=64)))
-        e.set_image(url=str(user.avatar_url_as(static_format='png', size=2048)))
+        e.set_author(name=f"{user.display_name}'s avatar", icon_url=str(user.avatar))
+        e.set_image(url=str(user.avatar))
         return await ctx.send(embed=e)
 
     @commands.command()

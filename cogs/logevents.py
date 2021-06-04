@@ -4,7 +4,7 @@ from discord import AuditLogAction
 
 import imports.embeds as embeds
 import imports.mpk as mpku
-from imports.other import utcnow
+from discord.utils import utcnow
 
 from typing import Union, List, TYPE_CHECKING
 from datetime import datetime, timedelta
@@ -155,13 +155,13 @@ class Logging(commands.Cog):
         if not timestamp: timestamp = utcnow()
         if (isinstance(member, discord.Member)):
             embed = discord.Embed(color=(discord.Color(self.bot.data['color']) if member.color == discord.Color.default() else member.color))
-            embed.set_author(name=f"{member.display_name} ({str(member)})", icon_url=member.avatar_url)
+            embed.set_author(name=f"{member.display_name} ({str(member)})", icon_url=member.avatar)
         elif (isinstance(member, discord.Guild)):
             embed = discord.Embed(color=self.bot.data['color'])
             embed.set_author(name=str(member), icon_url=str(member.icon_url))
         else:
             embed = discord.Embed(color=self.bot.data['color'])
-            embed.set_author(name=str(member), icon_url=member.avatar_url)
+            embed.set_author(name=str(member), icon_url=member.avatar)
         if (colortype != 2):
             if (colortype): embed.color = 0x59b539
             else: embed.color = 0xdd2e44
@@ -245,7 +245,7 @@ class Logging(commands.Cog):
         log = await self.getaudit(AuditLogAction.message_delete, message.guild, after=True)
         embed = await embeds.buildembed(embeds, message, link=False, attachmode=0b11)
         embed.color = 0xdd2e44
-        embed.set_author(name=f"{message.author.display_name} ({message.author})", icon_url=message.author.avatar_url)
+        embed.set_author(name=f"{message.author.display_name} ({message.author})", icon_url=message.author.avatar)
         embed.title = "Message Deletion"
         embed.timestamp = message.created_at
         try:

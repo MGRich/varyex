@@ -4,7 +4,8 @@ from discord.ext import commands
 import imports.mpk as mpku
 from imports.menus import Paginator
 import imports.embeds as embeds
-from imports.other import getord, utcnow
+from imports.other import getord
+from discord.utils import utcnow
 
 from typing import Optional, List
 from datetime import datetime, timedelta
@@ -238,7 +239,7 @@ class Starboard(commands.Cog):
             try:
                 first = await ctx.guild.fetch_member(int(srtd[x][0]))
                 ebase.colour = first.color
-                ebase.set_author(name="Leaderboard", icon_url=first.avatar_url)
+                ebase.set_author(name="Leaderboard", icon_url=first.avatar)
                 ebase.description = f"{first.display_name} is in {getord(x + 1)}!\n*You're in {getord(senderpos + 1)}!*"
                 break
             except: continue

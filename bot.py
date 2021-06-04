@@ -160,7 +160,7 @@ async def on_interaction(interaction: discord.Interaction):
     await ctx.trigger_typing()
     if not ctx.command:
         return await ctx.send("That command either doesn't exist or isn't loaded!")
-    if not ctx.channel.permissions_for(ctx.me).send_messages:
+    if not isinstance(ctx.channel, discord.abc.User) and not ctx.channel.permissions_for(ctx.me).send_messages:
         return await ctx.send("I can't normally send messages in here!", delete_after=3)
     await bot.invoke(ctx)
 

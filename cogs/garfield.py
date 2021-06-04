@@ -3,7 +3,8 @@ from discord.ext import commands
 from imports.loophelper import trackedloop
 
 import imports.mpk as mpku
-from imports.other import httpfetch, urlisOK, utcnow
+from imports.other import httpfetch, urlisOK
+from discord.utils import utcnow
 
 from typing import Union, Optional, List, Tuple, TYPE_CHECKING
 from datetime import datetime, timedelta

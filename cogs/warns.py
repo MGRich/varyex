@@ -6,7 +6,8 @@ from imports.loophelper import trackedloop
 import imports.mpk as mpku
 from imports.menus import Confirm
 from imports.converters import UserLookup, MemberLookup, DurationString
-from imports.other import fixml, timeint, timestamp_to_int, datetime_from_int, timestamp_now, utcnow
+from imports.other import fixml, timeint, timestamp_to_int, datetime_from_int, timestamp_now
+from discord.utils import utcnow
 
 from typing import Optional
 from datetime import datetime, timedelta
@@ -516,7 +517,7 @@ class Warns(commands.Cog):
         #gid = str(ctx.guild.id)
         uid = str(user.id)
         embed = discord.Embed(color=(discord.Color(self.bot.data['color']) if user.color == discord.Color.default() else user.color))
-        embed.set_author(name=user.display_name, icon_url=user.avatar_url)
+        embed.set_author(name=user.display_name, icon_url=user.avatar)
         embed.timestamp = utcnow()
         embed.title = "Warnings"
         

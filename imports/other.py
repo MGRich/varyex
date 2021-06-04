@@ -2,8 +2,11 @@ import humanize
 from datetime import timedelta, datetime, timezone
 from aiohttp import request as aioreq
 
-def utcnow():
-    return datetime.now(timezone.utc)
+from discord import Emoji, PartialEmoji
+from discord.utils import utcnow
+
+def emoji_to_partial(emoji: Emoji):
+    return PartialEmoji(name=emoji.name, animated=emoji.animated, id=emoji.id)
 
 def getord(num):
     st = "th"

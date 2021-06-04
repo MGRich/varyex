@@ -2,10 +2,14 @@ from __future__ import annotations
 
 import aiohttp
 from aiohttp import http
-from imports.menus import Choice, Confirm
-from imports.other import fixml, httpfetch, iiterate, utcnow
+from discord.enums import ButtonStyle
+from discord.interactions import Interaction
+from imports.menus import Choice, Confirm, ViewMenu
+from imports.other import fixml, httpfetch, iiterate
 import discord
 from discord.ext import commands, menus
+from discord import ui
+from discord.utils import utcnow
 
 import imports.mpk as mpk
 import datetime as dt
@@ -20,7 +24,7 @@ from re import fullmatch
 from html.parser import HTMLParser
 
 from inspect import ismethod, getmembers
-
+from functools import partial
 
 from typing import Optional, Set, Union, List, TYPE_CHECKING, Tuple
 
@@ -395,26 +399,26 @@ class UserProfile():
             return inp  
         return cls(inp, uid=uid)     
 
-class TZMenu(menus.Menu):
+class TZMenu(ViewMenu):
     #this is gonna be the weirdest, most disgusting
     #mesh of a paginator and a poll-like system
     #i have NO idea how else i'd be able to do it
     def __init__(self, tzd, c):
         super().__init__()
         self.tzd = tzd
-        for x in {'\u25C0', '\u25B6'}:
-            self.add_button(menus.Button(x, self.handler))
-        for x in range(1, 6):
-            self.add_button(menus.Button(str(x) + "\uFE0F\u20E3", self.pick))
+        for x in ('\u25C0', '\u25B6'):
+            b = ui.Button(style=ButtonStyle.grey, emoji=x, row=0)
+            b.callback = partial(self.handler, b)
+            self.add_item(b)
+        
         self.ebase = discord.Embed(title="Timezone Selector", color=c)
         self.page = 0
         self.deepl = []
         self.current = tzd
         self.base = tzd
-        self.list: list
+        self.list: List[str] = []
         self.sortlist()
         self.result = None
-        self.user: discord.User
 
     def sortlist(self):
         self.list = [x + "/" if self.current[x] else x for x in self.current]
@@ -428,14 +432,12 @@ class TZMenu(menus.Menu):
             fd.insert(0, "US/")
         self.list = fd + tz
 
-    async def pick(self, payload: discord.RawReactionActionEvent):
-        if payload.event_type == "REACTION_REMOVE":
-            return
+    async def pick(self, button: ui.Button, inter: Interaction):
         il = [str(x) + "\uFE0F\u20E3" for x in range(1, 6)]
         try:
-            picked = self.list[self.page * 5 + il.index(payload.emoji.name)]
+            picked = self.list[self.page * 5 + il.index(button.emoji.name)]
         except IndexError:
-            return await self.handler(payload)
+            return await self.handler(button, inter)
         self.deepl.append(picked[:-1])
         try:
             self.current = self.current[self.deepl[-1]]
@@ -443,54 +445,36 @@ class TZMenu(menus.Menu):
             #we found it
             self.result = pytz.timezone(
                 ('/'.join(self.deepl) + picked[-1]).replace(' ', '_'))
-            return self.stop()
+            return await self.stop(inter)
         self.sortlist()
         self.page = 0
-        await self.handler(payload)
+        await inter.response.edit_message(embed=await self.get_embed(), view=self)
 
-    async def send_initial_message(self, ctx, channel):
-        if not ctx.guild:
-            await ctx.send("Please note that since this is in DMS, you must remove the reactions yourself.")
-        m = await ctx.send(embed=self.ebase)
-        fakep = discord.RawReactionActionEvent(
-            {'message_id': 0, 'channel_id': 0, 'user_id': 0}, discord.PartialEmoji(name='\u25C0'), "REACTION_ADD")
-        self.message = m
-        await self.handler(fakep)
-        return m
+    async def send_initial_message(self, ctx, channel, ephemeral):
+        return await ctx.send(embed=await self.get_embed(), view=self, ephemeral=ephemeral)
 
-    async def handler(self, payload):
-        if payload.event_type == "REACTION_REMOVE":
-            return
-        pw = self.message.embeds[0]
-        pw.set_footer(text="Please wait...")
-        await self.message.edit(content="", embed=pw)
-        try:
-            await self.message.remove_reaction(payload.emoji, self.user)
-        except:
-            pass
+    async def get_embed(self):  
         c = ""
         pmax = len(self.list) // 5
-        if payload.emoji.name == '\u25C0':
-            self.page = max(self.page - 1, 0)
-        elif payload.emoji.name == '\u25B6':
-            self.page = min(self.page + 1, pmax)
-        elif payload.emoji.name == '\u21A9':
-            self.current = self.base
-            del self.deepl[-1]
-            for x in self.deepl:
-                self.current = self.current[x]
-            self.page = 0
-            self.sortlist()
-            pmax = len(self.list) // 5
+        if self.deepl:
+            if not self.get_item('Go back'):
+                b = ui.Button(style=ButtonStyle.grey,
+                              emoji='\u21A9', label="Go back", row=0)
+                b.callback = partial(self.handler, b)
+                self.add_item(b)
+        else:
+            try:
+                self.remove_item(self.get_item('Go back'))
+            except:
+                pass
         try:
-            if self.deepl:
-                await self.add_button(menus.Button('\u21A9', self.handler), react=True)
-            else:
-                await self.remove_button('\u21A9', react=True)
-        except menus.MenuError:
+            self.remove_item(self.get_item('Cancel'))
+        except:
             pass
+        b = ui.Button(style=ButtonStyle.grey, label="Cancel", row=0)
+        b.callback = partial(self.cancelb, b)
+        self.add_item(b)
         snippet = self.list[self.page * 5:self.page * 5 + 5]
-        self.finalize
         e = copy(self.ebase)
         i = 1
         for x in snippet:
@@ -502,21 +486,43 @@ class TZMenu(menus.Menu):
                 tzi = f" (currently `{dt.strftime('%m/%d/%y %I:%M%p')}{' DST' if isdst(tz) else ''}`)"
             c += f"{i}\uFE0F\u20E3 `{x}`{tzi}\n"
             i += 1
+        self.clear_row(1)
+        for x in range(1, i):
+            b = ui.Button(style=ButtonStyle.grey,
+                          emoji=str(x) + "\uFE0F\u20E3", row=1)
+            b.callback = partial(self.pick, b)
+            self.add_item(b)
         e.description = c
         ins = ""
         if self.deepl:
             ins = f" (in {'/'.join(self.deepl)})"
         e.set_footer(text=f"Page {self.page + 1}/{pmax + 1}{ins}")
         e.timestamp = utcnow()
-        await self.message.edit(content="", embed=e)
+        return e
 
-    @menus.button('\u23F9')
-    async def cancelb(self, _payload):
-        self.stop()
+
+    async def handler(self, button: ui.Button, inter: Interaction):
+        if not button:
+            pass #i'm lazy. lets not fucking wrap this whole thing LOL
+        elif button.emoji.name == '\u25C0':
+            self.page = max(self.page - 1, 0)
+        elif button.emoji.name == '\u25B6':
+            self.page = min(self.page + 1, len(self.list) // 5)
+        elif button.emoji.name == '\u21A9':
+            self.current = self.base
+            del self.deepl[-1]
+            for x in self.deepl:
+                self.current = self.current[x]
+            self.page = 0
+            self.sortlist()
+        await inter.response.edit_message(embed=await self.get_embed(), view=self)
+
+    async def cancelb(self, _b, i):
+        await self.stop(i)
 
     async def prompt(self, ctx):
         self.user = ctx.author
-        await self.start(ctx, wait=True)
+        await self.start(ctx, wait=True, ephemeral=True)
         return self.result
 
 class PronounIsland(HTMLParser):
