@@ -105,7 +105,7 @@ class Starboard(commands.Cog):
             try: await sbmsg.edit(embed=e)
             except: pass
             else: return
-        if (not spstate) or (not datetime.now() - (msg.created_at) < timedelta(days=60)): return
+        if (not spstate) or (not utcnow() - (msg.created_at) < timedelta(days=60)): return
         made = await chl.send(embed=e)
         md['sbid'] = made.id
         return mpk.save()            
