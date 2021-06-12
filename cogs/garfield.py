@@ -306,6 +306,7 @@ class Garfield(commands.Cog):
                 if not date: return await ctx.send("Could not parse the date given.")
                 if date > utcnow() + timedelta(days=1): return await ctx.send("Please send a date that is not in the far future (1 day max).")
         if num is None and date: 
+            date = date.replace(tzinfo=timezone.utc) #just to be sure
             while (date > (utcnow() + timedelta(days=1))): date -= timedelta(days=1)
         else: date = num
         if isSROMG:
