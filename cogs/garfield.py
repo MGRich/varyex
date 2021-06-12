@@ -7,7 +7,7 @@ from imports.other import httpfetch, urlisOK
 from discord.utils import utcnow
 
 from typing import Union, Optional, List, Tuple, TYPE_CHECKING
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import re
 from html.parser import HTMLParser
 import random
@@ -288,7 +288,7 @@ class Garfield(commands.Cog):
             if isSROMG:
                 num = 0
             else:
-                start = datetime(1978, 6, 19)
+                start = datetime(1978, 6, 19, tzinfo=timezone.utc)
                 delt = utcnow() - start #https://stackoverflow.com/questions/553303/
                 intd = (delt.days * 24 * 60 * 60) + delt.seconds
                 date = start + timedelta(seconds=random.randrange(intd))
@@ -301,7 +301,7 @@ class Garfield(commands.Cog):
                         return await ctx.send("Please send a valid SROMG strip #.")
             if not num:
                 msg = await ctx.send("Parsing date...")
-                date = dateparser.parse(date, settings={'STRICT_PARSING': True})
+                date = dateparser.parse(date, settings={'STRICT_PARSING': True, 'TIMEZONE': 'UTC'})
                 await msg.delete()
                 if not date: return await ctx.send("Could not parse the date given.")
                 if date > utcnow() + timedelta(days=1): return await ctx.send("Please send a date that is not in the far future (1 day max).")

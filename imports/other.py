@@ -26,7 +26,7 @@ def timestamp_to_int(dt):
 def timestamp_now():
     return timestamp_to_int(utcnow())    
 def datetime_from_int(dt):
-    return datetime.fromtimestamp(dt  / 1000000)
+    return datetime.fromtimestamp(dt  / 1000000).replace(tzinfo=timezone.utc)
 
 def iiterate(i, iafter = True):
     if iafter: return zip(i, range(len(i)))
