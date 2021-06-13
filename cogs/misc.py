@@ -28,28 +28,27 @@ class Misc(commands.Cog):
         self.bot = bot
 
     @commands.command(aliases = ('usrprefix', 'userprefix'))
-    async def prefix(self, ctx, prefix: Optional[str] = None):
+    async def prefix(self, ctx: commands.Context, prefix: Optional[str] = None):
         """Sets the prefix for either the server or yourself.
         If you set server prefix, you **must have manage guild.**
 
         `prefix <prefix>`
         `userprefix/usrprefix <prefix>`"""
-        try: mpk = mpku.getmpm("misc", ctx.guild.id)
-        except AttributeError: mpk = None
-        user = False
+        mpk = None
+        try:
+            if not ctx.author.guild_permissions.manage_guild: raise Exception() 
+            mpk = mpku.getmpm("misc", ctx.guild.id)
+        except: pass
         users = self.bot.usermpm
         mid = str(ctx.author.id)
-        try:
-            users[mid]['prefix']
-            user = True
-        except: pass
+        user = bool(users[mid]['prefix'])
 
         if not prefix:
+            prefixes = await self.bot.get_prefix(ctx.message)
             if not user:
-                return await ctx.send(f"My main prefix here is `{self.bot.command_prefix(self.bot, ctx.message)[0]}`.")
-            prefixes = self.bot.command_prefix(self.bot, ctx.message)
+                return await ctx.send(f"My main prefix here is `{prefixes[0]}`.")
             return await ctx.send(f"Your personal prefix is `{prefixes[0]}` and my main prefix here is `{prefixes[1]}`.")
-        user = (ctx.invoked_with in {'usrprefix', 'userprefix'}) or (not mpk)
+        user = (ctx.invoked_with in {'usrprefix', 'userprefix'}) or (mpk is None)
         rem = prefix in {"reset", "off"}
         if user:
             if not rem: users[mid]['prefix'] = prefix
@@ -60,13 +59,12 @@ class Misc(commands.Cog):
             if not rem:
                 return await ctx.send(f"Your personal prefix is now `{prefix}`!")
             return await ctx.send("Your personal prefix has been reset.")
-        if not ctx.author.guild_permissions.manage_guild: return
         if not rem: mpk['prefix'] = prefix
         else:
             del mpk['prefix']
         if mpk: mpk.save()
-        if not rem: await ctx.send(f"My prefix here is now `{prefix}`!")
-        else: await ctx.send("My prefix here has been reset.")
+        if not rem: return await ctx.send(f"My prefix here is now `{prefix}`!")
+        await ctx.send("My prefix here has been reset.")
 
     @commands.command(aliases=('pfp',))
     async def avatar(self, ctx, user: Optional[UserLookup]):

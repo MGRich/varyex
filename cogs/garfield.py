@@ -301,9 +301,10 @@ class Garfield(commands.Cog):
                         return await ctx.send("Please send a valid SROMG strip #.")
             if not num:
                 msg = await ctx.send("Parsing date...")
-                date = dateparser.parse(date, settings={'STRICT_PARSING': True, 'TIMEZONE': 'UTC'})
+                date = dateparser.parse(date, settings={'STRICT_PARSING': True})
                 await msg.delete()
                 if not date: return await ctx.send("Could not parse the date given.")
+                date = date.replace(tzinfo=timezone.utc)
                 if date > utcnow() + timedelta(days=1): return await ctx.send("Please send a date that is not in the far future (1 day max).")
         if num is None and date: 
             date = date.replace(tzinfo=timezone.utc) #just to be sure
