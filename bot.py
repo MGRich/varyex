@@ -65,7 +65,7 @@ if stable:
 
 i = discord.Intents.default()
 i.members = True
-bot = Main(data, mpku.getmpm('users', None), owner_id=data['owner'], intents=i)
+bot = Main(data, mpku.getmpm('users', None), owner_id=data['owner'], intents=i, allowed_mentions=discord.AllowedMentions(everyone=False, roles=False))
 import imports.globals as g
 g.BOT = bot
 
