@@ -13,7 +13,7 @@ import logging
 from traceback import format_exc
 import sys
 from io import StringIO
-from subprocess import run as subprun
+from subprocess import Popen, run as subprun
 from shutil import rmtree
 
 import os
@@ -483,6 +483,12 @@ async def cmd(ctx, *, command):
     try: return await ctx.message.add_reaction('\u2705')
     except:
         pass
+
+@bot.command()
+@commands.is_owner()
+async def tcmd(ctx, *, command):
+    Popen(command, shell=True)
+    return await ctx.message.add_reaction('\u2705')
 
 
 import threading
