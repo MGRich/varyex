@@ -14,7 +14,7 @@ from imports.menus import Confirm, Choice
 from imports.other import getord, timestamp_to_int, timestamp_now, iiterate, httpfetch
 from discord.utils import utcnow
 
-from typing import TYPE_CHECKING, Union, Optional, List
+
 from datetime import datetime, timedelta
 import timeago
 import pytz
@@ -22,6 +22,9 @@ import dateparser
 import number_parser as numparser
 from humanize import naturaltime
 from lxml import html
+
+from imports.typecheck import *
+
 
 import logging
 LOG = logging.getLogger('bot')
@@ -47,7 +50,7 @@ def calcyears(dt: datetime, now):
     return c
 
 class Profile(commands.Cog):
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: BOTTYPE):
         # pylint: disable=no-member
         global dumpchannel
         self.bot = bot
@@ -90,6 +93,7 @@ class Profile(commands.Cog):
 
     @trackedloop(minutes=1)
     async def remindloop(self):
+        if not self.bot.stable: return
         mpk = self.bot.usermpm
         changed = False
         cp = self.bot.usermpm.copy()

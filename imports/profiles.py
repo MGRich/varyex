@@ -26,7 +26,7 @@ from html.parser import HTMLParser
 from inspect import ismethod, getmembers
 from functools import partial
 
-from typing import Optional, Set, Union, List, TYPE_CHECKING, Tuple
+from typing import Dict, Optional, Set, Union, List, TYPE_CHECKING, Tuple
 
 import imports.globals as g
 BOT = g.BOT
@@ -138,9 +138,10 @@ ACCOUNTS = {
     }
 }
 
-PAIRS = ("he/him", "she/her", "they/them")
+PAIRS = ("he/him", "she/her", "they/them", "it/its")
 FULLS = ("he/him/his/his/himself", "she/her/her/hers/herself",
-         "they/them/their/theirs/themselves")
+         "they/them/their/theirs/themselves", "it/it/its/its/itself")
+
 @umsgpack.ext_serializable(0x21)
 class Pronouns():
     __slots__ = ('subject', 'object', 'pos_d', 'pos_p', 'reflex')
@@ -209,10 +210,26 @@ class UserAccount():
         link = act['link'].replace('[]', self.handle)
         return f"<:{self.type}:{act['emoji']}> [{display}]({link})"
 
-def get_pronouns(user):
-    return UserProfile.fromuser(user).pronouns[0]
+async def get_pronoundb(user):
+    pnoun = (await httpfetch(f"https://pronoundb.org/api/v1/lookup?platform=discord&id={user.id}", json=True))['pronouns']
+    if pnoun in {"unspecified", "other"}: return None
+    if pnoun == "shh": pnoun = "sh"
+    elif pnoun == "sh": pnoun = "ss"
+    if pnoun in {"any", "ask", "avoid"}:
+        return pnoun
+    plist = ('h', 's', 't', 'i')
+    return list({Pronouns(FULLS[plist[pnoun[0]]]), Pronouns(FULLS[plist[pnoun[1]]])})
 
-def pnoun_list(list, force=False):
+def pnoun_list(list: List[Pronouns], lang, force=False) -> Tuple[str, bool]:
+    if isinstance(list, str):
+        if list not in {"any", "ask", "avoid"}:
+            return (list, True)
+        if list == "any":
+            return "Any pronouns"
+        if list == "ask":
+            return "Ask for pronouns"
+        if list == "avoid":
+            return "Avoid using pronouns; use my name"
     if force or len(list) > 2:
         return ', '.join(x.pair for x in list)
     if len(list) == 2:

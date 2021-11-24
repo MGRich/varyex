@@ -348,6 +348,7 @@ class Garfield(commands.Cog):
             if sembed and mpk['s']:
                 try: await guild.get_channel(mpk['s']).send(embed=sembed)
                 except: pass
+        if not self.bot.stable: return
         mpkr = self.bot.usermpm.copy()
         for uid in mpkr:
             mpk = mpkr[uid]['garfield']
