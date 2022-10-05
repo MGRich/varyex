@@ -242,11 +242,12 @@ class Garfield(commands.Cog):
         else:
             embed.set_image(url=url)
             isfallback = 'picayune' in url
-            embed.set_footer(text=f"Strip from {day.month}/{day.day}/{day.year}{' (fallback CDN)' if isfallback else ''}")
+            embed.set_footer(text=f"Strip from {day.month}/{day.day}/{day.year}")
         return embed
         
     @commands.Cog.listener()
     async def on_message(self, m: discord.Message):
+        return
         if not re.fullmatch("show (comic|sromg|strip)", m.content.lower()): return
         await m.channel.trigger_typing()
         s = m.content.split()[1] == "sromg"

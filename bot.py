@@ -1,6 +1,6 @@
 import discord
 from discord.http import Route
-Route.BASE = 'https://discord.com/api/v8'
+Route.BASE = 'https://discord.com/api/v8' # this'll live!
 from discord.ext import commands
 import imports.loophelper as loophelper
 
@@ -65,6 +65,7 @@ if stable:
 
 i = discord.Intents.default()
 i.members = True
+i.messages = False
 bot = Main(data, mpku.getmpm('users', None), owner_id=data['owner'], intents=i, allowed_mentions=discord.AllowedMentions(everyone=False, roles=False))
 import imports.globals as g
 g.BOT = bot
@@ -90,7 +91,8 @@ async def on_ready():
 
         if __name__ == '__main__':
             msg = "```diff\n"
-            for cog in (f"cogs.{x[:-3]}" for x in os.listdir("cogs") if os.path.isfile("cogs/" + x)):
+            for cog in (f"cogs.{x[:-3]}" for x in ["garfield"]):
+#           for cog in (f"cogs.{x[:-3]}" for x in os.listdir("cogs") if os.path.isfile("cogs/" + x)):
                 try:
                     glog.debug(f"attempt to load {cog}")
                     added = True
@@ -115,6 +117,8 @@ async def on_ready():
 @bot.event
 async def on_interaction(interaction: discord.Interaction):
     if interaction.type != discord.interactions.InteractionType.application_command: return
+    return await interaction.followup.send(f"Commands are now disabled. See more at the support server: **discord.gg/{data.special.server.invite}**", 
+        ephemeral=True)
     channel: discord.TextChannel = interaction.channel or await interaction.user.create_dm()
     cmddata = interaction.data
     out = [cmddata['name']]
@@ -235,19 +239,11 @@ async def mlcoro():
         iteration += 1
         iteration %= 3
     if last != iteration:
-        if iteration == 0:
-            st = f"{len(bot.guilds)} servers"
-        elif iteration == 1:
-            c = 0
-            for y in tuple(x.members for x in bot.guilds):
-                c += len([z for z in y if not z.bot])
-            st = f"{c} members"
-        elif iteration == 2:
-            st = f"v{data['version']}"
-        await bot.change_presence(activity=discord.Activity(name=f"{data['status'].replace('[ch]', st)}", type=0))
+        # keep it doing it every 3 minutes so 
+        await bot.change_presence(activity=discord.Activity(name=f"Varyex v1 has entered EOL. See more here: discord.gg/{data.special.server.invite}", type=0), status=discord.Status.dnd)
     ####BACKUP LOOP
     global hourcounter
-    if stable:
+    if stable and False:
         hourcounter += 1
         if hourcounter >= 3600:
             fd = {}
